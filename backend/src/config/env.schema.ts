@@ -135,9 +135,9 @@ export function validateEnv(raw: NodeJS.ProcessEnv): EnvConfig {
   const data = parsed.data;
 
   if (data.NODE_ENV === 'production') {
-    const weakDefaults = ['SuperAdmin@123', 'change-me-access-secret-min-32-chars-long', 'change-me-refresh-secret-min-32-chars-long'];
-    if (weakDefaults.includes(data.SEED_ADMIN_PASSWORD) || weakDefaults.includes(data.SUPER_ADMIN_PASSWORD)) {
-      throw new Error('Environment validation failed: production must not use default seed/admin passwords');
+    const weakJwtSecrets = ['change-me-access-secret-min-32-chars-long', 'change-me-refresh-secret-min-32-chars-long'];
+    if (weakJwtSecrets.includes(data.JWT_ACCESS_SECRET) || weakJwtSecrets.includes(data.JWT_REFRESH_SECRET)) {
+      throw new Error('Environment validation failed: production must not use default JWT secrets');
     }
     if (!data.REDIS_URL?.trim()) {
       throw new Error('Environment validation failed: REDIS_URL is required in production');
