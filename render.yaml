@@ -8,3 +8,20 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Set these in Render Dashboard (sync: false = no value in repo)
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: FIELD_ENCRYPTION_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: AUTH_USE_HTTP_ONLY_COOKIES
+        value: "true"
+      - key: AUTH_COOKIE_SECURE
+        value: "true"

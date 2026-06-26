@@ -42,6 +42,23 @@ AI agents and engineers must **append a session entry** after every completed ta
 
 ---
 
+## 2025-06-25 — Render startup visibility + env defaults
+
+### Fixed
+- `bootstrap-env.ts` validates env before Winston/logger imports; prints `=== HR Shakya ERP — startup failed ===` to stderr on Render
+- `main.ts` imports bootstrap first; production Winston console transport enabled so logs appear in cloud dashboard
+- Env schema defaults for non-secret vars (APP_NAME, SMTP, Cloudinary placeholders, `LOG_DIR=/tmp/logs`, etc.)
+- Seed password validation moved to seed scripts only (no longer blocks production `npm start`)
+- `render.yaml` lists required secrets (`sync: false`) + cookie flags
+
+### Added
+- `backend/RENDER.md` — minimum Render environment variable checklist
+
+### Next
+- Push commits and set all required env vars in Render Dashboard (see `backend/RENDER.md`)
+
+---
+
 ## 2025-06-25 — Render build fix (TypeScript paths)
 
 ### Fixed

@@ -1,3 +1,4 @@
+import './bootstrap-env.js';
 import { startServer, stopServer } from '@server.js';
 import { logger } from '@logging/winston.logger.js';
 
@@ -35,6 +36,8 @@ registerShutdownHandlers();
 
 bootstrap().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : 'Unknown startup error';
+  console.error('=== HR Shakya ERP — startup failed ===');
+  console.error(message);
   logger.error('Failed to start application', { message });
   process.exit(1);
 });

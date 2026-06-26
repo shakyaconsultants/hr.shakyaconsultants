@@ -74,13 +74,12 @@ export const queueLogger = createCategoryLogger(LogCategory.Queue, 'queue', 'inf
 export const databaseLogger = createCategoryLogger(LogCategory.Database, 'database', 'info');
 export const errorLogger = createCategoryLogger(LogCategory.Error, 'errors', 'error');
 
-if (getEnv().NODE_ENV !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: combine(colorize(), timestamp(), consoleFormat),
-    }),
-  );
-}
+logger.add(
+  new winston.transports.Console({
+    format: combine(colorize(), timestamp(), consoleFormat),
+    level: getEnv().NODE_ENV === 'production' ? 'info' : 'debug',
+  }),
+);
 
 export function logAudit(action: string, meta: Record<string, unknown>): void {
   auditLogger.info(action, meta);

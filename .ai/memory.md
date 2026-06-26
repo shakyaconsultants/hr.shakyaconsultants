@@ -1,8 +1,24 @@
 # Project Memory
 
 **Project:** HR Shakya ERP Platform  
-**Last updated:** 2025-06-25 (persona-centric portal refactor)  
+**Last updated:** 2025-06-25 (Render deploy startup fixes)  
 **Read with:** `.ai/constitution.md`, `.ai/architecture.md`, `.ai/database.md`, `.ai/api.md`
+
+---
+
+## Render Deployment (Backend)
+
+`npm start` runs `node dist/main.js`. Exit code 1 on Render is almost always **environment validation** before the server binds to a port.
+
+**Required in Render → Environment** (see `backend/RENDER.md`):
+- `MONGODB_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `FIELD_ENCRYPTION_KEY` (each 32+ chars, not placeholders)
+- `REDIS_URL` (full `rediss://...` URL)
+- `AUTH_USE_HTTP_ONLY_COOKIES=true`, `AUTH_COOKIE_SECURE=true`
+- `FRONTEND_URL` (deployed SPA URL)
+
+Startup now logs the exact validation error to Render logs via `bootstrap-env.ts`.
+
+Uncommitted locally (as of last session): `bootstrap-env.ts`, env defaults, winston console in prod, `render.yaml` secret placeholders.
 
 ---
 
