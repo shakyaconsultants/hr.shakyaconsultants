@@ -120,7 +120,7 @@
 ## Production Deployment Checklist
 
 1. Copy `backend/.env.production.example` → production secrets manager
-2. Set strong unique values for `JWT_*`, `FIELD_ENCRYPTION_KEY`, `MONGODB_URI`, `REDIS_URL`, `REDIS_TOKEN`
+2. Set strong unique values for `JWT_*`, `FIELD_ENCRYPTION_KEY`, `MONGODB_URI`, `REDIS_URL`
 3. Set `AUTH_USE_HTTP_ONLY_COOKIES=true`, `AUTH_COOKIE_SECURE=true`, `AUTH_COOKIE_SAME_SITE=strict`
 4. Set `SWAGGER_ENABLED=false`, `LOG_LEVEL=info`, `NODE_ENV=production`
 5. Copy `frontend/.env.production.example` with `VITE_AUTH_USE_HTTP_ONLY_COOKIES=true`

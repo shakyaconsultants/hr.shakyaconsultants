@@ -499,7 +499,7 @@ Service → Repository → Database Adapter (ORM/query builder) → PostgreSQL
 
 ### 8.1 Provider
 
-**Upstash Redis** (managed, TLS-enabled). No local Redis dependency. Connection via `REDIS_URL` + optional `REDIS_TOKEN`. Optional `REDIS_REST_URL` / `REDIS_REST_TOKEN` reserved for future REST-based operations.
+**Upstash Redis** (managed, TLS-enabled). No local Redis dependency. Connection via a single `REDIS_URL` with embedded credentials, e.g. `rediss://default:TOKEN@endpoint.upstash.io:6379`.
 
 ### 8.2 Role
 

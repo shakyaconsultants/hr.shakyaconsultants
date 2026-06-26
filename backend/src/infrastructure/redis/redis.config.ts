@@ -5,7 +5,22 @@ import { getEnv } from '@config/env.js';
 const REDIS_CONNECT_TIMEOUT_MS = 10_000;
 
 export function isRedisConfigured(): boolean {
-  return getEnv().REDIS_URL.trim().length > 0;
+  return sanitizeRedisUrlInput(getEnv().REDIS_URL).length > 0;
+}
+
+/** Strips accidental quotes / duplicated key prefixes from .env values. */
+export function sanitizeRedisUrlInput(raw: string): string {
+  let value = raw.trim();
+  if (value.startsWith('REDIS_URL=')) {
+    value = value.slice('REDIS_URL='.length).trim();
+  }
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+  return value;
 }
 
 export function buildRedisUrl(): string | null {
@@ -13,23 +28,14 @@ export function buildRedisUrl(): string | null {
     return null;
   }
 
-  const env = getEnv();
-  let url = normalizeRedisUrl(env.REDIS_URL.trim());
-  const token = env.REDIS_TOKEN.trim();
-
-  if (token.length > 0) {
-    const parsed = new URL(url);
-    if (parsed.password.length === 0) {
-      parsed.username = parsed.username.length > 0 ? parsed.username : 'default';
-      parsed.password = token;
-      url = parsed.toString();
-    }
-  }
-
-  return url;
+  return normalizeRedisUrl(sanitizeRedisUrlInput(getEnv().REDIS_URL));
 }
 
-/** Converts Upstash REST host URLs to the official ioredis rediss:// endpoint. */
+/**
+ * Normalizes Redis URLs for ioredis.
+ * Prefer the official Upstash format with embedded credentials:
+ *   rediss://default:YOUR_TOKEN@your-endpoint.upstash.io:6379
+ */
 export function normalizeRedisUrl(rawUrl: string): string {
   if (rawUrl.startsWith('rediss://') || rawUrl.startsWith('redis://')) {
     return rawUrl;
@@ -37,7 +43,12 @@ export function normalizeRedisUrl(rawUrl: string): string {
 
   if (rawUrl.startsWith('https://') || rawUrl.startsWith('http://')) {
     const parsed = new URL(rawUrl);
-    return `rediss://${parsed.hostname}:6379`;
+    const port = parsed.port.length > 0 ? parsed.port : '6379';
+    const auth =
+      parsed.username.length > 0 || parsed.password.length > 0
+        ? `${parsed.username || 'default'}:${parsed.password}@`
+        : '';
+    return `rediss://${auth}${parsed.hostname}:${port}`;
   }
 
   return rawUrl;
@@ -77,17 +88,4 @@ export function getRedisConnectionOptions(): ConnectionOptions {
     connectTimeout: REDIS_CONNECT_TIMEOUT_MS,
     ...(tls ? { tls: {} } : {}),
   };
-}
-
-/** Reserved for Upstash REST API usage (HTTP-based operations). */
-export function getRedisRestCredentials(): { url: string; token: string } | null {
-  const env = getEnv();
-  const url = env.REDIS_REST_URL.trim();
-  const token = env.REDIS_REST_TOKEN.trim();
-
-  if (url.length === 0 || token.length === 0) {
-    return null;
-  }
-
-  return { url, token };
 }

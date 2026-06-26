@@ -18,9 +18,6 @@ const envSchema = z.object({
   MONGODB_DB_NAME: z.string().min(1),
 
   REDIS_URL: z.string().optional().default(''),
-  REDIS_TOKEN: z.string().optional().default(''),
-  REDIS_REST_URL: z.string().optional().default(''),
-  REDIS_REST_TOKEN: z.string().optional().default(''),
 
   QUEUE_PREFIX: z.string().min(1),
   QUEUE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
@@ -125,7 +122,14 @@ export function validateEnv(raw: NodeJS.ProcessEnv): EnvConfig {
     const formatted = parsed.error.issues
       .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
       .join('\n');
-    throw new Error(`Environment validation failed:\n${formatted}`);
+    const missingKeys = parsed.error.issues
+      .filter((issue) => issue.message.includes('expected string, received undefined'))
+      .map((issue) => issue.path.join('.'));
+    const deployHint =
+      missingKeys.length > 0
+        ? `\n\nMissing variables (set in Render → Environment): ${missingKeys.join(', ')}\nSee backend/.env.production.example for the full list.`
+        : '';
+    throw new Error(`Environment validation failed:\n${formatted}${deployHint}`);
   }
 
   const data = parsed.data;

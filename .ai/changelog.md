@@ -42,6 +42,26 @@ AI agents and engineers must **append a session entry** after every completed ta
 
 ---
 
+## 2025-06-25 — Render deploy env checklist
+
+### Changed
+- Expanded `backend/.env.production.example` with all required production variables
+- Env validation hints missing Render variables by name on startup failure
+
+### Fix for deploy
+- Set `FIELD_ENCRYPTION_KEY` (32+ chars) in Render Environment — required alongside JWT secrets
+
+---
+
+## 2025-06-25 — Redis single-URL configuration
+
+### Changed
+- Redis connects via one `REDIS_URL` with embedded credentials (standard `rediss://user:pass@host:6379`)
+- Removed `REDIS_TOKEN`, `REDIS_REST_URL`, `REDIS_REST_TOKEN` from env schema and examples
+- Updated `redis.config.ts` — no separate token merge; HTTPS URLs preserve auth when present
+
+---
+
 ## 2025-06-25 — Production Readiness Audit
 
 ### Fixed
