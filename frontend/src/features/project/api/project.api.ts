@@ -57,6 +57,7 @@ export interface ListProjectsParams {
   pageSize?: number;
   search?: string;
   status?: string;
+  atRisk?: boolean;
   includeArchived?: boolean;
   scope?: 'all' | 'assigned';
 }

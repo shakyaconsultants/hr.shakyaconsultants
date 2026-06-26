@@ -2,7 +2,7 @@ import { useProjects } from '@/features/project/hooks/use-projects';
 import { WidgetSkeleton } from '@/features/workspace/components/widget-primitives';
 
 export function ProjectsAtRiskWidget() {
-  const { data, isLoading, isError } = useProjects({ page: 1, pageSize: 10, status: 'at_risk' });
+  const { data, isLoading, isError } = useProjects({ page: 1, pageSize: 10, atRisk: true });
 
   if (isLoading) {
     return <WidgetSkeleton title="Projects At Risk" />;

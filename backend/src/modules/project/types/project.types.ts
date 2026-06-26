@@ -16,6 +16,7 @@ export interface ProjectListQuery {
   branchId?: string;
   projectManagerId?: string;
   includeArchived?: boolean;
+  atRisk?: boolean;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   scope?: 'all' | 'assigned';

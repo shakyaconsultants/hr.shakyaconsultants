@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'r
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchMe, loginRequest, logoutRequest, refreshTokens } from '@/features/auth/api/auth.api';
 import { useAuthStore } from '@/shared/stores/app.store';
-import { getRefreshToken, hasStoredAuth, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
+import { getRefreshToken, hasStoredAuth, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 
 interface AuthContextValue {
   login: (payload: { companyCode: string; email: string; password: string; rememberMe?: boolean }) => Promise<void>;
@@ -13,7 +13,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const setTokens = useAuthStore((s) => s.setTokens);
   const setSession = useAuthStore((s) => s.setSession);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const setInitialized = useAuthStore((s) => s.setInitialized);
@@ -50,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (usesHttpOnlyCookies() || refreshToken) {
           try {
             const refreshed = await refreshTokens(refreshToken ?? undefined);
-            setTokens(refreshed.tokens.accessToken, refreshed.tokens.refreshToken);
+            setStoredTokens(refreshed.tokens.accessToken, refreshed.tokens.refreshToken);
             const me = await fetchMe();
             if (!cancelled) {
               setSession({
@@ -78,13 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [clearAuth, setInitialized, setLoading, setSession, setTokens]);
+  }, [clearAuth, setInitialized, setLoading, setSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       login: async (payload) => {
         const result = await loginRequest(payload);
-        setTokens(result.tokens.accessToken, result.tokens.refreshToken);
+        setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
         const me = await fetchMe();
         setSession({
           user: me.user,
@@ -105,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
     }),
-    [clearAuth, queryClient, setInitialized, setSession, setTokens],
+    [clearAuth, queryClient, setInitialized, setSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

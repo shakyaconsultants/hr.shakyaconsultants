@@ -1,5 +1,6 @@
 import type { ProjectDocument } from '@domain/project/project.schemas.js';
 import { ProjectRepository } from '@domain/project/project.schemas.js';
+import { PROJECT_RISK_LEVEL } from '@domain/project/project-extended.schemas.js';
 import { PROJECT_STATUS } from '@shared/constants/status.constants.js';
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
@@ -36,6 +37,18 @@ export const ProjectService = {
     }
     if (query.status) {
       filters.push({ status: query.status });
+    }
+    if (query.atRisk) {
+      const now = new Date();
+      filters.push({
+        $or: [
+          { riskLevel: { $in: [PROJECT_RISK_LEVEL.HIGH, PROJECT_RISK_LEVEL.CRITICAL] } },
+          {
+            targetDate: { $exists: true, $ne: null, $lt: now },
+            status: { $ne: PROJECT_STATUS.COMPLETED },
+          },
+        ],
+      });
     }
     if (query.priority) {
       filters.push({ priority: query.priority });

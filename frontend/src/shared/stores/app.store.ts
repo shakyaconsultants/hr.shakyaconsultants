@@ -62,7 +62,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   ...initialState,
   setTokens: (accessToken, refreshToken) => {
     setStoredTokens(accessToken, refreshToken);
-    set({ isAuthenticated: true });
   },
   setSession: (payload) =>
     set({
