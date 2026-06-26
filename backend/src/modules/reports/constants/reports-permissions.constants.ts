@@ -1,0 +1,5 @@
+export const REPORTS_PERMISSIONS = {
+  DASHBOARD_READ: 'analytics.dashboard.read',
+  REPORT_READ: 'analytics.report.read',
+  REPORT_EXPORT: 'analytics.report.export',
+} as const;

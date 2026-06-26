@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@config/*": ["config/*"],
+      "@constants/*": ["constants/*"],
+      "@shared/*": ["shared/*"],
+      "@middleware/*": ["middleware/*"],
+      "@infrastructure/*": ["infrastructure/*"],
+      "@modules/*": ["modules/*"],
+      "@logging/*": ["logging/*"],
+      "@routes/*": ["routes/*"],
+      "@app.js": ["app.js"],
+      "@server.js": ["server.js"]
+    }
+  }
+}

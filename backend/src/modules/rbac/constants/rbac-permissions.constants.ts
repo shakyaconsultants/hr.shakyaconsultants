@@ -1,0 +1,15 @@
+export const RBAC_PERMISSIONS = {
+  PERMISSION_READ: 'rbac.permission.read',
+  PERMISSION_MANAGE: 'rbac.permission.manage',
+  ROLE_READ: 'rbac.role.read',
+  ROLE_CREATE: 'rbac.role.create',
+  ROLE_UPDATE: 'rbac.role.update',
+  ROLE_DELETE: 'rbac.role.delete',
+  ROLE_CLONE: 'rbac.role.clone',
+  ASSIGNMENT_READ: 'rbac.assignment.read',
+  ASSIGNMENT_MANAGE: 'rbac.assignment.manage',
+  SIMULATOR_RUN: 'rbac.simulator.run',
+  HIERARCHY_READ: 'rbac.hierarchy.read',
+  HIERARCHY_MANAGE: 'rbac.hierarchy.manage',
+  MATRIX_READ: 'rbac.matrix.read',
+} as const;

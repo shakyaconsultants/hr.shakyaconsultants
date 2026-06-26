@@ -1,0 +1,15 @@
+export const WORKSPACE_PERMISSIONS = {
+  READ: 'workspace.read',
+  WIDGETS_READ: 'workspace.widgets.read',
+  WIDGETS_MANAGE: 'workspace.widgets.manage',
+  ANNOUNCEMENT_READ: 'announcement.read',
+  ANNOUNCEMENT_ACKNOWLEDGE: 'announcement.acknowledge',
+  PROFILE_READ: 'profile.read',
+  PROFILE_UPDATE: 'profile.update',
+  DOCUMENT_READ: 'document.read',
+  TIMELINE_READ: 'timeline.read',
+  NOTIFICATION_READ: 'notification.read',
+  NOTIFICATION_MANAGE: 'notification.manage',
+  SEARCH: 'workspace.search',
+  CALENDAR_READ: 'workspace.calendar.read',
+} as const;

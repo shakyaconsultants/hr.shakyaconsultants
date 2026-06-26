@@ -1,0 +1,28 @@
+export const EMPLOYEE_PERMISSIONS = {
+  READ: 'employee.read',
+  CREATE: 'employee.create',
+  UPDATE: 'employee.update',
+  DELETE: 'employee.delete',
+  EXPORT: 'employee.export',
+  IMPORT: 'employee.import',
+  BULK: 'employee.bulk',
+  DOCUMENTS_READ: 'employee.documents.read',
+  DOCUMENTS_MANAGE: 'employee.documents.manage',
+  BANK_READ: 'employee.bank.read',
+  BANK_MANAGE: 'employee.bank.manage',
+  EDUCATION_READ: 'employee.education.read',
+  EDUCATION_MANAGE: 'employee.education.manage',
+  EXPERIENCE_READ: 'employee.experience.read',
+  EXPERIENCE_MANAGE: 'employee.experience.manage',
+  SKILLS_READ: 'employee.skills.read',
+  SKILLS_MANAGE: 'employee.skills.manage',
+  CERTIFICATIONS_READ: 'employee.certifications.read',
+  CERTIFICATIONS_MANAGE: 'employee.certifications.manage',
+  ASSETS_READ: 'employee.assets.read',
+  ASSETS_MANAGE: 'employee.assets.manage',
+  TIMELINE_READ: 'employee.timeline.read',
+  MANAGERS_READ: 'employee.managers.read',
+  MANAGERS_MANAGE: 'employee.managers.manage',
+} as const;
+
+export type EmployeePermission = (typeof EMPLOYEE_PERMISSIONS)[keyof typeof EMPLOYEE_PERMISSIONS];

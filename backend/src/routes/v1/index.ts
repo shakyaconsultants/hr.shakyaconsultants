@@ -1,0 +1,56 @@
+import { Router } from 'express';
+import { authRoutes } from '@modules/auth/index.js';
+import { AUTH_ROUTES } from '@modules/auth/constants/auth.constants.js';
+import { organizationRoutes } from '@modules/organization/index.js';
+import { settingsRoutes } from '@modules/settings/index.js';
+import { rbacRoutes } from '@modules/rbac/index.js';
+import { employeeRoutes } from '@modules/employee/index.js';
+import { recruitmentRoutes } from '@modules/recruitment/index.js';
+import { projectRoutes } from '@modules/project/index.js';
+import { workspaceRoutes } from '@modules/workspace/index.js';
+import { approvalRoutes } from '@modules/approval/index.js';
+import { leaveExitRoutes } from '@modules/leave-exit/index.js';
+import { attendanceRoutes } from '@modules/attendance/index.js';
+import { payrollRoutes } from '@modules/payroll/index.js';
+import { salesRoutes } from '@modules/sales/index.js';
+import { communicationRoutes } from '@modules/communication/index.js';
+import { reportsRoutes } from '@modules/reports/index.js';
+import { integrationRoutes } from '@modules/integration/index.js';
+import { portalRoutes } from '@modules/portal/index.js';
+import { ORGANIZATION_ROUTES, SETTINGS_ROUTES } from '@modules/organization/constants/organization.constants.js';
+import { RBAC_ROUTES } from '@modules/rbac/constants/rbac.constants.js';
+import { EMPLOYEE_ROUTES } from '@modules/employee/constants/employee.constants.js';
+import { RECRUITMENT_ROUTES } from '@modules/recruitment/constants/recruitment.constants.js';
+import { PROJECT_ROUTES } from '@modules/project/constants/project.constants.js';
+import { WORKSPACE_ROUTES } from '@modules/workspace/constants/workspace.constants.js';
+import { APPROVAL_ROUTES } from '@modules/approval/constants/approval.constants.js';
+import { LEAVE_EXIT_ROUTES } from '@modules/leave-exit/constants/leave-exit.constants.js';
+import { ATTENDANCE_ROUTES } from '@modules/attendance/constants/attendance.constants.js';
+import { PAYROLL_ROUTES } from '@modules/payroll/constants/payroll.constants.js';
+import { SALES_ROUTES } from '@modules/sales/constants/sales.constants.js';
+import { COMMUNICATION_ROUTES } from '@modules/communication/constants/communication.constants.js';
+import { REPORTS_ROUTES } from '@modules/reports/constants/reports.constants.js';
+import { INTEGRATION_ROUTES } from '@modules/integration/constants/integration.constants.js';
+
+/** API v1 router — business module routes register here */
+const v1Router = Router();
+
+v1Router.use(AUTH_ROUTES.BASE, authRoutes);
+v1Router.use(ORGANIZATION_ROUTES.BASE, organizationRoutes);
+v1Router.use(SETTINGS_ROUTES.BASE, settingsRoutes);
+v1Router.use(RBAC_ROUTES.BASE, rbacRoutes);
+v1Router.use(EMPLOYEE_ROUTES.BASE, employeeRoutes);
+v1Router.use(RECRUITMENT_ROUTES.BASE, recruitmentRoutes);
+v1Router.use(PROJECT_ROUTES.BASE, projectRoutes);
+v1Router.use(WORKSPACE_ROUTES.BASE, workspaceRoutes);
+v1Router.use(APPROVAL_ROUTES.BASE, approvalRoutes);
+v1Router.use(LEAVE_EXIT_ROUTES.BASE, leaveExitRoutes);
+v1Router.use(ATTENDANCE_ROUTES.BASE, attendanceRoutes);
+v1Router.use(PAYROLL_ROUTES.BASE, payrollRoutes);
+v1Router.use(SALES_ROUTES.BASE, salesRoutes);
+v1Router.use(COMMUNICATION_ROUTES.BASE, communicationRoutes);
+v1Router.use(REPORTS_ROUTES.BASE, reportsRoutes);
+v1Router.use(INTEGRATION_ROUTES.BASE, integrationRoutes);
+v1Router.use('/portal', portalRoutes);
+
+export { v1Router };

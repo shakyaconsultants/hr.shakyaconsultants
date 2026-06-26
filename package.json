@@ -1,0 +1,31 @@
+{
+  "name": "hr-shakya",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HR Shakya ERP Platform",
+  "scripts": {
+    "prepare": "node -e \"try{require('husky').default()}catch(e){}\"",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:backend": "npm run dev --workspace=@hr-shakya/backend",
+    "dev:frontend": "npm run dev --workspace=@hr-shakya/frontend",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0"
+  },
+  "lint-staged": {
+    "backend/src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "frontend/src/**/*.{ts,tsx}": [
+      "prettier --write"
+    ]
+  }
+}

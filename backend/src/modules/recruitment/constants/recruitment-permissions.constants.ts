@@ -1,0 +1,25 @@
+export const RECRUITMENT_PERMISSIONS = {
+  CANDIDATE_READ: 'candidate.read',
+  CANDIDATE_CREATE: 'candidate.create',
+  CANDIDATE_UPDATE: 'candidate.update',
+  CANDIDATE_DELETE: 'candidate.delete',
+  CANDIDATE_EXPORT: 'candidate.export',
+  CANDIDATE_IMPORT: 'candidate.import',
+  CANDIDATE_MERGE: 'candidate.merge',
+  INTERVIEW_READ: 'interview.read',
+  INTERVIEW_CREATE: 'interview.create',
+  INTERVIEW_UPDATE: 'interview.update',
+  INTERVIEW_DELETE: 'interview.delete',
+  OFFER_READ: 'offer.read',
+  OFFER_CREATE: 'offer.create',
+  OFFER_UPDATE: 'offer.update',
+  OFFER_DELETE: 'offer.delete',
+  ONBOARDING_READ: 'onboarding.read',
+  ONBOARDING_MANAGE: 'onboarding.manage',
+  CONVERSION_EXECUTE: 'conversion.execute',
+  PIPELINE_READ: 'candidate.read',
+  PIPELINE_MANAGE: 'candidate.update',
+  DASHBOARD_READ: 'candidate.read',
+} as const;
+
+export type RecruitmentPermission = (typeof RECRUITMENT_PERMISSIONS)[keyof typeof RECRUITMENT_PERMISSIONS];
