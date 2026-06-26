@@ -54,8 +54,8 @@ AI agents and engineers must **append a session entry** after every completed ta
 ### Added
 - `backend/RENDER.md` — minimum Render environment variable checklist
 
-### Next
-- Push commits and set all required env vars in Render Dashboard (see `backend/RENDER.md`)
+### Fixed
+- `initializeQueues()` called `getQueue()` before `queuesEnabled` was set — crashed on Render even when Redis connected successfully
 
 ---
 

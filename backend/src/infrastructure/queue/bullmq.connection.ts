@@ -42,11 +42,7 @@ function getDefaultJobOptions(): JobsOptions {
   };
 }
 
-export function getQueue(name: QueueName): Queue {
-  if (!queuesEnabled) {
-    throw new Error('BullMQ is disabled because Redis is unavailable');
-  }
-
+function createQueueInstance(name: QueueName): Queue {
   const key = `${getQueuePrefix()}:${name}`;
   let queue = queues.get(key);
   if (!queue) {
@@ -58,6 +54,14 @@ export function getQueue(name: QueueName): Queue {
     queues.set(key, queue);
   }
   return queue;
+}
+
+export function getQueue(name: QueueName): Queue {
+  if (!queuesEnabled) {
+    throw new Error('BullMQ is disabled because Redis is unavailable');
+  }
+
+  return createQueueInstance(name);
 }
 
 export function getAllQueueNames(): QueueName[] {
@@ -72,7 +76,7 @@ export function initializeQueues(): void {
   }
 
   getAllQueueNames().forEach((name) => {
-    getQueue(name);
+    createQueueInstance(name);
   });
   queuesEnabled = true;
   queueLogger.info('BullMQ queues initialized (Upstash Redis)', { queues: getAllQueueNames() });
