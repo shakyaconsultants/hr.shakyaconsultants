@@ -1,17 +1,16 @@
 {
   "compilerOptions": {
-    "baseUrl": "./src",
     "paths": {
-      "@config/*": ["config/*"],
-      "@constants/*": ["constants/*"],
-      "@shared/*": ["shared/*"],
-      "@middleware/*": ["middleware/*"],
-      "@infrastructure/*": ["infrastructure/*"],
-      "@modules/*": ["modules/*"],
-      "@logging/*": ["logging/*"],
-      "@routes/*": ["routes/*"],
-      "@app.js": ["app.js"],
-      "@server.js": ["server.js"]
+      "@config/*": ["./src/config/*"],
+      "@constants/*": ["./src/constants/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@middleware/*": ["./src/middleware/*"],
+      "@infrastructure/*": ["./src/infrastructure/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@logging/*": ["./src/logging/*"],
+      "@routes/*": ["./src/routes/*"],
+      "@app.js": ["./src/app.js"],
+      "@server.js": ["./src/server.js"]
     }
   }
 }

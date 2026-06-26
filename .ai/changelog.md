@@ -42,6 +42,19 @@ AI agents and engineers must **append a session entry** after every completed ta
 
 ---
 
+## 2025-06-25 — Render build fix (TypeScript paths)
+
+### Fixed
+- Removed deprecated `baseUrl` from `backend/tsconfig.json` — paths now relative to tsconfig (`./src/...`) for TypeScript 6 compatibility on Render
+- Pinned `typescript` to `5.8.3` in backend devDependencies
+- Added `render.yaml` with `npm install --include=dev` so build tools install on Render
+
+### Render dashboard
+If not using Blueprint, set **Root Directory** to `backend` and **Build Command** to:
+`npm install --include=dev && npm run build`
+
+---
+
 ## 2025-06-25 — Render deploy env checklist
 
 ### Changed
