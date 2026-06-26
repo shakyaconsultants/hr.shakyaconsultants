@@ -50,6 +50,7 @@ export const INTERVIEW_STATUS = {
 } as const;
 
 export const PROJECT_STATUS = {
+  DRAFT: 'draft',
   PLANNING: 'planning',
   ACTIVE: 'active',
   ON_HOLD: 'on_hold',

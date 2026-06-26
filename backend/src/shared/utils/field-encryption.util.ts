@@ -5,7 +5,7 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 
 function deriveKey(): Buffer {
-  const secret = getEnv().JWT_ACCESS_SECRET;
+  const secret = getEnv().FIELD_ENCRYPTION_KEY;
   return scryptSync(secret, 'hr-shakya-field-encryption', 32);
 }
 

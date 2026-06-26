@@ -77,7 +77,7 @@ export function PortalSidebar({ portal, onNavigate }: { portal: PortalType; onNa
   const groups = useMergedNavigation(portal);
 
   return (
-    <nav className="flex-1 space-y-6 overflow-y-auto p-3 pb-24">
+    <nav className="space-y-6 p-3">
       {groups.map((group) => (
         <div key={group.id}>
           <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>

@@ -18,6 +18,7 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { IntegrationLogService } from '@modules/integration/services/integration-log.service.js';
 import { IntegrationAuditService } from '@modules/integration/services/integration-audit.service.js';
+import { sanitizeImportBatchError, sanitizeImportRowError } from '@shared/utils/production-sanitize.util.js';
 import { IMPORT_TEMPLATES } from '@modules/integration/constants/integration.constants.js';
 import type { IntegrationActorContext } from '@modules/approval/types/approval.types.js';
 import type { PaginatedResult } from '@shared/types/api.types.js';
@@ -163,7 +164,7 @@ export const ImportPlatformService = {
           successCount = created.length;
           await CsvService.logImport(input.entityKey as MasterDataEntityKey, created.length, context);
         } catch (err) {
-          errors.push(err instanceof Error ? err.message : 'Organization import failed');
+          errors.push(sanitizeImportBatchError());
         }
         break;
       }
@@ -188,7 +189,7 @@ export const ImportPlatformService = {
             });
             successCount++;
           } catch (err) {
-            errors.push(`Row ${i + 2}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            errors.push(sanitizeImportRowError(i, err instanceof Error ? err.message : 'Unknown error'));
           }
         }
         break;

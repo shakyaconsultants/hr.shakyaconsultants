@@ -29,7 +29,7 @@ import { useAuthStore } from '@/shared/stores/app.store';
 
 const PROJECT_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
 const PROJECT_PRIORITIES = ['low', 'medium', 'high', 'critical'];
-const MEMBER_ROLES = ['project_manager', 'developer', 'qa', 'designer', 'devops', 'business_analyst', 'intern', 'owner', 'viewer'];
+const MEMBER_ROLES = ['project_manager', 'assistant_project_manager', 'developer', 'qa', 'designer', 'devops', 'business_analyst', 'intern', 'owner', 'viewer'];
 
 export interface ProjectAdministrationPanelProps {
   project: ProjectRecord;

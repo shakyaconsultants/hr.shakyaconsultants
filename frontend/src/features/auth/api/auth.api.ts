@@ -52,10 +52,10 @@ export async function fetchMe(): Promise<MeResult> {
   return unwrap(response);
 }
 
-export async function refreshTokens(refreshToken: string): Promise<{ tokens: { accessToken: string; refreshToken: string } }> {
+export async function refreshTokens(refreshToken?: string): Promise<{ tokens: { accessToken: string; refreshToken: string } }> {
   const response = await apiClient.post<ApiSuccessResponse<{ tokens: { accessToken: string; refreshToken: string } }>>(
     `${AUTH_PREFIX}/refresh`,
-    { refreshToken },
+    refreshToken ? { refreshToken } : {},
   );
   return unwrap(response);
 }

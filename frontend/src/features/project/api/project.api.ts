@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { asRecord } from '@/shared/utils/api-normalize.util';
 
 const PROJECT_PREFIX = '/api/v1/projects';
 
@@ -57,6 +58,23 @@ export interface ListProjectsParams {
   search?: string;
   status?: string;
   includeArchived?: boolean;
+  scope?: 'all' | 'assigned';
+}
+
+export interface EnterpriseDashboard extends ManagerDashboard {
+  projectsAtRisk: number;
+  budgetSummary: { totalBudget: number; currency: string; projectCount: number };
+  resourceAllocation: { employeeId: string; projectCount: number; totalAllocation: number }[];
+  projectHealth: { healthy: number; atRisk: number; critical: number };
+  recentProjects: { id: string; name: string; code: string; status: string; riskLevel: string; targetDate?: string }[];
+  teamWorkload?: { employeeId: string; taskCount: number; allocationPercent: number }[];
+}
+
+export interface ProjectWizardDraftResponse {
+  id?: string;
+  currentStep: string;
+  payload: Record<string, unknown>;
+  updatedAt?: string;
 }
 
 export interface ListTasksParams {
@@ -71,6 +89,16 @@ export interface ListTasksParams {
 
 export async function fetchManagerDashboard(): Promise<ManagerDashboard> {
   const { data } = await apiClient.get<ApiSuccessResponse<ManagerDashboard>>(`${PROJECT_PREFIX}/dashboard/manager`);
+  return data.data;
+}
+
+export async function fetchEnterpriseDashboard(): Promise<EnterpriseDashboard> {
+  const { data } = await apiClient.get<ApiSuccessResponse<EnterpriseDashboard>>(`${PROJECT_PREFIX}/dashboard/enterprise`);
+  return data.data;
+}
+
+export async function fetchDeveloperDashboard(): Promise<Record<string, unknown>> {
+  const { data } = await apiClient.get<ApiSuccessResponse<Record<string, unknown>>>(`${PROJECT_PREFIX}/dashboard/developer`);
   return data.data;
 }
 
@@ -203,7 +231,10 @@ export async function fetchProjectKanban(projectId: string): Promise<{ columns: 
   const { data } = await apiClient.get<ApiSuccessResponse<{ columns: Record<string, TaskRecord[]>; total: number }>>(
     `${PROJECT_PREFIX}/${projectId}/kanban`,
   );
-  return data.data;
+  return {
+    columns: asRecord(data.data?.columns),
+    total: data.data?.total ?? 0,
+  };
 }
 
 export async function fetchProjectMembers(projectId: string): Promise<Record<string, unknown>[]> {
@@ -233,5 +264,29 @@ export async function fetchTask(id: string): Promise<TaskRecord> {
 
 export async function fetchProjectDashboard(projectId: string): Promise<ManagerDashboard> {
   const { data } = await apiClient.get<ApiSuccessResponse<ManagerDashboard>>(`${PROJECT_PREFIX}/dashboard/${projectId}`);
+  return data.data;
+}
+
+export async function fetchWizardDraft(): Promise<ProjectWizardDraftResponse | null> {
+  const { data } = await apiClient.get<ApiSuccessResponse<ProjectWizardDraftResponse | null>>(`${PROJECT_PREFIX}/wizard/draft`);
+  return data.data;
+}
+
+export async function saveWizardDraft(payload: { currentStep: string; payload: Record<string, unknown> }): Promise<ProjectWizardDraftResponse> {
+  const { data } = await apiClient.put<ApiSuccessResponse<ProjectWizardDraftResponse>>(`${PROJECT_PREFIX}/wizard/draft`, payload);
+  return data.data;
+}
+
+export async function deleteWizardDraft(): Promise<void> {
+  await apiClient.delete(`${PROJECT_PREFIX}/wizard/draft`);
+}
+
+export async function finalizeProjectWizard(payload: Record<string, unknown>): Promise<ProjectRecord> {
+  const { data } = await apiClient.post<ApiSuccessResponse<ProjectRecord>>(`${PROJECT_PREFIX}/wizard/finalize`, payload);
+  return data.data;
+}
+
+export async function fetchMemberHistory(projectId: string): Promise<Record<string, unknown>[]> {
+  const { data } = await apiClient.get<ApiSuccessResponse<Record<string, unknown>[]>>(`${PROJECT_PREFIX}/${projectId}/members/history`);
   return data.data;
 }

@@ -1,5 +1,5 @@
 import { useActivity } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
 
@@ -11,8 +11,6 @@ export function WorkspaceActivityPage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="My Activity" description="Complete timeline of tasks, projects, documents, and role changes." />
-      <WorkspaceNav />
-
       {(data?.items.length ?? 0) === 0 ? (
         <EmptyState title="No activity yet" />
       ) : (

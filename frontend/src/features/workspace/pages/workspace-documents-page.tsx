@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMyDocuments, useDownloadDocument } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -16,7 +16,6 @@ export function WorkspaceDocumentsPage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="My Documents" description="Secure document center with preview and download." />
-      <WorkspaceNav />
       <Input placeholder="Search documents..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
 
       {(data?.items.length ?? 0) === 0 ? (

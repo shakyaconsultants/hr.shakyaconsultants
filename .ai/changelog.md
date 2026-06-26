@@ -40,6 +40,119 @@ AI agents and engineers must **append a session entry** after every completed ta
 
 ---
 
+---
+
+## 2025-06-25 — Production Readiness Audit
+
+### Fixed
+- Route guard fail-closed for unregistered paths (URL bypass prevention)
+- `findRouteMeta` longest-match algorithm (child routes, manager team reports, leave apply, etc.)
+- Missing `ROUTE_REGISTRY` entries (detail routes, settings, reports portal, redirects)
+- Broken nav links (`/admin/*`, `/system/security`) → valid routes
+- Portal violation redirects to `/403` instead of silent home redirect
+- Employee/candidate create/export buttons permission-gated
+- Workspace widget project links → workspace routes
+
+### Added
+- `.ai/PRODUCTION-AUDIT.md` — full enterprise audit report
+
+### Remaining
+- ESLint tooling not installed
+- Page-level permission audit rollout to all list pages
+- Bundle code-splitting advisory
+
+---
+
+## 2025-06-25 — Persona-Centric Enterprise Platform Refactor
+
+### Changed
+- Split module navigation into Enterprise / Manager / Workspace groups — no mixed menus
+- `ROUTE_REGISTRY` portal assignments enforce persona boundaries (e.g. leave apply workspace-only, employee create enterprise-only, approvals manager-only)
+- Enterprise dashboard: company KPI widgets only; manager dashboard: team KPI widgets via `getManagerDashboardWidgets`
+- Removed duplicate hardcoded `WorkspaceNav` from workspace pages — `PortalSidebar` is sole navigation source
+- Enterprise quick action "Announcement" now routes to `COMMUNICATION_ADMIN` instead of workspace announcements
+- Expanded `MANAGER_PORTAL_PERMISSIONS` for HR/finance/sales manager portal resolution
+
+### Decisions
+- Same route paths reused across portals where appropriate; portal guard + nav filtering enforce separation (no duplicate pages)
+- Manager team reports link to `/reports/dashboard/hr` (role dashboards); executive BI remains enterprise-only
+
+### Next
+- Page-level CRUD button audit per persona (hide create/archive on manager views where backend already scopes)
+- Backend workspace widget catalog filter to exclude admin widget slugs
+
+---
+
+## 2025-06-25 — Production Security Hardening
+
+### Added
+- `.ai/SECURITY-AUDIT.md` — full audit report
+- `sensitive-redact.util.ts`, `production-sanitize.util.ts`, `auth-response.util.ts`, `auth-endpoint-rate-limit.middleware.ts`
+- Frontend `token-storage.ts` — centralized auth storage with cookie mode
+- `FIELD_ENCRYPTION_KEY` env var (separate from JWT)
+
+### Changed
+- Winston/Morgan/request logger — automatic secret + URL token redaction
+- Error handler — production message sanitization; import errors generic in prod
+- CacheService — MongoDB fallback for Redis (refresh replay protection)
+- Auth cookies — production required; tokens stripped from JSON when cookies enabled
+- Rate limits on bootstrap, forgot/reset password, refresh
+- Helmet hardening, `X-Powered-By` disabled, nginx security headers
+- Frontend — removed Zustand token persist; prod console strip; query cache clear on logout
+- Redis — Upstash HTTPS host normalization to `rediss://`
+- Production env validation — Redis, HttpOnly cookies, secure cookies, no default passwords
+
+### Next
+- Wire securityLogger for auth audit events
+- Socket.io authentication
+
+---
+
+## 2025-06-25 — Frontend UX Stabilization (Foundation)
+
+### Added
+- Shared enterprise UI: `Dialog`, `Sheet`, `FormDialog`, `Breadcrumb`, `PageDataBoundary`, `EmptyState`, table/page skeletons
+- `AppErrorBoundary`, `RouteErrorFallback`, extended status pages (500, network, offline, module/data load, unexpected)
+- `EmployeeCreateDialog`, `CandidateCreateDialog`; entity admin Sheet editor; role FormDialog; workflow Sheet editor
+- Error routes: `/500`, `/network-error`, `/offline`, `/module-error`, `/data-error`, `/unexpected-error`
+- Client error logger hook point (`error-logger.ts`)
+
+### Changed
+- `portal-shell.tsx` — independent sidebar/main scroll (`h-screen overflow-hidden`)
+- `DataTable` — sticky header, skeleton, empty states, pagination prop
+- `PageHeader` — optional breadcrumbs
+- Employees/Candidates list pages — dialog CRUD, `PageDataBoundary`, skeleton loading
+- Create routes redirect to list `?action=create`; enterprise quick actions updated
+- Pipeline kanban, recruitment dashboard — defensive null/empty array handling
+- Router — `errorElement` on protected routes; `App` wrapped in error boundary
+
+### Next
+- Apply `PageDataBoundary` to remaining pages
+- Project assign manager/members dialogs; leave approval & attendance correction dialogs
+- Full route/console verification pass
+
+---
+
+## 2025-06-25 — Enterprise Project Administration
+
+### Added
+- Project creation wizard: 11-step flow with server + local draft, finalize orchestration
+- Granular project permissions: archive, assign_manager, assign_members, manage_repository/environment/settings/workflow, view_all, view_assigned
+- Enterprise dashboard: portfolio risk, budget summary, resource allocation, project health
+- Scoped project listing and manager dashboard for assigned projects only
+- Member assignment history (`project_member_history`), bulk assign, PATCH member, DELETE sprint, KB document routes
+- Frontend: `/projects/new` wizard, enhanced enterprise/manager dashboards
+
+### Decisions
+- Extend existing project module — wizard delegates to ProjectService, KnowledgeBaseService, member/module/milestone/sprint services
+- Super Admin uses `project.view_all`; PM/employees scoped via `ProjectAccessService`
+- Env variables encrypted via existing KnowledgeBaseService pipeline
+
+### Next
+- Wire task create/edit UI for PM operations; scheduled exports per roadmap
+
+---
+
 ## 2025-06-25 — Enterprise Integration Platform
 
 ### Added

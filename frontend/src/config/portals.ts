@@ -25,6 +25,10 @@ export const MANAGER_PORTAL_PERMISSIONS = [
   'project.dashboard.read',
   'approval.read',
   'leave.read',
+  'leave.approve',
+  'attendance.approve',
+  'payroll.process',
+  'lead.read',
 ] as const;
 
 export function resolvePortal(hasAnyPermission: (codes: string[]) => boolean): PortalType {

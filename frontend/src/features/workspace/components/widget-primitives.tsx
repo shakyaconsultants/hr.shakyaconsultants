@@ -1,3 +1,5 @@
+export { EmptyState } from '@/shared/components/empty-state';
+
 export function WidgetSkeleton({ title }: { title?: string }) {
   return (
     <div className="rounded-lg border bg-card p-4 animate-pulse" aria-busy="true" aria-label={title ? `Loading ${title}` : 'Loading widget'}>
@@ -11,14 +13,6 @@ export function WidgetSkeleton({ title }: { title?: string }) {
   );
 }
 
-export function EmptyState({ title, description }: { title: string; description?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-8 text-center">
-      <p className="font-medium text-muted-foreground">{title}</p>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-    </div>
-  );
-}
 
 export function WidgetCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (

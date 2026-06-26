@@ -33,6 +33,8 @@ const envSchema = z.object({
   JWT_ISSUER: z.string().min(1).default('hr-shakya'),
   JWT_AUDIENCE: z.string().min(1).default('hr-shakya-api'),
 
+  FIELD_ENCRYPTION_KEY: z.string().min(32),
+
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
   AUTH_MAX_FAILED_ATTEMPTS: z.coerce.number().int().min(3).max(20).default(5),
   AUTH_LOCKOUT_DURATION_MS: z.coerce.number().int().positive().default(900000),
@@ -126,5 +128,23 @@ export function validateEnv(raw: NodeJS.ProcessEnv): EnvConfig {
     throw new Error(`Environment validation failed:\n${formatted}`);
   }
 
-  return parsed.data;
+  const data = parsed.data;
+
+  if (data.NODE_ENV === 'production') {
+    const weakDefaults = ['SuperAdmin@123', 'change-me-access-secret-min-32-chars-long', 'change-me-refresh-secret-min-32-chars-long'];
+    if (weakDefaults.includes(data.SEED_ADMIN_PASSWORD) || weakDefaults.includes(data.SUPER_ADMIN_PASSWORD)) {
+      throw new Error('Environment validation failed: production must not use default seed/admin passwords');
+    }
+    if (!data.REDIS_URL?.trim()) {
+      throw new Error('Environment validation failed: REDIS_URL is required in production');
+    }
+    if (!data.AUTH_USE_HTTP_ONLY_COOKIES) {
+      throw new Error('Environment validation failed: AUTH_USE_HTTP_ONLY_COOKIES must be true in production');
+    }
+    if (!data.AUTH_COOKIE_SECURE) {
+      throw new Error('Environment validation failed: AUTH_COOKIE_SECURE must be true in production');
+    }
+  }
+
+  return data;
 }

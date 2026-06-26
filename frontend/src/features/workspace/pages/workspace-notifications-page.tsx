@@ -1,5 +1,5 @@
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useArchiveNotification } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
@@ -18,8 +18,6 @@ export function WorkspaceNotificationsPage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="Notification Center" description="Grouped notifications with read, archive, and deep links." />
-      <WorkspaceNav />
-
       <div className="flex flex-wrap gap-2">
         {(['all', 'unread', 'archived'] as const).map((f) => (
           <Button key={f} size="sm" variant={filter === f ? 'default' : 'outline'} onClick={() => setFilter(f)}>{f}</Button>

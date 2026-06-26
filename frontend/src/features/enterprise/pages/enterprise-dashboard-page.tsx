@@ -42,8 +42,8 @@ export function EnterpriseDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         icon={<Building2 className="h-6 w-6 text-primary" />}
-        title="Enterprise Control Center"
-        description={`Company management console for ${companyProfile?.name ?? company?.name ?? 'your organization'}.`}
+        title="Enterprise Dashboard"
+        description={`How is the company performing? Executive overview for ${companyProfile?.name ?? company?.name ?? 'your organization'}.`}
       />
 
       <QuickActionCenter />

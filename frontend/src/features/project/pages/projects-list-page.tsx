@@ -13,7 +13,7 @@ import { useAuthStore } from '@/shared/stores/app.store';
 import type { ProjectRecord } from '@/features/project/api/project.api';
 
 export function ProjectsListPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -38,11 +38,10 @@ export function ProjectsListPage() {
   const createMutation = useCreateProject();
 
   useEffect(() => {
-    if (searchParams.get('action') === 'create' && hasPermission('project.create') && !showCreate) {
-      setShowCreate(true);
-      setSearchParams({}, { replace: true });
+    if (searchParams.get('action') === 'create' && hasPermission('project.create')) {
+      navigate(ROUTES.PROJECTS_CREATE, { replace: true });
     }
-  }, [searchParams, showCreate, setSearchParams, hasPermission]);
+  }, [searchParams, navigate, hasPermission]);
 
   const columns = [
     {
@@ -89,9 +88,11 @@ export function ProjectsListPage() {
         description="View and manage every project — create, configure, archive, and override permissions."
         actions={
           hasPermission('project.create') ? (
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
+            <Button size="sm" asChild>
+              <Link to={ROUTES.PROJECTS_CREATE}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Project
+              </Link>
             </Button>
           ) : null
         }

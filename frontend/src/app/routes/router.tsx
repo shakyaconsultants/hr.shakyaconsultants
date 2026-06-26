@@ -12,12 +12,19 @@ import { AccountActivationPage } from '@/features/auth/pages/account-activation-
 import { OnboardingPortalRoutePage } from '@/features/auth/pages/onboarding-portal-page';
 import { SessionsPage } from '@/features/auth/pages/sessions-page';
 import {
+  DataLoadFailurePage,
   ForbiddenPage,
   MaintenancePage,
+  ModuleLoadFailurePage,
+  NetworkErrorPage,
   NotFoundPage,
+  OfflinePage,
+  ServerErrorPage,
   SessionExpiredPage,
+  UnexpectedErrorPage,
   UnauthorizedPage,
 } from '@/shared/pages/status-pages';
+import { RouteErrorFallback } from '@/app/components/route-error-fallback';
 import { OrganizationDashboardPage } from '@/features/organization/pages/organization-dashboard-page';
 import { EntityListPage } from '@/features/organization/pages/entity-list-page';
 import { SettingsPage } from '@/features/organization/pages/settings-page';
@@ -36,6 +43,7 @@ import { CandidateDetailPage } from '@/features/recruitment/pages/candidate-deta
 import { CandidateCreatePage } from '@/features/recruitment/pages/candidate-create-page';
 import { ProjectsDashboardPage } from '@/features/project/pages/projects-dashboard-page';
 import { ProjectsListPage } from '@/features/project/pages/projects-list-page';
+import { ProjectCreateWizardPage } from '@/features/project/pages/project-create-wizard-page';
 import { ProjectDetailPage } from '@/features/project/pages/project-detail-page';
 import { WorkspaceDashboardPage } from '@/features/workspace/pages/workspace-dashboard-page';
 import { WorkspaceProfilePage } from '@/features/workspace/pages/workspace-profile-page';
@@ -162,6 +170,7 @@ const protectedAppRoutes = [
   { path: ROUTES.RECRUITMENT_INTERVIEWS.slice(1), element: <InterviewsCalendarPage /> },
   { path: ROUTES.PROJECTS.slice(1), element: <ProjectsDashboardPage /> },
   { path: ROUTES.PROJECTS_LIST.slice(1), element: <ProjectsListPage /> },
+  { path: ROUTES.PROJECTS_CREATE.slice(1), element: <ProjectCreateWizardPage /> },
   { path: `${ROUTES.PROJECTS.slice(1)}/:id`, element: <ProjectDetailPage /> },
   { path: ROUTES.LEAVE_EXIT.slice(1), element: <LeaveExitDashboardPage /> },
   { path: ROUTES.LEAVE_APPLY.slice(1), element: <ApplyLeavePage /> },
@@ -220,6 +229,9 @@ const protectedAppRoutes = [
 
 export const router = createBrowserRouter([
   {
+    errorElement: <RouteErrorFallback />,
+    children: [
+  {
     element: <PublicRoute />,
     children: [
       {
@@ -241,9 +253,11 @@ export const router = createBrowserRouter([
   },
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorFallback />,
     children: [
       {
         element: <PortalGuard />,
+        errorElement: <RouteErrorFallback />,
         children: protectedAppRoutes,
       },
     ],
@@ -253,7 +267,15 @@ export const router = createBrowserRouter([
   { path: ROUTES.NOT_FOUND, element: <NotFoundPage /> },
   { path: ROUTES.SESSION_EXPIRED, element: <SessionExpiredPage /> },
   { path: ROUTES.MAINTENANCE, element: <MaintenancePage /> },
+  { path: ROUTES.SERVER_ERROR, element: <ServerErrorPage /> },
+  { path: ROUTES.NETWORK_ERROR, element: <NetworkErrorPage /> },
+  { path: ROUTES.OFFLINE, element: <OfflinePage /> },
+  { path: ROUTES.MODULE_LOAD_FAILURE, element: <ModuleLoadFailurePage /> },
+  { path: ROUTES.DATA_LOAD_FAILURE, element: <DataLoadFailurePage /> },
+  { path: ROUTES.UNEXPECTED_ERROR, element: <UnexpectedErrorPage /> },
   { path: '*', element: <NotFoundPage /> },
+    ],
+  },
 ]);
 
 export function AppRouter() {

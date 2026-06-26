@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { fetchMe, loginRequest, logoutRequest, refreshTokens } from '@/features/auth/api/auth.api';
 import { useAuthStore } from '@/shared/stores/app.store';
-import { STORAGE_KEYS } from '@/config/app.config';
+import { getRefreshToken, hasStoredAuth, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 
 interface AuthContextValue {
   login: (payload: { companyCode: string; email: string; password: string; rememberMe?: boolean }) => Promise<void>;
@@ -11,6 +12,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const setTokens = useAuthStore((s) => s.setTokens);
   const setSession = useAuthStore((s) => s.setSession);
   const clearAuth = useAuthStore((s) => s.clearAuth);
@@ -22,10 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function bootstrapAuth() {
       setLoading(true);
-      const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 
-      if (!accessToken && !refreshToken) {
+      if (!usesHttpOnlyCookies() && !hasStoredAuth()) {
         if (!cancelled) {
           clearAuth();
           setInitialized(true);
@@ -46,9 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setInitialized(true);
         }
       } catch {
-        if (refreshToken) {
+        const refreshToken = getRefreshToken();
+        if (usesHttpOnlyCookies() || refreshToken) {
           try {
-            const refreshed = await refreshTokens(refreshToken);
+            const refreshed = await refreshTokens(refreshToken ?? undefined);
             setTokens(refreshed.tokens.accessToken, refreshed.tokens.refreshToken);
             const me = await fetchMe();
             if (!cancelled) {
@@ -95,15 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setInitialized(true);
       },
       logout: async () => {
-        const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) ?? undefined;
+        const refreshToken = getRefreshToken() ?? undefined;
         try {
           await logoutRequest(refreshToken);
         } finally {
+          queryClient.clear();
           clearAuth();
         }
       },
     }),
-    [clearAuth, setInitialized, setSession, setTokens],
+    [clearAuth, queryClient, setInitialized, setSession, setTokens],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

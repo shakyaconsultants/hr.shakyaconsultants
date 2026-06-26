@@ -10,6 +10,8 @@ import {
   deleteProject,
   deleteProjectMilestone,
   deleteProjectModule,
+  deleteWizardDraft,
+  fetchEnterpriseDashboard,
   fetchManagerDashboard,
   fetchProject,
   fetchProjectDashboard,
@@ -22,8 +24,11 @@ import {
   fetchProjects,
   fetchTask,
   fetchTasks,
+  fetchWizardDraft,
+  finalizeProjectWizard,
   removeProjectMember,
   restoreProject,
+  saveWizardDraft,
   updateProject,
   updateProjectSprint,
   updateTask,
@@ -35,6 +40,41 @@ import {
 
 export function useManagerDashboard() {
   return useQuery({ queryKey: ['projects', 'dashboard', 'manager'], queryFn: fetchManagerDashboard });
+}
+
+export function useEnterpriseDashboard() {
+  return useQuery({ queryKey: ['projects', 'dashboard', 'enterprise'], queryFn: fetchEnterpriseDashboard });
+}
+
+export function useProjectWizardDraft() {
+  return useQuery({ queryKey: ['projects', 'wizard', 'draft'], queryFn: fetchWizardDraft });
+}
+
+export function useSaveProjectWizardDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveWizardDraft,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects', 'wizard', 'draft'] }),
+  });
+}
+
+export function useFinalizeProjectWizard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: finalizeProjectWizard,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: ['projects', 'wizard', 'draft'] });
+    },
+  });
+}
+
+export function useDeleteProjectWizardDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteWizardDraft,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects', 'wizard', 'draft'] }),
+  });
 }
 
 export function useProjects(params: ListProjectsParams = {}) {

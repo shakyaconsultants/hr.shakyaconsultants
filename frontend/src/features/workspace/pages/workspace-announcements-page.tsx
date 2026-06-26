@@ -1,5 +1,5 @@
 import { useAnnouncements, useAcknowledgeAnnouncement } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
@@ -13,8 +13,6 @@ export function WorkspaceAnnouncementsPage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="Announcements" description="Company, department, and branch announcements with acknowledgements." />
-      <WorkspaceNav />
-
       {(data?.items.length ?? 0) === 0 ? (
         <EmptyState title="No announcements" />
       ) : (

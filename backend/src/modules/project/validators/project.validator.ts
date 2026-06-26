@@ -27,6 +27,7 @@ export const projectListQuerySchema = z.object({
   includeArchived: z.coerce.boolean().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
+  scope: z.enum(['all', 'assigned']).optional(),
 });
 
 export const createProjectSchema = z.object({
@@ -182,6 +183,55 @@ export const bulkTaskStatusSchema = z.object({
 });
 
 export const managerCommentSchema = z.object({ comment: z.string().min(1) });
+
+export const updateMemberSchema = z.object({
+  role: z.enum(Object.values(PROJECT_MEMBER_ROLE) as [string, ...string[]]).optional(),
+  allocationPercent: z.coerce.number().min(0).max(100).optional(),
+});
+
+export const bulkAssignMembersSchema = z.object({
+  projectId: z.uuid(),
+  members: z.array(z.object({
+    employeeId: z.uuid(),
+    role: z.enum(Object.values(PROJECT_MEMBER_ROLE) as [string, ...string[]]),
+    allocationPercent: z.coerce.number().min(0).max(100).optional(),
+  })).min(1),
+});
+
+export const projectWizardDraftSchema = z.object({
+  currentStep: z.string().min(1),
+  payload: z.record(z.string(), z.unknown()),
+});
+
+export const projectWizardFinalizeSchema = z.object({
+  basicInfo: createProjectSchema,
+  repository: knowledgeBaseSchema.extend({
+    productionUrl: z.string().optional(),
+    stagingUrl: z.string().optional(),
+    apiUrl: z.string().optional(),
+    documentationUrl: z.string().optional(),
+    deploymentUrl: z.string().optional(),
+    defaultBranch: z.string().optional(),
+  }).optional(),
+  technologyIds: z.array(z.uuid()).optional(),
+  documentUrls: z.array(z.string()).optional(),
+  modules: z.array(createModuleSchema.omit({ projectId: true })).optional(),
+  milestones: z.array(createMilestoneSchema.omit({ projectId: true })).optional(),
+  sprint: createSprintSchema.omit({ projectId: true }).optional(),
+  assistantManagerIds: z.array(z.uuid()).optional(),
+  teamMembers: z.array(z.object({
+    employeeId: z.uuid(),
+    role: z.enum(Object.values(PROJECT_MEMBER_ROLE) as [string, ...string[]]),
+    allocationPercent: z.coerce.number().min(0).max(100).optional(),
+  })).optional(),
+  labels: z.array(z.string()).optional(),
+  taskCategories: z.array(z.string()).optional(),
+});
+
+export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
+export type BulkAssignMembersInput = z.infer<typeof bulkAssignMembersSchema>;
+export type ProjectWizardDraftInput = z.infer<typeof projectWizardDraftSchema>;
+export type ProjectWizardFinalizeInput = z.infer<typeof projectWizardFinalizeSchema>;
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;

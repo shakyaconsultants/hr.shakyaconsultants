@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { normalizeKanbanPayload } from '@/shared/utils/api-normalize.util';
 
 const RECRUITMENT_PREFIX = '/api/v1/recruitment';
 
@@ -106,7 +107,16 @@ export interface ListCandidatesParams {
 
 export async function fetchRecruitmentDashboard(): Promise<RecruitmentDashboard> {
   const { data } = await apiClient.get<ApiSuccessResponse<RecruitmentDashboard>>(`${RECRUITMENT_PREFIX}/dashboard`);
-  return data.data;
+  const dashboard = data.data;
+  return {
+    ...dashboard,
+    todaysInterviews: dashboard.todaysInterviews ?? [],
+    upcomingInterviews: dashboard.upcomingInterviews ?? [],
+    offersPending: dashboard.offersPending ?? [],
+    joiningThisWeek: dashboard.joiningThisWeek ?? [],
+    recentActivity: dashboard.recentActivity ?? [],
+    pipelineOverview: dashboard.pipelineOverview ?? {},
+  };
 }
 
 export async function fetchCandidates(params: ListCandidatesParams = {}): Promise<PaginatedResult<CandidateRecord>> {
@@ -154,8 +164,10 @@ export async function transitionPipeline(candidateId: string, stage: string, rea
 }
 
 export async function fetchKanban(): Promise<KanbanData> {
-  const { data } = await apiClient.get<ApiSuccessResponse<KanbanData>>(`${RECRUITMENT_PREFIX}/pipeline/kanban`);
-  return data.data;
+  const { data } = await apiClient.get<ApiSuccessResponse<KanbanData & { board?: Record<string, CandidateRecord[]> }>>(
+    `${RECRUITMENT_PREFIX}/pipeline/kanban`,
+  );
+  return normalizeKanbanPayload(data.data);
 }
 
 export async function fetchPipelineStages(): Promise<PipelineStage[]> {

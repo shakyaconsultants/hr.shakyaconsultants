@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@logging/winston.logger.js';
+import { sanitizeUrlForLog } from '@shared/utils/sensitive-redact.util.js';
 
 export function requestLoggerMiddleware(
   req: Request,
@@ -12,7 +13,7 @@ export function requestLoggerMiddleware(
     const durationMs = Date.now() - start;
     logger.info('HTTP request', {
       method: req.method,
-      path: req.originalUrl,
+      path: sanitizeUrlForLog(req.originalUrl),
       statusCode: res.statusCode,
       durationMs,
       requestId: req.requestId,

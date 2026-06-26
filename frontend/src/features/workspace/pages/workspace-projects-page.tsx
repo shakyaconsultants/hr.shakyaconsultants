@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useMyProjects } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { ROUTES } from '@/config/app.config';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
@@ -13,8 +13,6 @@ export function WorkspaceProjectsPage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="My Projects" description="Projects you are assigned to with progress and deadlines." />
-      <WorkspaceNav />
-
       {(data?.items.length ?? 0) === 0 ? (
         <EmptyState title="No projects assigned" description="You will see assigned projects here." />
       ) : (

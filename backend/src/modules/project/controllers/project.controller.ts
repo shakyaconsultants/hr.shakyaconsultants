@@ -15,11 +15,16 @@ import { WorkLogService } from '@modules/project/services/work-log.service.js';
 import { KnowledgeBaseService } from '@modules/project/services/knowledge-base.service.js';
 import { TaskWorkflowService } from '@modules/project/services/task-workflow.service.js';
 import { ProjectDashboardService } from '@modules/project/services/project-dashboard.service.js';
+import { ProjectWizardService } from '@modules/project/services/project-wizard.service.js';
+import { ProjectAccessService } from '@modules/project/services/project-access.service.js';
+import { PermissionEngineService } from '@modules/auth/services/permission-engine.service.js';
+import { PROJECT_PERMISSIONS } from '@modules/project/constants/project-permissions.constants.js';
 import { ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import type { ProjectActorContext } from '@modules/project/types/project.types.js';
 import {
   bulkTaskStatusSchema,
+  bulkAssignMembersSchema,
   createMemberSchema,
   createMilestoneSchema,
   createModuleSchema,
@@ -32,15 +37,19 @@ import {
   managerCommentSchema,
   projectIdParamSchema,
   projectListQuerySchema,
+  projectWizardDraftSchema,
+  projectWizardFinalizeSchema,
   taskCommentSchema,
   taskIdParamSchema,
   taskListQuerySchema,
+  updateMemberSchema,
   updateProjectSchema,
   updateTaskSchema,
   verificationDecisionSchema,
   verificationSubmitSchema,
   workLogSchema,
 } from '@modules/project/validators/project.validator.js';
+import type { ProjectListQuery } from '@modules/project/types/project.types.js';
 
 function buildActor(req: AuthenticatedRequest): ProjectActorContext {
   return {
@@ -52,11 +61,48 @@ function buildActor(req: AuthenticatedRequest): ProjectActorContext {
   };
 }
 
+async function resolvePermissions(req: AuthenticatedRequest): Promise<string[]> {
+  if (req.auth?.permissions) {
+    return req.auth.permissions;
+  }
+  return PermissionEngineService.getPermissionsForUser(req.user.companyId, req.user.employeeId ?? req.user.userId);
+}
+
+async function canViewAllProjects(req: AuthenticatedRequest): Promise<boolean> {
+  const permissions = await resolvePermissions(req);
+  return permissions.includes(PROJECT_PERMISSIONS.PROJECT_VIEW_ALL)
+    || permissions.includes(PROJECT_PERMISSIONS.PROJECT_CREATE);
+}
+
+async function applyProjectScope(req: AuthenticatedRequest, query: ProjectListQuery): Promise<ProjectListQuery> {
+  const viewAll = await canViewAllProjects(req);
+  if (viewAll && query.scope !== 'assigned') {
+    return query;
+  }
+  const assignedIds = await ProjectAccessService.resolveAssignedProjectIds(buildActor(req));
+  return { ...query, visibleProjectIds: assignedIds };
+}
+
 // Dashboard
 export const getManagerDashboard: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const data = await ProjectDashboardService.getManagerDashboard(authReq.user.companyId);
+    const viewAll = await canViewAllProjects(authReq);
+    const projectIds = viewAll
+      ? undefined
+      : await ProjectAccessService.resolveAssignedProjectIds(buildActor(authReq));
+    const data = await ProjectDashboardService.getManagerDashboard(authReq.user.companyId, projectIds);
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getEnterpriseDashboard: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const data = await ProjectDashboardService.getEnterpriseDashboard(authReq.user.companyId);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -93,7 +139,8 @@ export const listProjects: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(projectListQuerySchema, req.query);
-    const result = await ProjectService.list(authReq.user.companyId, query);
+    const scopedQuery = await applyProjectScope(authReq, query);
+    const result = await ProjectService.list(authReq.user.companyId, scopedQuery);
     return ResponseService.paginated(res, authReq, result);
   } catch (error) {
     next(error);
@@ -635,6 +682,128 @@ export const listWorkflowStages: RequestHandler = async (req, res, next) => {
     const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : undefined;
     const stages = await TaskWorkflowService.listStages(authReq.user.companyId, projectId);
     return ResponseService.success(res, authReq, stages);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const updateMember: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { id } = validateInput(idParamSchema, req.params);
+    const payload = validateInput(updateMemberSchema, req.body);
+    const member = await ProjectMemberService.update(buildActor(authReq), id, payload);
+    return ResponseService.success(res, authReq, member);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const bulkAssignMembers: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const payload = validateInput(bulkAssignMembersSchema, req.body);
+    const members = await ProjectMemberService.bulkAssign(buildActor(authReq), payload);
+    return ResponseService.created(res, authReq, members);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const listMemberHistory: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { projectId } = validateInput(projectIdParamSchema, req.params);
+    const history = await ProjectMemberService.listHistory(authReq.user.companyId, projectId);
+    return ResponseService.success(res, authReq, history);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const deleteSprint: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { id } = validateInput(idParamSchema, req.params);
+    const sprint = await SprintService.softDelete(buildActor(authReq), id);
+    return ResponseService.success(res, authReq, sprint);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const listKnowledgeBaseDocuments: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { projectId } = validateInput(projectIdParamSchema, req.params);
+    const docs = await KnowledgeBaseService.listDocuments(authReq.user.companyId, projectId);
+    return ResponseService.success(res, authReq, docs);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const uploadKnowledgeBaseDocument: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { projectId } = validateInput(projectIdParamSchema, req.params);
+    if (!req.file) {
+      throw new ValidationError('File is required', [], { code: ERROR_CODES.VALIDATION_FAILED });
+    }
+    const doc = await KnowledgeBaseService.uploadDocument(buildActor(authReq), projectId, req.file);
+    return ResponseService.created(res, authReq, doc);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getWizardDraft: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const draft = await ProjectWizardService.getDraft(buildActor(authReq));
+    return ResponseService.success(res, authReq, draft);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const saveWizardDraft: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const payload = validateInput(projectWizardDraftSchema, req.body);
+    const draft = await ProjectWizardService.saveDraft(buildActor(authReq), payload);
+    return ResponseService.success(res, authReq, draft);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const deleteWizardDraft: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    await ProjectWizardService.deleteDraft(buildActor(authReq));
+    return ResponseService.success(res, authReq, { deleted: true });
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const finalizeWizard: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const payload = validateInput(projectWizardFinalizeSchema, req.body);
+    const project = await ProjectWizardService.finalize(buildActor(authReq), payload);
+    return ResponseService.created(res, authReq, project);
   } catch (error) {
     next(error);
     return;

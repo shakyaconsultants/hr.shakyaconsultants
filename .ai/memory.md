@@ -1,14 +1,86 @@
 # Project Memory
 
 **Project:** HR Shakya ERP Platform  
-**Last updated:** 2025-06-25 (enterprise integration platform)  
+**Last updated:** 2025-06-25 (persona-centric portal refactor)  
 **Read with:** `.ai/constitution.md`, `.ai/architecture.md`, `.ai/database.md`, `.ai/api.md`
 
 ---
 
 ## Current Phase
 
-**Phase 12 — Enterprise Integration Platform** (`Complete`)
+**Phase 17 — Production Readiness Audit** (`Complete`)
+
+See `.ai/PRODUCTION-AUDIT.md` for full report.
+
+Key fixes: fail-closed route guard, longest-match `findRouteMeta`, missing registry entries, broken nav links, UI permission gates on employee/candidate lists, 403 on portal violation.
+
+---
+
+## Persona-Centric Portal Architecture (Phase 16)
+
+Three isolated application experiences — navigation, routes, and dashboards generated from **Portal → Permissions → Enabled Modules → Feature Flags**:
+
+| Portal | Users | Purpose |
+|--------|-------|---------|
+| **Enterprise** | Super Admin, Director, Admin | Company configuration & executive KPIs — no employee workspace widgets |
+| **Manager** | HR/Project/Sales/Finance Managers | Team operations, approvals, scoped management — no org settings |
+| **Workspace** | Individual contributors | Daily work only — check-in, my tasks, apply leave, payslips |
+
+Key files:
+- `frontend/src/config/module-registry/index.ts` — persona-split `NAV_GROUPS`, `ROUTE_REGISTRY`, `getEnterpriseDashboardWidgets`, `getManagerDashboardWidgets`
+- `frontend/src/config/portals.ts` — `resolvePortal()` permission signals
+- `frontend/src/app/components/portal-sidebar.tsx` — dynamic nav via `useMergedNavigation(portal)`
+- Removed hardcoded `WorkspaceNav` from workspace pages (sidebar is single source of truth)
+
+---
+
+## Production Security Hardening (Phase 15)
+
+See `.ai/SECURITY-AUDIT.md` for full report.
+
+Key changes: log redaction, production error sanitization, HttpOnly cookie auth path, Mongo Redis fallback for replay protection, auth endpoint rate limits, production env validation, frontend token storage refactor, nginx security headers.
+
+---
+
+## Frontend UX Stabilization (Phase 14)
+
+Foundation shipped for enterprise-grade UI/UX without business-logic changes:
+
+| Area | Status |
+|------|--------|
+| **Layout scroll** | `portal-shell.tsx` — `h-screen overflow-hidden`, independent sidebar + main scroll |
+| **Error handling** | `AppErrorBoundary`, `RouteErrorFallback`, extended status pages (401–500, offline, network, module/data load) |
+| **Shared UI** | `Dialog`, `Sheet`, `FormDialog`, `Breadcrumb`, `PageDataBoundary`, `EmptyState`, `TableSkeleton`, `PageSkeleton` |
+| **DataTable** | Sticky header, skeleton loading, empty states, built-in pagination |
+| **CRUD dialogs** | Employee, Candidate (list dialogs); Entity admin (Sheet); Roles (FormDialog); Workflows (Sheet) |
+| **Defensive rendering** | Pipeline kanban, recruitment dashboard, widgets — null-safe arrays |
+
+Legacy create routes (`/employees/new`, `/recruitment/candidates/new`) redirect to list `?action=create`.
+
+Remaining: roll `PageDataBoundary` across all pages; project assign dialogs; leave/attendance approval dialogs; full route QA.
+
+---
+
+## Enterprise Project Administration
+
+Backend: extended `backend/src/modules/project/` — `/api/v1/projects`
+
+| Capability | Notes |
+|------------|-------|
+| **Creation Wizard** | Multi-step draft save + finalize orchestrates project, KB, members, modules, milestones, sprint |
+| **Granular Permissions** | `project.archive`, `project.assign_manager`, `project.assign_members`, `project.manage_repository`, `project.manage_environment`, `project.manage_settings`, `project.manage_workflow`, `project.view_all`, `project.view_assigned` |
+| **Scoped Access** | Super Admin `view_all`; PM/employees `view_assigned` via membership + PM assignment |
+| **Member History** | `project_member_history` collection tracks assign/update/remove |
+| **Enterprise Dashboard** | Portfolio risk, budget, resource allocation, project health |
+| **Manager Dashboard** | Scoped to assigned projects; team workload, verifications, sprints |
+
+Wizard API: `GET/PUT/DELETE /wizard/draft`, `POST /wizard/finalize`  
+Dashboard: `GET /dashboard/enterprise`, scoped `GET /dashboard/manager`
+
+Frontend:
+- `/projects/new` — 11-step creation wizard with local + server draft
+- `/projects` — Enterprise or manager dashboard (auto-detect via `project.view_all`)
+- `/projects/list` — Enterprise project list
 
 ---
 

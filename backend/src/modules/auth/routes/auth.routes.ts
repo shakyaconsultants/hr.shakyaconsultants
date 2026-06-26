@@ -15,6 +15,12 @@ import {
 import { bootstrap, getSystemStatus } from '@modules/auth/controllers/bootstrap.controller.js';
 import { authenticateMiddleware } from '@modules/auth/middleware/authenticate.middleware.js';
 import { createLoginRateLimitMiddleware } from '@modules/auth/middleware/login-rate-limit.middleware.js';
+import {
+  bootstrapRateLimitMiddleware,
+  forgotPasswordRateLimitMiddleware,
+  refreshRateLimitMiddleware,
+  resetPasswordRateLimitMiddleware,
+} from '@modules/auth/middleware/auth-endpoint-rate-limit.middleware.js';
 import { systemInitMiddleware } from '@modules/auth/middleware/system-init.middleware.js';
 
 const authRoutes = Router();
@@ -46,7 +52,7 @@ authRoutes.use(systemInitMiddleware());
  *       409:
  *         description: System already initialized
  */
-authRoutes.post(AUTH_ROUTES.BOOTSTRAP, bootstrap);
+authRoutes.post(AUTH_ROUTES.BOOTSTRAP, bootstrapRateLimitMiddleware, bootstrap);
 
 /**
  * @swagger
@@ -113,7 +119,7 @@ authRoutes.post(AUTH_ROUTES.LOGIN, createLoginRateLimitMiddleware(), login);
  *       401:
  *         description: Invalid or expired refresh token
  */
-authRoutes.post(AUTH_ROUTES.REFRESH, refresh);
+authRoutes.post(AUTH_ROUTES.REFRESH, refreshRateLimitMiddleware, refresh);
 
 /**
  * @swagger
@@ -165,7 +171,7 @@ authRoutes.post(AUTH_ROUTES.LOGOUT_ALL, authenticateMiddleware, logoutAll);
  *       200:
  *         description: Reset email queued if account exists
  */
-authRoutes.post(AUTH_ROUTES.FORGOT_PASSWORD, forgotPassword);
+authRoutes.post(AUTH_ROUTES.FORGOT_PASSWORD, forgotPasswordRateLimitMiddleware, forgotPassword);
 
 /**
  * @swagger
@@ -189,7 +195,7 @@ authRoutes.post(AUTH_ROUTES.FORGOT_PASSWORD, forgotPassword);
  *       200:
  *         description: Password reset successful
  */
-authRoutes.post(AUTH_ROUTES.RESET_PASSWORD, resetPassword);
+authRoutes.post(AUTH_ROUTES.RESET_PASSWORD, resetPasswordRateLimitMiddleware, resetPassword);
 
 /**
  * @swagger

@@ -15,6 +15,10 @@ import {
   extractRefreshToken,
   setAuthCookies,
 } from '@modules/auth/utils/cookie.util.js';
+import {
+  sanitizeAuthLoginResponse,
+  sanitizeAuthRefreshResponse,
+} from '@modules/auth/utils/auth-response.util.js';
 import { ValidationError } from '@shared/errors/app.error.js';
 import { ResponseService } from '@shared/services/response.service.js';
 import { asyncHandler } from '@middleware/async-handler.middleware.js';
@@ -31,7 +35,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const input = validateInput(loginSchema, req.body);
   const result = await AuthService.login(input, getRequestMeta(req));
   setAuthCookies(res, result.tokens.accessToken, result.tokens.refreshToken);
-  ResponseService.success(res, req, result);
+  ResponseService.success(res, req, sanitizeAuthLoginResponse(result));
 });
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
@@ -47,7 +51,7 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await AuthService.refresh(refreshToken, getRequestMeta(req));
   setAuthCookies(res, result.tokens.accessToken, result.tokens.refreshToken);
-  ResponseService.success(res, req, result);
+  ResponseService.success(res, req, sanitizeAuthRefreshResponse(result));
 });
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {

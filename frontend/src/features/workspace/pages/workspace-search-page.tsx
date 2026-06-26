@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useWorkspaceSearch } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Input } from '@/shared/components/ui/input';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
 import { Link } from 'react-router-dom';
@@ -13,7 +13,6 @@ export function WorkspaceSearchPage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="Search" description="Search projects, tasks, announcements, and documents." />
-      <WorkspaceNav />
       <Input
         placeholder="Search..."
         value={query}

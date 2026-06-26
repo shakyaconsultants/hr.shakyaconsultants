@@ -24,7 +24,7 @@ export function RecruitmentDashboardPage() {
     return <p className="text-destructive">Failed to load recruitment dashboard.</p>;
   }
 
-  const pipelineEntries = Object.entries(data.pipelineOverview).sort((a, b) => b[1] - a[1]);
+  const pipelineEntries = Object.entries(data.pipelineOverview ?? {}).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-6">
@@ -41,7 +41,7 @@ export function RecruitmentDashboardPage() {
             <Link to={ROUTES.RECRUITMENT_PIPELINE}>View Pipeline</Link>
           </Button>
           <Button asChild>
-            <Link to={ROUTES.RECRUITMENT_CANDIDATE_CREATE}>
+            <Link to={`${ROUTES.RECRUITMENT_CANDIDATES}?action=create`}>
               <UserPlus className="mr-2 h-4 w-4" />
               Add Candidate
             </Link>
@@ -52,10 +52,10 @@ export function RecruitmentDashboardPage() {
       <RecruitmentNav />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Calendar} label="Today's Interviews" value={data.todaysInterviews.length} />
-        <StatCard icon={Calendar} label="Upcoming (7 days)" value={data.upcomingInterviews.length} />
-        <StatCard icon={FileText} label="Offers Pending" value={data.offersPending.length} />
-        <StatCard icon={TrendingUp} label="Conversion Rate" value={`${data.conversionRate}%`} />
+        <StatCard icon={Calendar} label="Today's Interviews" value={(data.todaysInterviews ?? []).length} />
+        <StatCard icon={Calendar} label="Upcoming (7 days)" value={(data.upcomingInterviews ?? []).length} />
+        <StatCard icon={FileText} label="Offers Pending" value={(data.offersPending ?? []).length} />
+        <StatCard icon={TrendingUp} label="Conversion Rate" value={`${data.conversionRate ?? 0}%`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -74,11 +74,11 @@ export function RecruitmentDashboardPage() {
 
         <section className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">Today's Interviews</h2>
-          {data.todaysInterviews.length === 0 ? (
+          {(data.todaysInterviews ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">No interviews scheduled for today.</p>
           ) : (
             <ul className="space-y-3">
-              {data.todaysInterviews.map((interview) => (
+              {(data.todaysInterviews ?? []).map((interview) => (
                 <li key={interview.id} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
                   <div>
                     <p className="font-medium capitalize">{interview.interviewType.replace(/_/g, ' ')}</p>
@@ -93,11 +93,11 @@ export function RecruitmentDashboardPage() {
 
         <section className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">Offers Pending</h2>
-          {data.offersPending.length === 0 ? (
+          {(data.offersPending ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">No pending offers.</p>
           ) : (
             <ul className="space-y-2">
-              {data.offersPending.slice(0, 5).map((offer) => (
+              {(data.offersPending ?? []).slice(0, 5).map((offer) => (
                 <li key={offer.id} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
                   <span>Offer v{offer.version}</span>
                   <Link to={ROUTES.recruitmentCandidateDetail(offer.candidateLeadId)} className="text-primary hover:underline">
@@ -111,11 +111,11 @@ export function RecruitmentDashboardPage() {
 
         <section className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">Recent Activity</h2>
-          {data.recentActivity.length === 0 ? (
+          {(data.recentActivity ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">No recent activity.</p>
           ) : (
             <ul className="space-y-3">
-              {data.recentActivity.slice(0, 8).map((activity) => (
+              {(data.recentActivity ?? []).slice(0, 8).map((activity) => (
                 <li key={activity.id} className="border-b pb-2 text-sm last:border-0">
                   <p>{activity.description}</p>
                   <p className="text-xs text-muted-foreground">{new Date(activity.createdAt).toLocaleString()}</p>

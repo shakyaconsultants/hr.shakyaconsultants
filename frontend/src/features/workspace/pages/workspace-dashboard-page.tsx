@@ -1,7 +1,7 @@
 import { useWorkspaceLayout } from '@/features/workspace/hooks/use-workspace';
 import { WidgetRenderer } from '@/features/workspace/components/widget-renderer';
 import { WidgetSkeleton } from '@/features/workspace/components/widget-primitives';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { LayoutDashboard } from 'lucide-react';
 
 export function WorkspaceDashboardPage() {
@@ -16,8 +16,6 @@ export function WorkspaceDashboardPage() {
         <LayoutDashboard className="h-5 w-5" />
         <WorkspacePageHeader title="My Workspace" description="Your daily employee portal — widgets load independently." />
       </div>
-      <WorkspaceNav />
-
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (

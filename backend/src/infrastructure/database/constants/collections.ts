@@ -127,6 +127,8 @@ export const COLLECTIONS = {
   SCHEDULED_JOBS: 'scheduled_jobs',
   INTEGRATION_LOGS: 'integration_logs',
   BACKUP_RECORDS: 'backup_records',
+  PROJECT_DRAFTS: 'project_drafts',
+  PROJECT_MEMBER_HISTORY: 'project_member_history',
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

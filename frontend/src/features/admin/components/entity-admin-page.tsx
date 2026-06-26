@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Download, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { getEntityMeta, type MasterEntityKey } from '@/features/organization/constants/entity-catalog';
 import {
   getEntityPermissions,
@@ -26,6 +26,8 @@ import type { MasterDataRecord } from '@/features/organization/api/organization.
 import { PageHeader } from '@/shared/components/page-header';
 import { DataTable } from '@/shared/components/data-table';
 import { ConfirmDialog } from '@/shared/components/confirm-dialog';
+import { Sheet } from '@/shared/components/ui/sheet';
+import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { ROUTES } from '@/config/app.config';
@@ -129,8 +131,7 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
     setFormError(null);
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  async function handleSave() {
     setFormError(null);
     const payload = formValueToPayload(formValue, fields);
     try {
@@ -145,6 +146,11 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
       const apiError = mutationError as ApiErrorResponse;
       setFormError(apiError.error?.message ?? 'Failed to save record');
     }
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    await handleSave();
   }
 
   async function handleExport() {
@@ -240,6 +246,10 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
       <PageHeader
         title={meta.pluralLabel}
         description={meta.description}
+        breadcrumbs={[
+          { label: 'Organization', href: ROUTES.ORGANIZATION },
+          { label: meta.pluralLabel },
+        ]}
         actions={
           <div className="flex flex-wrap gap-2">
             {canExport ? (
@@ -249,7 +259,7 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
               </Button>
             ) : null}
             {canCreate ? (
-              <Button size="sm" onClick={openCreate}>
+              <Button size="sm" className="whitespace-nowrap" onClick={openCreate}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add {meta.label}
               </Button>
@@ -257,11 +267,6 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
           </div>
         }
       />
-
-      <Link to={ROUTES.ORGANIZATION} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" />
-        Organization
-      </Link>
 
       <div className="flex flex-wrap gap-3">
         <Input
@@ -298,44 +303,60 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
 
       {listError ? <p className="text-sm text-destructive">{listError}</p> : null}
 
-      {editorMode ? (
-        <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-4 shadow-sm">
-          <h2 className="mb-4 font-semibold">{editorMode === 'create' ? `New ${meta.label}` : `Edit ${meta.label}`}</h2>
-          <EntityForm fields={fields} value={formValue} onChange={setFormValue} referenceOptions={referenceOptions} />
-          {formError ? <p className="mt-2 text-sm text-destructive">{formError}</p> : null}
-          <div className="mt-4 flex gap-2">
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save'}
-            </Button>
+      <PageDataBoundary isLoading={isLoading} isError={isError} error={error} source={`entity-${entityKey}`}>
+        <DataTable
+          columns={columns}
+          data={data?.items ?? []}
+          emptyTitle={`No ${meta.pluralLabel.toLowerCase()} yet`}
+          emptyMessage={canCreate ? `Create your first ${meta.label.toLowerCase()}.` : undefined}
+          emptyAction={
+            canCreate ? (
+              <Button size="sm" className="whitespace-nowrap" onClick={openCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add {meta.label}
+              </Button>
+            ) : undefined
+          }
+          pagination={
+            data?.pagination
+              ? {
+                  page: data.pagination.page,
+                  totalPages: data.pagination.totalPages,
+                  total: data.pagination.total,
+                  onPageChange: setPage,
+                }
+              : undefined
+          }
+        />
+      </PageDataBoundary>
+
+      <Sheet
+        open={editorMode !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditorMode(null);
+        }}
+        title={editorMode === 'create' ? `New ${meta.label}` : `Edit ${meta.label}`}
+        description={`${editorMode === 'create' ? 'Create' : 'Update'} ${meta.label.toLowerCase()} without leaving the list.`}
+        footer={
+          <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setEditorMode(null)}>
               Cancel
             </Button>
-          </div>
-        </form>
-      ) : null}
-
-      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} />
-
-      {data?.pagination ? (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total)
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
             <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= data.pagination.totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              type="button"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              onClick={() => void handleSave()}
             >
-              Next
+              {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save'}
             </Button>
           </div>
-        </div>
-      ) : null}
+        }
+      >
+        <form onSubmit={handleSubmit}>
+          <EntityForm fields={fields} value={formValue} onChange={setFormValue} referenceOptions={referenceOptions} />
+          {formError ? <p className="mt-2 text-sm text-destructive">{formError}</p> : null}
+        </form>
+      </Sheet>
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}

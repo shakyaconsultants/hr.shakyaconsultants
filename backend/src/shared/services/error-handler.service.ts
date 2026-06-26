@@ -6,6 +6,8 @@ import { isAppError, InternalServerError, type AppError } from '@shared/errors/a
 import { ResponseService } from '@shared/services/response.service.js';
 import type { ApiErrorResponse } from '@shared/types/api.types.js';
 import { errorLogger } from '@logging/winston.logger.js';
+import { sanitizeClientErrorMessage } from '@shared/utils/production-sanitize.util.js';
+import { redactObject } from '@shared/utils/sensitive-redact.util.js';
 
 export const ErrorHandlerService = {
   buildErrorResponse(
@@ -43,20 +45,20 @@ export const ErrorHandlerService = {
 
   handleAppError(req: Request, res: Response, err: AppError): void {
     if (!err.isOperational) {
-      errorLogger.error('Non-operational error', {
+      errorLogger.error('Non-operational error', redactObject({
         code: err.code,
         message: err.message,
         stack: err.stack,
         correlationId: req.correlationId,
         requestId: req.requestId,
-      });
+      }));
     }
 
     const body = this.buildErrorResponse(
       req,
       err.statusCode,
       err.code,
-      err.message,
+      sanitizeClientErrorMessage(err.message, err.isOperational),
       err.details,
       err.metadata,
     );
@@ -65,12 +67,12 @@ export const ErrorHandlerService = {
 
   handleUnknownError(req: Request, res: Response, err: unknown): void {
     const message = err instanceof Error ? err.message : 'Internal server error';
-    errorLogger.error('Unhandled error', {
+    errorLogger.error('Unhandled error', redactObject({
       error: message,
       stack: err instanceof Error ? err.stack : undefined,
       correlationId: req.correlationId,
       requestId: req.requestId,
-    });
+    }));
 
     const internal = new InternalServerError(undefined, req.correlationId);
     const body = this.buildErrorResponse(

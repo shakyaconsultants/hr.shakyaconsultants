@@ -17,12 +17,14 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
+  Megaphone,
   MessageSquare,
   ScrollText,
   Search,
   Settings,
   Shield,
   Upload,
+  User,
   Users,
   Webhook,
   Workflow,
@@ -44,7 +46,7 @@ import type {
 export type { FeatureFlags };
 
 const ENTERPRISE_ONLY: PortalType[] = [PORTAL.ENTERPRISE];
-const ENTERPRISE_AND_MANAGER: PortalType[] = [PORTAL.ENTERPRISE, PORTAL.MANAGER];
+const MANAGER_ONLY: PortalType[] = [PORTAL.MANAGER];
 const WORKSPACE_ONLY: PortalType[] = [PORTAL.WORKSPACE];
 const ALL_PORTALS: PortalType[] = [PORTAL.ENTERPRISE, PORTAL.MANAGER, PORTAL.WORKSPACE];
 
@@ -116,7 +118,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
   {
     id: 'manager',
     label: 'Manager',
-    portals: [PORTAL.MANAGER],
+    portals: MANAGER_ONLY,
     items: [
       {
         id: 'manager-dashboard',
@@ -124,70 +126,14 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         path: ROUTES.MANAGER,
         icon: LayoutDashboard,
         permissionsAny: ['employee.read', 'project.dashboard.read', 'approval.read'],
-        portals: [PORTAL.MANAGER],
-      },
-      {
-        id: 'manager-attendance',
-        label: 'Team Attendance',
-        path: ROUTES.ATTENDANCE_TEAM,
-        icon: Clock,
-        permission: 'attendance.read',
-        portals: [PORTAL.MANAGER],
-        featureFlag: 'attendance',
-      },
-      {
-        id: 'manager-payroll-finance',
-        label: 'Payroll Finance',
-        path: ROUTES.PAYROLL_FINANCE,
-        icon: Banknote,
-        permission: 'payroll.process',
-        portals: [PORTAL.MANAGER],
-        featureFlag: 'payroll',
-      },
-      {
-        id: 'manager-sales',
-        label: 'Sales Team',
-        path: ROUTES.SALES_MANAGER,
-        icon: BarChart3,
-        permission: 'lead.read',
-        portals: [PORTAL.MANAGER],
-        featureFlag: 'sales',
-      },
-      {
-        id: 'manager-communication',
-        label: 'Communication',
-        path: ROUTES.COMMUNICATION_MANAGER,
-        icon: MessageSquare,
-        permissionsAny: ['conversation.read', 'conversation.create'],
-        portals: [PORTAL.MANAGER],
-        featureFlag: 'communication',
-        children: [
-          {
-            id: 'communication-manager',
-            label: 'Manager',
-            path: ROUTES.COMMUNICATION_MANAGER,
-            icon: MessageSquare,
-            permission: 'conversation.read',
-            portals: [PORTAL.MANAGER],
-            featureFlag: 'communication',
-          },
-          {
-            id: 'communication-inbox',
-            label: 'Inbox',
-            path: ROUTES.COMMUNICATION_INBOX,
-            icon: Mail,
-            permission: 'notification.read',
-            portals: [PORTAL.MANAGER],
-            featureFlag: 'communication',
-          },
-        ],
+        portals: MANAGER_ONLY,
       },
     ],
   },
   {
     id: 'workspace',
     label: 'My Work',
-    portals: [PORTAL.WORKSPACE],
+    portals: WORKSPACE_ONLY,
     items: [
       {
         id: 'workspace-dashboard',
@@ -198,11 +144,11 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         portals: WORKSPACE_ONLY,
       },
       {
-        id: 'workspace-calendar',
-        label: 'Calendar',
-        path: ROUTES.WORKSPACE_CALENDAR,
-        icon: CalendarDays,
-        permission: 'workspace.calendar.read',
+        id: 'workspace-profile',
+        label: 'My Profile',
+        path: ROUTES.WORKSPACE_PROFILE,
+        icon: User,
+        permission: 'workspace.read',
         portals: WORKSPACE_ONLY,
       },
       {
@@ -222,8 +168,16 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         portals: WORKSPACE_ONLY,
       },
       {
+        id: 'workspace-calendar',
+        label: 'My Calendar',
+        path: ROUTES.WORKSPACE_CALENDAR,
+        icon: CalendarDays,
+        permission: 'workspace.calendar.read',
+        portals: WORKSPACE_ONLY,
+      },
+      {
         id: 'workspace-attendance',
-        label: 'My Attendance',
+        label: 'Check In / Out',
         path: ROUTES.WORKSPACE_ATTENDANCE,
         icon: Clock,
         permission: 'attendance.read',
@@ -231,13 +185,48 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         featureFlag: 'attendance',
       },
       {
+        id: 'workspace-leave-apply',
+        label: 'Apply Leave',
+        path: ROUTES.LEAVE_APPLY,
+        icon: CalendarDays,
+        permission: 'leave.create',
+        portals: WORKSPACE_ONLY,
+        featureFlag: 'leave_exit',
+      },
+      {
+        id: 'workspace-leave-balance',
+        label: 'My Leave Balance',
+        path: ROUTES.LEAVE_BALANCES,
+        icon: CalendarDays,
+        permission: 'leave.read',
+        portals: WORKSPACE_ONLY,
+        featureFlag: 'leave_exit',
+      },
+      {
         id: 'workspace-payroll',
-        label: 'My Payroll',
+        label: 'My Payslips',
         path: ROUTES.WORKSPACE_PAYROLL,
         icon: Banknote,
         permission: 'payroll.read',
         portals: WORKSPACE_ONLY,
         featureFlag: 'payroll',
+      },
+      {
+        id: 'workspace-sales-leads',
+        label: 'My Leads',
+        path: ROUTES.SALES_EXECUTIVE,
+        icon: BarChart3,
+        permission: 'lead.read',
+        portals: WORKSPACE_ONLY,
+        featureFlag: 'sales',
+      },
+      {
+        id: 'workspace-documents',
+        label: 'Documents',
+        path: ROUTES.WORKSPACE_DOCUMENTS,
+        icon: FileText,
+        permission: 'workspace.read',
+        portals: WORKSPACE_ONLY,
       },
       {
         id: 'workspace-messages',
@@ -248,6 +237,38 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         portals: WORKSPACE_ONLY,
         featureFlag: 'communication',
       },
+      {
+        id: 'workspace-notifications',
+        label: 'Notifications',
+        path: ROUTES.WORKSPACE_NOTIFICATIONS,
+        icon: Bell,
+        permission: 'workspace.read',
+        portals: WORKSPACE_ONLY,
+      },
+      {
+        id: 'workspace-announcements',
+        label: 'Announcements',
+        path: ROUTES.WORKSPACE_ANNOUNCEMENTS,
+        icon: Megaphone,
+        permission: 'workspace.read',
+        portals: WORKSPACE_ONLY,
+      },
+      {
+        id: 'workspace-activity',
+        label: 'Activity',
+        path: ROUTES.WORKSPACE_ACTIVITY,
+        icon: Activity,
+        permission: 'workspace.read',
+        portals: WORKSPACE_ONLY,
+      },
+      {
+        id: 'workspace-search',
+        label: 'Search',
+        path: ROUTES.WORKSPACE_SEARCH,
+        icon: Search,
+        permission: 'workspace.read',
+        portals: WORKSPACE_ONLY,
+      },
     ],
   },
   {
@@ -257,9 +278,9 @@ const NAV_GROUPS: ModuleNavGroup[] = [
     items: buildOrganizationNavItems(),
   },
   {
-    id: 'people',
-    label: 'People',
-    portals: ENTERPRISE_AND_MANAGER,
+    id: 'enterprise-people',
+    label: 'People & HR',
+    portals: ENTERPRISE_ONLY,
     items: [
       {
         id: 'employees',
@@ -267,7 +288,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         path: ROUTES.EMPLOYEES,
         icon: Users,
         permission: 'employee.read',
-        portals: ENTERPRISE_AND_MANAGER,
+        portals: ENTERPRISE_ONLY,
       },
       {
         id: 'recruitment',
@@ -275,17 +296,84 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         path: ROUTES.RECRUITMENT,
         icon: Briefcase,
         permission: 'candidate.read',
-        portals: ENTERPRISE_AND_MANAGER,
+        portals: ENTERPRISE_ONLY,
         featureFlag: 'recruitment',
+        children: [
+          {
+            id: 'recruitment-candidates',
+            label: 'Candidates',
+            path: ROUTES.RECRUITMENT_CANDIDATES,
+            icon: Users,
+            permission: 'candidate.read',
+            portals: ENTERPRISE_ONLY,
+            featureFlag: 'recruitment',
+          },
+          {
+            id: 'recruitment-pipeline',
+            label: 'Pipeline',
+            path: ROUTES.RECRUITMENT_PIPELINE,
+            icon: Briefcase,
+            permission: 'candidate.read',
+            portals: ENTERPRISE_ONLY,
+            featureFlag: 'recruitment',
+          },
+          {
+            id: 'recruitment-interviews',
+            label: 'Interviews',
+            path: ROUTES.RECRUITMENT_INTERVIEWS,
+            icon: CalendarDays,
+            permission: 'candidate.read',
+            portals: ENTERPRISE_ONLY,
+            featureFlag: 'recruitment',
+          },
+        ],
       },
       {
         id: 'leave-exit',
-        label: 'Leave & Exit',
+        label: 'Leave Administration',
         path: ROUTES.LEAVE_EXIT,
         icon: CalendarDays,
         permissionsAny: ['leave.read', 'resignation.read'],
-        portals: ENTERPRISE_AND_MANAGER,
+        portals: ENTERPRISE_ONLY,
         featureFlag: 'leave_exit',
+        children: [
+          {
+            id: 'leave-all-requests',
+            label: 'All Requests',
+            path: ROUTES.LEAVE_REQUESTS,
+            icon: ClipboardCheck,
+            permission: 'leave.read',
+            portals: ENTERPRISE_ONLY,
+            featureFlag: 'leave_exit',
+          },
+          {
+            id: 'leave-company-calendar',
+            label: 'Leave Calendar',
+            path: ROUTES.LEAVE_CALENDAR,
+            icon: CalendarDays,
+            permission: 'leave.read',
+            portals: ENTERPRISE_ONLY,
+            featureFlag: 'leave_exit',
+          },
+          {
+            id: 'leave-balances-admin',
+            label: 'All Balances',
+            path: ROUTES.LEAVE_BALANCES,
+            icon: Users,
+            permission: 'leave.read',
+            portals: ENTERPRISE_ONLY,
+            featureFlag: 'leave_exit',
+          },
+          {
+            id: 'leave-policies',
+            label: 'Policies & Rules',
+            path: ROUTES.LEAVE_POLICIES,
+            icon: Settings,
+            permission: 'leave.read',
+            portals: ENTERPRISE_ONLY,
+            featureFlag: 'leave_exit',
+          },
+        ],
       },
       {
         id: 'attendance',
@@ -293,12 +381,12 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         path: ROUTES.ATTENDANCE,
         icon: Clock,
         permission: 'attendance.read',
-        portals: ENTERPRISE_AND_MANAGER,
+        portals: ENTERPRISE_ONLY,
         featureFlag: 'attendance',
         children: [
           {
             id: 'attendance-admin',
-            label: 'Administration',
+            label: 'Policies & Settings',
             path: ROUTES.ATTENDANCE_ADMIN,
             icon: Settings,
             permissionsAny: ['attendance.update', 'settings.manage'],
@@ -312,15 +400,6 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             icon: Users,
             permission: 'attendance.approve',
             portals: ENTERPRISE_ONLY,
-            featureFlag: 'attendance',
-          },
-          {
-            id: 'attendance-team',
-            label: 'Team Attendance',
-            path: ROUTES.ATTENDANCE_TEAM,
-            icon: Clock,
-            permission: 'attendance.read',
-            portals: ENTERPRISE_AND_MANAGER,
             featureFlag: 'attendance',
           },
           {
@@ -345,19 +424,10 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         children: [
           {
             id: 'payroll-admin',
-            label: 'Administration',
+            label: 'Configuration',
             path: ROUTES.PAYROLL_ADMIN,
             icon: Settings,
             permissionsAny: ['payroll.update', 'settings.manage'],
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'payroll',
-          },
-          {
-            id: 'payroll-finance',
-            label: 'Finance',
-            path: ROUTES.PAYROLL_FINANCE,
-            icon: Banknote,
-            permission: 'payroll.process',
             portals: ENTERPRISE_ONLY,
             featureFlag: 'payroll',
           },
@@ -384,9 +454,100 @@ const NAV_GROUPS: ModuleNavGroup[] = [
     ],
   },
   {
-    id: 'operations',
+    id: 'manager-team',
+    label: 'My Team',
+    portals: MANAGER_ONLY,
+    items: [
+      {
+        id: 'manager-employees',
+        label: 'Team Directory',
+        path: ROUTES.EMPLOYEES,
+        icon: Users,
+        permission: 'employee.read',
+        portals: MANAGER_ONLY,
+      },
+      {
+        id: 'manager-recruitment',
+        label: 'Recruitment',
+        path: ROUTES.RECRUITMENT,
+        icon: Briefcase,
+        permission: 'candidate.read',
+        portals: MANAGER_ONLY,
+        featureFlag: 'recruitment',
+        children: [
+          {
+            id: 'manager-candidates',
+            label: 'Candidates',
+            path: ROUTES.RECRUITMENT_CANDIDATES,
+            icon: Users,
+            permission: 'candidate.read',
+            portals: MANAGER_ONLY,
+            featureFlag: 'recruitment',
+          },
+          {
+            id: 'manager-pipeline',
+            label: 'Pipeline',
+            path: ROUTES.RECRUITMENT_PIPELINE,
+            icon: Briefcase,
+            permission: 'candidate.read',
+            portals: MANAGER_ONLY,
+            featureFlag: 'recruitment',
+          },
+          {
+            id: 'manager-interviews',
+            label: 'Interviews',
+            path: ROUTES.RECRUITMENT_INTERVIEWS,
+            icon: CalendarDays,
+            permission: 'candidate.read',
+            portals: MANAGER_ONLY,
+            featureFlag: 'recruitment',
+          },
+        ],
+      },
+      {
+        id: 'manager-leave',
+        label: 'Leave Management',
+        path: ROUTES.LEAVE_EXIT,
+        icon: CalendarDays,
+        permissionsAny: ['leave.read', 'leave.approve'],
+        portals: MANAGER_ONLY,
+        featureFlag: 'leave_exit',
+        children: [
+          {
+            id: 'manager-leave-requests',
+            label: 'Pending Requests',
+            path: ROUTES.LEAVE_REQUESTS,
+            icon: ClipboardCheck,
+            permissionsAny: ['leave.read', 'leave.approve'],
+            portals: MANAGER_ONLY,
+            featureFlag: 'leave_exit',
+          },
+          {
+            id: 'manager-leave-calendar',
+            label: 'Team Calendar',
+            path: ROUTES.LEAVE_CALENDAR,
+            icon: CalendarDays,
+            permission: 'leave.read',
+            portals: MANAGER_ONLY,
+            featureFlag: 'leave_exit',
+          },
+        ],
+      },
+      {
+        id: 'manager-attendance',
+        label: 'Team Attendance',
+        path: ROUTES.ATTENDANCE_TEAM,
+        icon: Clock,
+        permission: 'attendance.read',
+        portals: MANAGER_ONLY,
+        featureFlag: 'attendance',
+      },
+    ],
+  },
+  {
+    id: 'enterprise-operations',
     label: 'Operations',
-    portals: ENTERPRISE_AND_MANAGER,
+    portals: ENTERPRISE_ONLY,
     items: [
       {
         id: 'projects',
@@ -394,7 +555,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         path: ROUTES.PROJECTS,
         icon: FolderKanban,
         permission: 'project.read',
-        portals: ENTERPRISE_AND_MANAGER,
+        portals: ENTERPRISE_ONLY,
         featureFlag: 'projects',
       },
       {
@@ -403,12 +564,12 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         path: ROUTES.SALES,
         icon: BarChart3,
         permission: 'lead.read',
-        portals: ENTERPRISE_AND_MANAGER,
+        portals: ENTERPRISE_ONLY,
         featureFlag: 'sales',
         children: [
           {
             id: 'sales-admin',
-            label: 'Administration',
+            label: 'Pipeline & Rules',
             path: ROUTES.SALES_ADMIN,
             icon: Settings,
             permissionsAny: ['pipeline.update', 'settings.manage'],
@@ -416,26 +577,8 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             featureFlag: 'sales',
           },
           {
-            id: 'sales-manager',
-            label: 'Manager',
-            path: ROUTES.SALES_MANAGER,
-            icon: Users,
-            permission: 'lead.read',
-            portals: ENTERPRISE_AND_MANAGER,
-            featureFlag: 'sales',
-          },
-          {
-            id: 'sales-executive',
-            label: 'My Leads',
-            path: ROUTES.SALES_EXECUTIVE,
-            icon: BarChart3,
-            permission: 'lead.read',
-            portals: ENTERPRISE_AND_MANAGER,
-            featureFlag: 'sales',
-          },
-          {
             id: 'sales-reports',
-            label: 'Reports',
+            label: 'Analytics',
             path: ROUTES.SALES_REPORTS,
             icon: FileText,
             permission: 'lead.read',
@@ -446,7 +589,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
       },
       {
         id: 'communication',
-        label: 'Communication Center',
+        label: 'Communication',
         path: ROUTES.COMMUNICATION,
         icon: MessageSquare,
         permissionsAny: ['notification.read', 'notifications.broadcast'],
@@ -455,9 +598,9 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         children: [
           {
             id: 'communication-admin',
-            label: 'Admin',
+            label: 'Announcements & Broadcasts',
             path: ROUTES.COMMUNICATION_ADMIN,
-            icon: Settings,
+            icon: Megaphone,
             permissionsAny: ['notifications.broadcast', 'settings.manage'],
             portals: ENTERPRISE_ONLY,
             featureFlag: 'communication',
@@ -471,24 +614,40 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             portals: ENTERPRISE_ONLY,
             featureFlag: 'communication',
           },
-          {
-            id: 'communication-search',
-            label: 'Search',
-            path: ROUTES.COMMUNICATION_SEARCH,
-            icon: Search,
-            permission: 'conversation.read',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'communication',
-          },
         ],
       },
+    ],
+  },
+  {
+    id: 'manager-operations',
+    label: 'Operations',
+    portals: MANAGER_ONLY,
+    items: [
       {
-        id: 'approvals',
+        id: 'manager-projects',
+        label: 'Projects',
+        path: ROUTES.PROJECTS,
+        icon: FolderKanban,
+        permission: 'project.read',
+        portals: MANAGER_ONLY,
+        featureFlag: 'projects',
+      },
+      {
+        id: 'manager-sales',
+        label: 'Sales Team',
+        path: ROUTES.SALES_MANAGER,
+        icon: BarChart3,
+        permission: 'lead.read',
+        portals: MANAGER_ONLY,
+        featureFlag: 'sales',
+      },
+      {
+        id: 'manager-approvals',
         label: 'Approvals',
         path: ROUTES.APPROVAL_INBOX,
         icon: ClipboardCheck,
         permission: 'approval.read',
-        portals: ENTERPRISE_AND_MANAGER,
+        portals: MANAGER_ONLY,
         children: [
           {
             id: 'approval-inbox',
@@ -496,7 +655,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             path: ROUTES.APPROVAL_INBOX,
             icon: ClipboardCheck,
             permission: 'approval.read',
-            portals: ENTERPRISE_AND_MANAGER,
+            portals: MANAGER_ONLY,
           },
           {
             id: 'approval-history',
@@ -504,17 +663,56 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             path: ROUTES.APPROVAL_HISTORY,
             icon: FileText,
             permission: 'approval.read',
-            portals: ENTERPRISE_AND_MANAGER,
-          },
-          {
-            id: 'approval-workflows',
-            label: 'Workflows',
-            path: ROUTES.APPROVAL_WORKFLOWS,
-            icon: Workflow,
-            permission: 'workflow.read',
-            portals: ENTERPRISE_ONLY,
+            portals: MANAGER_ONLY,
           },
         ],
+      },
+      {
+        id: 'manager-payroll-finance',
+        label: 'Payroll Review',
+        path: ROUTES.PAYROLL_FINANCE,
+        icon: Banknote,
+        permission: 'payroll.process',
+        portals: MANAGER_ONLY,
+        featureFlag: 'payroll',
+      },
+      {
+        id: 'manager-communication',
+        label: 'Team Communication',
+        path: ROUTES.COMMUNICATION_MANAGER,
+        icon: MessageSquare,
+        permissionsAny: ['conversation.read', 'conversation.create'],
+        portals: MANAGER_ONLY,
+        featureFlag: 'communication',
+        children: [
+          {
+            id: 'communication-manager',
+            label: 'Team Messages',
+            path: ROUTES.COMMUNICATION_MANAGER,
+            icon: MessageSquare,
+            permission: 'conversation.read',
+            portals: MANAGER_ONLY,
+            featureFlag: 'communication',
+          },
+          {
+            id: 'communication-inbox',
+            label: 'Inbox',
+            path: ROUTES.COMMUNICATION_INBOX,
+            icon: Mail,
+            permission: 'notification.read',
+            portals: MANAGER_ONLY,
+            featureFlag: 'communication',
+          },
+        ],
+      },
+      {
+        id: 'manager-reports',
+        label: 'Team Reports',
+        path: ROUTES.reportsDashboardRole('hr'),
+        icon: BarChart3,
+        permission: 'analytics.dashboard.read',
+        portals: MANAGER_ONLY,
+        featureFlag: 'reports',
       },
     ],
   },
@@ -603,7 +801,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
       {
         id: 'notifications-admin',
         label: 'Notifications',
-        path: '/admin/notifications',
+        path: ROUTES.COMMUNICATION_ADMIN,
         icon: Bell,
         permission: 'notification.manage',
         portals: ENTERPRISE_ONLY,
@@ -612,7 +810,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
       {
         id: 'activity-feed',
         label: 'Activity Feed',
-        path: '/admin/activity',
+        path: ROUTES.AUDIT_EXPLORER,
         icon: Activity,
         permission: 'timeline.read',
         portals: ENTERPRISE_ONLY,
@@ -745,7 +943,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
       {
         id: 'security',
         label: 'Security',
-        path: '/system/security',
+        path: ROUTES.configurationSection('security'),
         icon: Shield,
         permission: 'system.config.manage',
         portals: ENTERPRISE_ONLY,
@@ -804,6 +1002,8 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.ORGANIZATION, portals: ENTERPRISE_ONLY, permission: 'company.read' },
   { path: ROUTES.ORGANIZATION_SETUP, portals: ENTERPRISE_ONLY, permission: 'company.update' },
   { path: ROUTES.ORGANIZATION_CHART, portals: ENTERPRISE_ONLY, permission: 'company.read' },
+  { path: ROUTES.SETTINGS, portals: ENTERPRISE_ONLY, permissionsAny: ['settings.read', 'company.update'] },
+  { path: `${ROUTES.ORGANIZATION}/:entityKey/:id`, portals: ENTERPRISE_ONLY, permission: 'company.read' },
   { path: ROUTES.ADMIN_SETTINGS, portals: ENTERPRISE_ONLY, permission: 'settings.read' },
   { path: ROUTES.CONFIGURATION, portals: ENTERPRISE_ONLY, permission: 'settings.manage' },
   { path: `${ROUTES.CONFIGURATION}/:section`, portals: ENTERPRISE_ONLY, permissionsAny: ['settings.read', 'settings.manage'] },
@@ -818,54 +1018,62 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.RBAC_ROLES, portals: ENTERPRISE_ONLY, permission: 'rbac.role.read' },
   { path: ROUTES.RBAC_MATRIX, portals: ENTERPRISE_ONLY, permission: 'rbac.matrix.read' },
   { path: ROUTES.RBAC_SIMULATOR, portals: ENTERPRISE_ONLY, permission: 'rbac.simulator.run' },
-  { path: ROUTES.EMPLOYEES, portals: ENTERPRISE_AND_MANAGER, permission: 'employee.read' },
-  { path: ROUTES.EMPLOYEE_CREATE, portals: ENTERPRISE_AND_MANAGER, permission: 'employee.create' },
-  { path: ROUTES.RECRUITMENT, portals: ENTERPRISE_AND_MANAGER, permission: 'candidate.read' },
-  { path: ROUTES.RECRUITMENT_CANDIDATES, portals: ENTERPRISE_AND_MANAGER, permission: 'candidate.read' },
-  { path: ROUTES.RECRUITMENT_CANDIDATE_CREATE, portals: ENTERPRISE_AND_MANAGER, permission: 'candidate.create' },
-  { path: ROUTES.RECRUITMENT_PIPELINE, portals: ENTERPRISE_AND_MANAGER, permission: 'candidate.read' },
-  { path: ROUTES.RECRUITMENT_INTERVIEWS, portals: ENTERPRISE_AND_MANAGER, permission: 'candidate.read' },
-  { path: ROUTES.PROJECTS, portals: ENTERPRISE_AND_MANAGER, permission: 'project.read' },
-  { path: ROUTES.PROJECTS_LIST, portals: ENTERPRISE_AND_MANAGER, permission: 'project.read' },
-  { path: ROUTES.LEAVE_EXIT, portals: ENTERPRISE_AND_MANAGER, permissionsAny: ['leave.read', 'resignation.read'] },
-  { path: ROUTES.LEAVE_APPLY, portals: ENTERPRISE_AND_MANAGER, permission: 'leave.create' },
-  { path: ROUTES.LEAVE_REQUESTS, portals: ENTERPRISE_AND_MANAGER, permission: 'leave.read' },
-  { path: ROUTES.LEAVE_CALENDAR, portals: ENTERPRISE_AND_MANAGER, permission: 'leave.read' },
-  { path: ROUTES.LEAVE_BALANCES, portals: ENTERPRISE_AND_MANAGER, permission: 'leave.read' },
-  { path: ROUTES.LEAVE_POLICIES, portals: ENTERPRISE_AND_MANAGER, permission: 'leave.read' },
-  { path: ROUTES.RESIGNATION, portals: ENTERPRISE_AND_MANAGER, permission: 'resignation.read' },
-  { path: ROUTES.EXIT, portals: ENTERPRISE_AND_MANAGER, permission: 'exit.read' },
-  { path: ROUTES.APPROVAL_INBOX, portals: ENTERPRISE_AND_MANAGER, permission: 'approval.read' },
-  { path: ROUTES.APPROVAL_HISTORY, portals: ENTERPRISE_AND_MANAGER, permission: 'approval.read' },
+  { path: ROUTES.EMPLOYEES, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'employee.read' },
+  { path: ROUTES.EMPLOYEE_CREATE, portals: ENTERPRISE_ONLY, permission: 'employee.create' },
+  { path: `${ROUTES.EMPLOYEES}/:id`, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'employee.read' },
+  { path: ROUTES.RECRUITMENT, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'candidate.read' },
+  { path: ROUTES.RECRUITMENT_CANDIDATES, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'candidate.read' },
+  { path: ROUTES.RECRUITMENT_CANDIDATE_CREATE, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'candidate.create' },
+  { path: `${ROUTES.RECRUITMENT_CANDIDATES}/:id`, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'candidate.read' },
+  { path: ROUTES.RECRUITMENT_PIPELINE, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'candidate.read' },
+  { path: ROUTES.RECRUITMENT_INTERVIEWS, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'candidate.read' },
+  { path: ROUTES.PROJECTS, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'project.read' },
+  { path: ROUTES.PROJECTS_LIST, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'project.read' },
+  { path: ROUTES.PROJECTS_CREATE, portals: ENTERPRISE_ONLY, permission: 'project.create' },
+  { path: `${ROUTES.PROJECTS}/:id`, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'project.read' },
+  { path: ROUTES.LEAVE_EXIT, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permissionsAny: ['leave.read', 'resignation.read'] },
+  { path: ROUTES.LEAVE_APPLY, portals: WORKSPACE_ONLY, permission: 'leave.create' },
+  { path: ROUTES.LEAVE_REQUESTS, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'leave.read' },
+  { path: ROUTES.LEAVE_CALENDAR, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'leave.read' },
+  { path: ROUTES.LEAVE_BALANCES, portals: [...ENTERPRISE_ONLY, ...WORKSPACE_ONLY], permission: 'leave.read' },
+  { path: ROUTES.LEAVE_POLICIES, portals: ENTERPRISE_ONLY, permission: 'leave.read' },
+  { path: ROUTES.RESIGNATION, portals: WORKSPACE_ONLY, permission: 'resignation.read' },
+  { path: ROUTES.EXIT, portals: ENTERPRISE_ONLY, permission: 'exit.read' },
+  { path: ROUTES.APPROVAL_INBOX, portals: MANAGER_ONLY, permission: 'approval.read' },
+  { path: ROUTES.APPROVAL_HISTORY, portals: MANAGER_ONLY, permission: 'approval.read' },
   { path: ROUTES.APPROVAL_WORKFLOWS, portals: ENTERPRISE_ONLY, permission: 'workflow.read' },
   { path: ROUTES.SESSIONS, portals: ALL_PORTALS, permission: 'auth.login' },
-  { path: ROUTES.ATTENDANCE, portals: ALL_PORTALS, permission: 'attendance.read' },
+  { path: ROUTES.ATTENDANCE, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'attendance.read' },
   { path: ROUTES.ATTENDANCE_ADMIN, portals: ENTERPRISE_ONLY, permissionsAny: ['attendance.update', 'settings.manage'] },
   { path: ROUTES.ATTENDANCE_HR, portals: ENTERPRISE_ONLY, permission: 'attendance.approve' },
-  { path: ROUTES.ATTENDANCE_TEAM, portals: ENTERPRISE_AND_MANAGER, permission: 'attendance.read' },
+  { path: ROUTES.ATTENDANCE_TEAM, portals: MANAGER_ONLY, permission: 'attendance.read' },
   { path: ROUTES.WORKSPACE_ATTENDANCE, portals: WORKSPACE_ONLY, permission: 'attendance.read' },
   { path: ROUTES.ATTENDANCE_REPORTS, portals: ENTERPRISE_ONLY, permission: 'attendance.read' },
-  { path: ROUTES.PAYROLL, portals: ALL_PORTALS, permission: 'payroll.read' },
+  { path: ROUTES.PAYROLL, portals: ENTERPRISE_ONLY, permission: 'payroll.read' },
   { path: ROUTES.PAYROLL_ADMIN, portals: ENTERPRISE_ONLY, permissionsAny: ['payroll.update', 'settings.manage'] },
-  { path: ROUTES.PAYROLL_FINANCE, portals: [...ENTERPRISE_ONLY, PORTAL.MANAGER], permission: 'payroll.process' },
+  { path: ROUTES.PAYROLL_FINANCE, portals: MANAGER_ONLY, permission: 'payroll.process' },
   { path: ROUTES.PAYROLL_HR, portals: ENTERPRISE_ONLY, permission: 'payroll.read' },
   { path: ROUTES.WORKSPACE_PAYROLL, portals: WORKSPACE_ONLY, permission: 'payroll.read' },
   { path: ROUTES.PAYROLL_REPORTS, portals: ENTERPRISE_ONLY, permission: 'payroll.read' },
-  { path: ROUTES.SALES, portals: ENTERPRISE_AND_MANAGER, permission: 'lead.read' },
+  { path: ROUTES.SALES, portals: ENTERPRISE_ONLY, permission: 'lead.read' },
   { path: ROUTES.SALES_ADMIN, portals: ENTERPRISE_ONLY, permissionsAny: ['pipeline.update', 'settings.manage'] },
-  { path: ROUTES.SALES_MANAGER, portals: ENTERPRISE_AND_MANAGER, permission: 'lead.read' },
-  { path: ROUTES.SALES_EXECUTIVE, portals: ENTERPRISE_AND_MANAGER, permission: 'lead.read' },
+  { path: ROUTES.SALES_MANAGER, portals: MANAGER_ONLY, permission: 'lead.read' },
+  { path: ROUTES.SALES_EXECUTIVE, portals: WORKSPACE_ONLY, permission: 'lead.read' },
   { path: ROUTES.SALES_REPORTS, portals: ENTERPRISE_ONLY, permission: 'lead.read' },
-  { path: ROUTES.COMMUNICATION, portals: ALL_PORTALS, permissionsAny: ['notification.read', 'notifications.broadcast', 'conversation.read'] },
+  { path: ROUTES.COMMUNICATION, portals: ENTERPRISE_ONLY, permissionsAny: ['notification.read', 'notifications.broadcast'] },
   { path: ROUTES.COMMUNICATION_ADMIN, portals: ENTERPRISE_ONLY, permissionsAny: ['notifications.broadcast', 'settings.manage'] },
-  { path: ROUTES.COMMUNICATION_MANAGER, portals: ENTERPRISE_AND_MANAGER, permission: 'conversation.read' },
-  { path: ROUTES.COMMUNICATION_INBOX, portals: ENTERPRISE_AND_MANAGER, permission: 'notification.read' },
+  { path: ROUTES.COMMUNICATION_MANAGER, portals: MANAGER_ONLY, permission: 'conversation.read' },
+  { path: ROUTES.COMMUNICATION_INBOX, portals: MANAGER_ONLY, permission: 'notification.read' },
   { path: ROUTES.COMMUNICATION_REPORTS, portals: ENTERPRISE_ONLY, permissionsAny: ['notifications.broadcast', 'notification.read'] },
-  { path: ROUTES.COMMUNICATION_SEARCH, portals: ALL_PORTALS, permission: 'conversation.read' },
+  { path: ROUTES.COMMUNICATION_SEARCH, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'conversation.read' },
+  { path: `${ROUTES.SALES}/leads/:id`, portals: [...MANAGER_ONLY, ...WORKSPACE_ONLY], permission: 'lead.read' },
   { path: ROUTES.REPORTS, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
   { path: ROUTES.REPORTS_EXECUTIVE, portals: ENTERPRISE_ONLY, permission: 'analytics.dashboard.read' },
   { path: ROUTES.REPORTS_DASHBOARD, portals: ENTERPRISE_ONLY, permission: 'analytics.dashboard.read' },
+  { path: `${ROUTES.REPORTS_DASHBOARD}/:role`, portals: MANAGER_ONLY, permission: 'analytics.dashboard.read' },
+  { path: '/reports/portal', portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
   { path: ROUTES.REPORTS_RUN, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
+  { path: `${ROUTES.REPORTS_RUN}/:domain/:type`, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
   { path: ROUTES.ANALYTICS, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
   { path: ROUTES.INTEGRATIONS, portals: ENTERPRISE_ONLY, permission: 'system.config.read' },
   { path: ROUTES.INTEGRATION_CONNECTORS, portals: ENTERPRISE_ONLY, permission: 'system.config.read' },
@@ -878,6 +1086,7 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.BACKUPS, portals: ENTERPRISE_ONLY, permission: 'system.config.manage' },
   { path: '/system/storage', portals: ENTERPRISE_ONLY, permission: 'system.config.read' },
   { path: '/system/email', portals: ENTERPRISE_ONLY, permission: 'system.config.read' },
+  { path: '/admin/audit', portals: ENTERPRISE_ONLY, permission: 'system.audit.read' },
 ];
 
 ENTITY_CATALOG.forEach((entity) => {
@@ -1025,59 +1234,48 @@ function normalizePath(pathname: string): string {
   return pathname;
 }
 
+function routeSpecificityScore(path: string): number {
+  const parts = path.split('/').filter(Boolean);
+  let score = parts.length * 100;
+  for (const part of parts) {
+    if (!part.startsWith(':')) {
+      score += 10;
+    }
+  }
+  return score;
+}
+
 function matchesRoutePattern(pathname: string, pattern: string): boolean {
   const normalized = normalizePath(pathname);
-  if (pattern.includes(':')) {
-    const prefix = pattern.split(':')[0]?.replace(/\/$/, '') ?? pattern;
-    return normalized === prefix || normalized.startsWith(`${prefix}/`);
+
+  if (!pattern.includes(':')) {
+    return normalized === pattern || normalized.startsWith(`${pattern}/`);
   }
-  return normalized === pattern || normalized.startsWith(`${pattern}/`);
+
+  const pathParts = normalized.split('/').filter(Boolean);
+  const patternParts = pattern.split('/').filter(Boolean);
+  if (pathParts.length !== patternParts.length) {
+    return false;
+  }
+
+  return patternParts.every((part, index) => {
+    if (part.startsWith(':')) {
+      return (pathParts[index]?.length ?? 0) > 0;
+    }
+    return part === pathParts[index];
+  });
 }
 
 export function findRouteMeta(pathname: string): ModuleRouteMeta | undefined {
   const normalized = normalizePath(pathname);
 
-  const exact = ROUTE_REGISTRY.find((route) => normalized === route.path || normalized.startsWith(`${route.path}/`));
-  if (exact) {
-    return exact;
+  const candidates = ROUTE_REGISTRY.filter((route) => matchesRoutePattern(normalized, route.path));
+  if (candidates.length === 0) {
+    return undefined;
   }
 
-  if (normalized.startsWith(`${ROUTES.EMPLOYEES}/`) && normalized !== ROUTES.EMPLOYEE_CREATE) {
-    return ROUTE_REGISTRY.find((route) => route.path === ROUTES.EMPLOYEES);
-  }
-  if (normalized.startsWith(`${ROUTES.RECRUITMENT_CANDIDATES}/`) && normalized !== ROUTES.RECRUITMENT_CANDIDATE_CREATE) {
-    return ROUTE_REGISTRY.find((route) => route.path === ROUTES.RECRUITMENT_CANDIDATES);
-  }
-  if (normalized.startsWith(`${ROUTES.PROJECTS}/`) && normalized !== ROUTES.PROJECTS_LIST) {
-    return ROUTE_REGISTRY.find((route) => route.path === ROUTES.PROJECTS);
-  }
-  if (normalized.startsWith(`${ROUTES.ATTENDANCE}/`) || normalized === ROUTES.ATTENDANCE) {
-    return ROUTE_REGISTRY.find((route) => matchesRoutePattern(normalized, route.path)) ?? ROUTE_REGISTRY.find((route) => route.path === ROUTES.ATTENDANCE);
-  }
-  if (normalized.startsWith(`${ROUTES.PAYROLL}/`) || normalized === ROUTES.PAYROLL) {
-    return ROUTE_REGISTRY.find((route) => matchesRoutePattern(normalized, route.path)) ?? ROUTE_REGISTRY.find((route) => route.path === ROUTES.PAYROLL);
-  }
-  if (normalized.startsWith(`${ROUTES.SALES}/`) || normalized === ROUTES.SALES) {
-    return ROUTE_REGISTRY.find((route) => matchesRoutePattern(normalized, route.path)) ?? ROUTE_REGISTRY.find((route) => route.path === ROUTES.SALES);
-  }
-  if (normalized.startsWith(`${ROUTES.COMMUNICATION}/`) || normalized === ROUTES.COMMUNICATION) {
-    return ROUTE_REGISTRY.find((route) => matchesRoutePattern(normalized, route.path)) ?? ROUTE_REGISTRY.find((route) => route.path === ROUTES.COMMUNICATION);
-  }
-  if (normalized.startsWith(`${ROUTES.REPORTS}/`) || normalized === ROUTES.REPORTS) {
-    return ROUTE_REGISTRY.find((route) => matchesRoutePattern(normalized, route.path)) ?? ROUTE_REGISTRY.find((route) => route.path === ROUTES.REPORTS);
-  }
-  if (normalized.startsWith(`${ROUTES.ANALYTICS}/`) || normalized === ROUTES.ANALYTICS) {
-    return ROUTE_REGISTRY.find((route) => route.path === ROUTES.ANALYTICS);
-  }
-  if (normalized.startsWith(`${ROUTES.ORGANIZATION}/`)) {
-    const entityRoute = ROUTE_REGISTRY.find((route) => matchesRoutePattern(normalized, route.path));
-    if (entityRoute) {
-      return entityRoute;
-    }
-    return ROUTE_REGISTRY.find((route) => route.path === ROUTES.ORGANIZATION);
-  }
-
-  return undefined;
+  candidates.sort((a, b) => routeSpecificityScore(b.path) - routeSpecificityScore(a.path));
+  return candidates[0];
 }
 
 export function isPathAllowedForPortal(
@@ -1088,7 +1286,7 @@ export function isPathAllowedForPortal(
 ): boolean {
   const meta = findRouteMeta(pathname);
   if (!meta) {
-    return true;
+    return false;
   }
   if (!meta.portals.includes(portal)) {
     return false;
@@ -1107,11 +1305,33 @@ export function getEnterpriseDashboardWidgets(ctx: NavigationFilterContext) {
     { id: 'employee-stats', title: 'Organization Headcount', permission: 'employee.read', colSpan: 2 as const },
     { id: 'recruitment-overview', title: 'Recruitment Pipeline', permission: 'candidate.read', colSpan: 2 as const },
     { id: 'project-overview', title: 'Project Portfolio', permission: 'project.read', colSpan: 2 as const },
-    { id: 'pending-approvals', title: 'Pending Approvals', permission: 'approval.read', colSpan: 1 as const },
-    { id: 'attendance-today', title: 'Attendance Today', permission: 'attendance.read', featureFlag: 'attendance', colSpan: 2 as const },
+    { id: 'attendance-today', title: 'Company Attendance Today', permission: 'attendance.read', featureFlag: 'attendance', colSpan: 2 as const },
     { id: 'projects-at-risk', title: 'Projects At Risk', permission: 'project.read', colSpan: 2 as const },
+    { id: 'employees-on-leave', title: 'Employees On Leave', permission: 'leave.read', featureFlag: 'leave_exit', colSpan: 2 as const },
     { id: 'recent-activities', title: 'Recent Company Activity', permission: 'timeline.read', colSpan: 2 as const },
     { id: 'system-health', title: 'System Health', permission: 'system.config.read', featureFlag: 'system_health', colSpan: 2 as const },
+  ];
+
+  return widgets.filter((widget) => {
+    if (widget.featureFlag && !isFeatureEnabled(widget.featureFlag, ctx.featureFlags ?? DEFAULT_FEATURE_FLAGS)) {
+      return false;
+    }
+    if (widget.permission) {
+      return ctx.hasPermission(widget.permission);
+    }
+    return true;
+  });
+}
+
+export function getManagerDashboardWidgets(ctx: NavigationFilterContext) {
+  const widgets = [
+    { id: 'employee-stats', title: 'Team Size', permission: 'employee.read', colSpan: 2 as const },
+    { id: 'pending-approvals', title: 'Pending Approvals', permission: 'approval.read', colSpan: 2 as const },
+    { id: 'project-overview', title: 'Active Projects', permission: 'project.read', colSpan: 2 as const },
+    { id: 'pending-interviews', title: 'Upcoming Interviews', permission: 'candidate.read', featureFlag: 'recruitment', colSpan: 2 as const },
+    { id: 'employees-on-leave', title: 'Team On Leave', permission: 'leave.read', featureFlag: 'leave_exit', colSpan: 2 as const },
+    { id: 'attendance-today', title: 'Team Attendance Today', permission: 'attendance.read', featureFlag: 'attendance', colSpan: 2 as const },
+    { id: 'projects-at-risk', title: 'Projects At Risk', permission: 'project.read', colSpan: 2 as const },
   ];
 
   return widgets.filter((widget) => {

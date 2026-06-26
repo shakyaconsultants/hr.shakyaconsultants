@@ -14,7 +14,7 @@ export function buildRedisUrl(): string | null {
   }
 
   const env = getEnv();
-  let url = env.REDIS_URL.trim();
+  let url = normalizeRedisUrl(env.REDIS_URL.trim());
   const token = env.REDIS_TOKEN.trim();
 
   if (token.length > 0) {
@@ -27,6 +27,20 @@ export function buildRedisUrl(): string | null {
   }
 
   return url;
+}
+
+/** Converts Upstash REST host URLs to the official ioredis rediss:// endpoint. */
+export function normalizeRedisUrl(rawUrl: string): string {
+  if (rawUrl.startsWith('rediss://') || rawUrl.startsWith('redis://')) {
+    return rawUrl;
+  }
+
+  if (rawUrl.startsWith('https://') || rawUrl.startsWith('http://')) {
+    const parsed = new URL(rawUrl);
+    return `rediss://${parsed.hostname}:6379`;
+  }
+
+  return rawUrl;
 }
 
 export function isTlsEnabled(url: string): boolean {

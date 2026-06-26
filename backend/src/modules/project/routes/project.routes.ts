@@ -10,6 +10,7 @@ import {
   approveVerification,
   archiveProject,
   assignMember,
+  bulkAssignMembers,
   bulkUpdateTaskStatus,
   createMilestone,
   createModule,
@@ -21,8 +22,12 @@ import {
   deleteMilestone,
   deleteModule,
   deleteProject,
+  deleteSprint,
+  deleteWizardDraft,
   deleteTask,
+  finalizeWizard,
   getDeveloperDashboard,
+  getEnterpriseDashboard,
   getKnowledgeBase,
   getManagerDashboard,
   getProject,
@@ -30,6 +35,9 @@ import {
   getSprintBurndown,
   getTask,
   getTaskKanban,
+  getWizardDraft,
+  listKnowledgeBaseDocuments,
+  listMemberHistory,
   listMembers,
   listMilestones,
   listModules,
@@ -45,10 +53,13 @@ import {
   rejectVerification,
   removeMember,
   restoreProject,
+  saveWizardDraft,
   submitVerification,
+  updateMember,
   updateProject,
   updateSprint,
   updateTask,
+  uploadKnowledgeBaseDocument,
   uploadProjectLogo,
   uploadTaskAttachment,
   upsertKnowledgeBase,
@@ -60,6 +71,7 @@ projectRoutes.use(authenticateMiddleware);
 projectRoutes.use(companyScopeMiddleware());
 
 /** @swagger tags: [Projects] */
+projectRoutes.get('/dashboard/enterprise', authorize(PROJECT_PERMISSIONS.PROJECT_VIEW_ALL), getEnterpriseDashboard);
 projectRoutes.get('/dashboard/manager', authorize(PROJECT_PERMISSIONS.DASHBOARD_READ), getManagerDashboard);
 projectRoutes.get('/dashboard/developer', authorize(PROJECT_PERMISSIONS.DASHBOARD_READ), getDeveloperDashboard);
 projectRoutes.get('/dashboard/:projectId', authorize(PROJECT_PERMISSIONS.DASHBOARD_READ), getProjectDashboard);
@@ -79,14 +91,17 @@ projectRoutes.post('/tasks/:id/verify', authorize(PROJECT_PERMISSIONS.VERIFICATI
 projectRoutes.get('/tasks/:id/verifications', authorize(PROJECT_PERMISSIONS.VERIFICATION_READ), listTaskVerifications);
 projectRoutes.get('/tasks/:taskId/subtasks', authorize(PROJECT_PERMISSIONS.TASK_READ), listSubTasks);
 
-projectRoutes.post('/members', authorize(PROJECT_PERMISSIONS.PROJECT_UPDATE), assignMember);
-projectRoutes.delete('/members/:id', authorize(PROJECT_PERMISSIONS.PROJECT_UPDATE), removeMember);
+projectRoutes.post('/members', authorize(PROJECT_PERMISSIONS.PROJECT_ASSIGN_MEMBERS), assignMember);
+projectRoutes.post('/members/bulk', authorize(PROJECT_PERMISSIONS.PROJECT_ASSIGN_MEMBERS), bulkAssignMembers);
+projectRoutes.patch('/members/:id', authorize(PROJECT_PERMISSIONS.PROJECT_ASSIGN_MEMBERS), updateMember);
+projectRoutes.delete('/members/:id', authorize(PROJECT_PERMISSIONS.PROJECT_ASSIGN_MEMBERS), removeMember);
 projectRoutes.post('/modules', authorize(PROJECT_PERMISSIONS.MODULE_CREATE), createModule);
 projectRoutes.delete('/modules/:id', authorize(PROJECT_PERMISSIONS.MODULE_DELETE), deleteModule);
 projectRoutes.post('/milestones', authorize(PROJECT_PERMISSIONS.MILESTONE_CREATE), createMilestone);
 projectRoutes.delete('/milestones/:id', authorize(PROJECT_PERMISSIONS.MILESTONE_DELETE), deleteMilestone);
 projectRoutes.post('/sprints', authorize(PROJECT_PERMISSIONS.SPRINT_CREATE), createSprint);
 projectRoutes.patch('/sprints/:id', authorize(PROJECT_PERMISSIONS.SPRINT_UPDATE), updateSprint);
+projectRoutes.delete('/sprints/:id', authorize(PROJECT_PERMISSIONS.SPRINT_DELETE), deleteSprint);
 projectRoutes.get('/sprints/:id/burndown', authorize(PROJECT_PERMISSIONS.SPRINT_READ), getSprintBurndown);
 projectRoutes.post('/work-logs', authorize(PROJECT_PERMISSIONS.WORKLOG_MANAGE), createWorkLog);
 projectRoutes.post('/work-logs/:id/comment', authorize(PROJECT_PERMISSIONS.WORKLOG_MANAGE), addWorkLogComment);
@@ -97,18 +112,26 @@ projectRoutes.post('/verifications/:id/reject', authorize(PROJECT_PERMISSIONS.VE
 projectRoutes.get('/', authorize(PROJECT_PERMISSIONS.PROJECT_READ), listProjects);
 projectRoutes.post('/', authorize(PROJECT_PERMISSIONS.PROJECT_CREATE), createProject);
 
+projectRoutes.get('/wizard/draft', authorize(PROJECT_PERMISSIONS.PROJECT_CREATE), getWizardDraft);
+projectRoutes.put('/wizard/draft', authorize(PROJECT_PERMISSIONS.PROJECT_CREATE), saveWizardDraft);
+projectRoutes.delete('/wizard/draft', authorize(PROJECT_PERMISSIONS.PROJECT_CREATE), deleteWizardDraft);
+projectRoutes.post('/wizard/finalize', authorize(PROJECT_PERMISSIONS.PROJECT_CREATE), finalizeWizard);
+
 projectRoutes.get('/:projectId/members', authorize(PROJECT_PERMISSIONS.PROJECT_READ), listMembers);
+projectRoutes.get('/:projectId/members/history', authorize(PROJECT_PERMISSIONS.PROJECT_READ), listMemberHistory);
 projectRoutes.get('/:projectId/modules', authorize(PROJECT_PERMISSIONS.MODULE_READ), listModules);
 projectRoutes.get('/:projectId/milestones', authorize(PROJECT_PERMISSIONS.MILESTONE_READ), listMilestones);
 projectRoutes.get('/:projectId/sprints', authorize(PROJECT_PERMISSIONS.SPRINT_READ), listSprints);
 projectRoutes.get('/:projectId/knowledge-base', authorize(PROJECT_PERMISSIONS.KNOWLEDGE_READ), getKnowledgeBase);
 projectRoutes.put('/:projectId/knowledge-base', authorize(PROJECT_PERMISSIONS.KNOWLEDGE_MANAGE), upsertKnowledgeBase);
+projectRoutes.get('/:projectId/knowledge-base/documents', authorize(PROJECT_PERMISSIONS.KNOWLEDGE_READ), listKnowledgeBaseDocuments);
+projectRoutes.post('/:projectId/knowledge-base/documents', authorize(PROJECT_PERMISSIONS.KNOWLEDGE_MANAGE), uploadMiddleware.single('file'), uploadKnowledgeBaseDocument);
 projectRoutes.get('/:projectId/work-logs', authorize(PROJECT_PERMISSIONS.WORKLOG_READ), listWorkLogs);
 projectRoutes.get('/:projectId/kanban', authorize(PROJECT_PERMISSIONS.TASK_READ), getTaskKanban);
 
 projectRoutes.get('/:id', authorize(PROJECT_PERMISSIONS.PROJECT_READ), getProject);
 projectRoutes.patch('/:id', authorize(PROJECT_PERMISSIONS.PROJECT_UPDATE), updateProject);
-projectRoutes.post('/:id/archive', authorize(PROJECT_PERMISSIONS.PROJECT_UPDATE), archiveProject);
+projectRoutes.post('/:id/archive', authorize(PROJECT_PERMISSIONS.PROJECT_ARCHIVE), archiveProject);
 projectRoutes.post('/:id/restore', authorize(PROJECT_PERMISSIONS.PROJECT_UPDATE), restoreProject);
 projectRoutes.delete('/:id', authorize(PROJECT_PERMISSIONS.PROJECT_DELETE), deleteProject);
 projectRoutes.post('/:id/logo', authorize(PROJECT_PERMISSIONS.PROJECT_UPDATE), uploadMiddleware.single('file'), uploadProjectLogo);

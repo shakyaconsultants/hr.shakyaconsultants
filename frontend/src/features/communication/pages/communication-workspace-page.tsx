@@ -12,7 +12,7 @@ import {
   useSendMessage,
   useWorkspaceCommunicationDashboard,
 } from '@/features/communication/hooks/use-communication';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { StatCard } from '@/shared/components/stat-card';
 import { Button } from '@/shared/components/ui/button';
@@ -47,8 +47,6 @@ export function CommunicationWorkspacePage() {
         title="Messages"
         description="Direct messages, team channels, announcements, and mentions."
       />
-      <WorkspaceNav />
-
       {dashboard ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard icon={MessageSquare} label="Unread Messages" value={dashboard.unreadMessages} />

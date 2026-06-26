@@ -25,9 +25,21 @@ export function createApp(): Express {
   const app = express();
   const env = getEnv();
 
+  app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: env.NODE_ENV === 'production' ? undefined : false,
+      crossOriginEmbedderPolicy: false,
+      hsts: env.NODE_ENV === 'production'
+        ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+        : false,
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      frameguard: { action: 'deny' },
+      noSniff: true,
+    }),
+  );
   app.use(cors(createCorsOptions(env)));
   app.use(compression());
   app.use(express.json({ limit: env.REQUEST_BODY_LIMIT }));

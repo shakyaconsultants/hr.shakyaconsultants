@@ -1,7 +1,14 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { APP_CONFIG, ROUTES, STORAGE_KEYS } from '@/config/app.config';
+import { APP_CONFIG, ROUTES } from '@/config/app.config';
 import type { ApiErrorResponse } from '@/shared/types/api.types';
 import { refreshTokens } from '@/features/auth/api/auth.api';
+import {
+  clearStoredTokens,
+  getAccessToken,
+  getRefreshToken,
+  setStoredTokens,
+  usesHttpOnlyCookies,
+} from '@/shared/auth/token-storage';
 
 export const apiClient = axios.create({
   baseURL: APP_CONFIG.apiBaseUrl,
@@ -15,18 +22,24 @@ export const apiClient = axios.create({
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-  if (!refreshToken) {
+  const refreshToken = getRefreshToken();
+  if (!usesHttpOnlyCookies() && !refreshToken) {
     return null;
   }
-  const result = await refreshTokens(refreshToken);
-  localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, result.tokens.accessToken);
-  localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, result.tokens.refreshToken);
-  return result.tokens.accessToken;
+
+  const result = await refreshTokens(refreshToken ?? undefined);
+  const accessToken = result.tokens.accessToken;
+  const nextRefreshToken = result.tokens.refreshToken;
+
+  if (accessToken || nextRefreshToken) {
+    setStoredTokens(accessToken, nextRefreshToken);
+  }
+
+  return accessToken || getAccessToken();
 }
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -52,8 +65,7 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
 
-      localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      clearStoredTokens();
       if (window.location.pathname !== ROUTES.LOGIN) {
         window.location.assign(ROUTES.LOGIN);
       }

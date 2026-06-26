@@ -77,7 +77,7 @@ export function ProjectDetailPage() {
             <div><dt className="text-sm text-muted-foreground">Total Tasks</dt><dd className="text-xl font-semibold">{dashboard.totalTasks}</dd></div>
             <div><dt className="text-sm text-muted-foreground">Blocked</dt><dd className="text-xl font-semibold">{dashboard.blockedTasks}</dd></div>
             <div><dt className="text-sm text-muted-foreground">Overdue</dt><dd className="text-xl font-semibold">{dashboard.overdueTasks}</dd></div>
-            <div><dt className="text-sm text-muted-foreground">Active Sprints</dt><dd className="text-xl font-semibold">{dashboard.activeSprints}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Active Sprints</dt><dd className="text-xl font-semibold">{'activeSprints' in dashboard ? dashboard.activeSprints : '—'}</dd></div>
             {project.description && (
               <div className="sm:col-span-2 lg:col-span-4"><dt className="text-sm text-muted-foreground">Description</dt><dd>{project.description}</dd></div>
             )}
@@ -86,7 +86,7 @@ export function ProjectDetailPage() {
 
         {activeTab === 'Kanban' && kanban && (
           <div className="flex gap-4 overflow-x-auto pb-4">
-            {Object.entries(kanban.columns).map(([status, cards]) => (
+            {Object.entries(kanban.columns ?? {}).map(([status, cards]) => (
               <div key={status} className="min-w-[260px] flex-shrink-0 rounded-lg border bg-muted/30">
                 <div className="border-b px-3 py-2 text-sm font-semibold">{formatStatus(status)} ({cards.length})</div>
                 <div className="space-y-2 p-2">

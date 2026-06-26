@@ -18,6 +18,8 @@ export interface ProjectListQuery {
   includeArchived?: boolean;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  scope?: 'all' | 'assigned';
+  visibleProjectIds?: string[];
 }
 
 export interface TaskListQuery {
@@ -57,4 +59,13 @@ export interface DeveloperDashboardData {
 export interface ManagerDashboardData extends ProjectDashboardData {
   pendingVerifications: number;
   activeSprints: number;
+  teamWorkload?: { employeeId: string; taskCount: number; allocationPercent: number }[];
+}
+
+export interface EnterpriseDashboardData extends ManagerDashboardData {
+  projectsAtRisk: number;
+  budgetSummary: { totalBudget: number; currency: string; projectCount: number };
+  resourceAllocation: { employeeId: string; projectCount: number; totalAllocation: number }[];
+  projectHealth: { healthy: number; atRisk: number; critical: number };
+  recentProjects: { id: string; name: string; code: string; status: string; riskLevel: string; targetDate?: string }[];
 }

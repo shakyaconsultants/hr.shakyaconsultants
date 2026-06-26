@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useWorkspaceProfile, useUpdateProfile, useOrgChart } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -39,8 +39,6 @@ export function WorkspaceProfilePage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="My Profile" description="Professional profile and self-service details." />
-      <WorkspaceNav />
-
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMyTasks, useMyTasksKanban, useBulkUpdateTasks, useQuickUpdateTask } from '@/features/workspace/hooks/use-workspace';
-import { WorkspaceNav, WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -23,8 +23,6 @@ export function WorkspaceTasksPage() {
   return (
     <div className="space-y-6">
       <WorkspacePageHeader title="My Tasks" description="Kanban, list views, filters, and bulk actions." />
-      <WorkspaceNav />
-
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-2">
           {(['list', 'kanban'] as View[]).map((v) => (

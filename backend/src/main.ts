@@ -21,11 +21,12 @@ function registerShutdownHandlers(): void {
   process.on('SIGINT', () => void shutdown('SIGINT'));
 
   process.on('unhandledRejection', (reason: unknown) => {
-    logger.error('Unhandled rejection', { reason });
+    const message = reason instanceof Error ? reason.message : String(reason);
+    logger.error('Unhandled rejection', { message });
   });
 
   process.on('uncaughtException', (error: Error) => {
-    logger.error('Uncaught exception', { error: error.message, stack: error.stack });
+    logger.error('Uncaught exception', { message: error.message });
     void stopServer().finally(() => process.exit(1));
   });
 }
@@ -33,6 +34,7 @@ function registerShutdownHandlers(): void {
 registerShutdownHandlers();
 
 bootstrap().catch((error: unknown) => {
-  logger.error('Failed to start application', { error });
+  const message = error instanceof Error ? error.message : 'Unknown startup error';
+  logger.error('Failed to start application', { message });
   process.exit(1);
 });

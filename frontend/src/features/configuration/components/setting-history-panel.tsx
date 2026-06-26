@@ -54,11 +54,11 @@ export function SettingHistoryPanel({ settingKey, onClose }: SettingHistoryPanel
               <div className="mt-2 grid gap-2 rounded-md bg-muted/40 p-2 font-mono text-xs">
                 <div>
                   <span className="text-muted-foreground">From: </span>
-                  {formatHistoryValue(entry.oldValue)}
+                  {formatHistoryValue(entry.oldValue, settingKey)}
                 </div>
                 <div>
                   <span className="text-muted-foreground">To: </span>
-                  {formatHistoryValue(entry.newValue)}
+                  {formatHistoryValue(entry.newValue, settingKey)}
                 </div>
               </div>
             </li>
@@ -69,11 +69,18 @@ export function SettingHistoryPanel({ settingKey, onClose }: SettingHistoryPanel
   );
 }
 
-function formatHistoryValue(value: unknown): string {
+function formatHistoryValue(value: unknown, settingKey?: string): string {
   if (value === null || value === undefined) return '—';
-  if (typeof value === 'object') return JSON.stringify(value);
-  if (String(value).includes('secret') || String(value).length > 20 && String(value).includes('*')) {
+  if (settingKey && /secret|password|token|key|credential/i.test(settingKey)) {
     return '••••••••';
   }
-  return String(value);
+  if (typeof value === 'object') return '[complex value]';
+  const text = String(value);
+  if (/secret|password|token|credential/i.test(text)) {
+    return '••••••••';
+  }
+  if (text.length > 48 && /^[A-Za-z0-9+/=_:-]+$/.test(text)) {
+    return '••••••••';
+  }
+  return text;
 }

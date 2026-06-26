@@ -61,7 +61,7 @@ export function JobRoleDetailPage() {
         <section className="rounded-lg border bg-card p-4">
           <h2 className="mb-3 font-semibold">Recruitment</h2>
           <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.RECRUITMENT_CANDIDATE_CREATE}>Create candidate for this role</Link>
+            <Link to={`${ROUTES.RECRUITMENT_CANDIDATES}?action=create`}>Create candidate for this role</Link>
           </Button>
         </section>
       </div>

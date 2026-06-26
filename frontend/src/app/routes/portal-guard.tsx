@@ -48,7 +48,7 @@ export function PortalGuard() {
   }
 
   if (!isPathAllowedForPortal(location.pathname, portal, hasPermission, hasAnyPermission)) {
-    return <Navigate to={homeRoute} replace />;
+    return <Navigate to={ROUTES.FORBIDDEN} replace state={{ from: location.pathname }} />;
   }
 
   switch (portal) {

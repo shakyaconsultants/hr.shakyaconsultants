@@ -2,6 +2,7 @@ export const APP_CONFIG = {
   name: import.meta.env.VITE_APP_NAME ?? 'HR Shakya ERP',
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000',
   apiPrefix: import.meta.env.VITE_API_PREFIX ?? '/api/v1',
+  authUseHttpOnlyCookies: import.meta.env.VITE_AUTH_USE_HTTP_ONLY_COOKIES === 'true',
 } as const;
 
 export const STORAGE_KEYS = {
@@ -30,6 +31,7 @@ export const ROUTES = {
   recruitmentCandidateDetail: (id: string) => `/recruitment/candidates/${id}`,
   PROJECTS: '/projects',
   PROJECTS_LIST: '/projects/list',
+  PROJECTS_CREATE: '/projects/new',
   projectDetail: (id: string) => `/projects/${id}`,
   WORKSPACE: '/workspace',
   ENTERPRISE: '/enterprise',
@@ -57,6 +59,12 @@ export const ROUTES = {
   NOT_FOUND: '/404',
   SESSION_EXPIRED: '/session-expired',
   MAINTENANCE: '/maintenance',
+  SERVER_ERROR: '/500',
+  NETWORK_ERROR: '/network-error',
+  OFFLINE: '/offline',
+  MODULE_LOAD_FAILURE: '/module-error',
+  DATA_LOAD_FAILURE: '/data-error',
+  UNEXPECTED_ERROR: '/unexpected-error',
   LEAVE_EXIT: '/leave-exit',
   LEAVE_APPLY: '/leave-exit/apply',
   LEAVE_REQUESTS: '/leave-exit/requests',

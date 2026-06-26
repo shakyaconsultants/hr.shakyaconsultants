@@ -1,4 +1,4 @@
-import { type SchemaDefinition } from 'mongoose';
+import { Schema, type SchemaDefinition } from 'mongoose';
 import { defineDomainModel } from '@infrastructure/database/model.factory.js';
 import { COLLECTIONS } from '@infrastructure/database/constants/collections.js';
 import type { BaseDocument } from '@infrastructure/database/types/base-document.types.js';
@@ -18,6 +18,7 @@ export const PROJECT_TASK_STATUS = {
 
 export const PROJECT_MEMBER_ROLE = {
   PROJECT_MANAGER: 'project_manager',
+  ASSISTANT_PROJECT_MANAGER: 'assistant_project_manager',
   DEVELOPER: 'developer',
   QA: 'qa',
   DESIGNER: 'designer',
@@ -163,6 +164,24 @@ export interface TaskWorkflowConfigDocument extends BaseDocument {
   isDefault: boolean;
 }
 
+export interface ProjectDraftDocument extends BaseDocument {
+  userId: string;
+  currentStep: string;
+  payload: Record<string, unknown>;
+}
+
+export interface ProjectMemberHistoryDocument extends BaseDocument {
+  projectId: string;
+  employeeId: string;
+  action: string;
+  role: string;
+  previousRole?: string;
+  allocationPercent?: number;
+  performedBy: string;
+  performedAt: Date;
+  notes?: string;
+}
+
 const projectModuleFields: SchemaDefinition = {
   projectId: { type: String, required: true, index: true },
   name: { type: String, required: true, trim: true },
@@ -241,6 +260,24 @@ const taskWorkflowConfigFields: SchemaDefinition = {
   sortOrder: { type: Number, default: 0 },
   isTerminal: { type: Boolean, default: false },
   isDefault: { type: Boolean, default: false },
+};
+
+const projectDraftFields: SchemaDefinition = {
+  userId: { type: String, required: true, index: true },
+  currentStep: { type: String, required: true, default: 'basic' },
+  payload: { type: Schema.Types.Mixed, default: {} },
+};
+
+const projectMemberHistoryFields: SchemaDefinition = {
+  projectId: { type: String, required: true, index: true },
+  employeeId: { type: String, required: true, index: true },
+  action: { type: String, required: true },
+  role: { type: String, required: true },
+  previousRole: { type: String },
+  allocationPercent: { type: Number, min: 0, max: 100 },
+  performedBy: { type: String, required: true },
+  performedAt: { type: Date, required: true },
+  notes: { type: String },
 };
 
 export const projectModuleModel = defineDomainModel<ProjectModuleDocument>(
@@ -322,6 +359,31 @@ export const taskWorkflowConfigModel = defineDomainModel<TaskWorkflowConfigDocum
   },
 );
 
+export const projectDraftModel = defineDomainModel<ProjectDraftDocument>(
+  'ProjectDraft',
+  COLLECTIONS.PROJECT_DRAFTS,
+  projectDraftFields,
+  {
+    withSoftDelete: false,
+    indexes: [
+      { fields: { companyId: 1, userId: 1 }, options: { unique: true, name: 'uq_project_drafts_user' } },
+    ],
+  },
+);
+
+export const projectMemberHistoryModel = defineDomainModel<ProjectMemberHistoryDocument>(
+  'ProjectMemberHistory',
+  COLLECTIONS.PROJECT_MEMBER_HISTORY,
+  projectMemberHistoryFields,
+  {
+    withSoftDelete: false,
+    indexes: [
+      { fields: { companyId: 1, projectId: 1, performedAt: -1 }, options: { name: 'idx_project_member_history_project' } },
+      { fields: { companyId: 1, employeeId: 1, performedAt: -1 }, options: { name: 'idx_project_member_history_employee' } },
+    ],
+  },
+);
+
 export const ProjectModuleRepository = projectModuleModel.repository;
 export const TaskAssignmentHistoryRepository = taskAssignmentHistoryModel.repository;
 export const TaskVerificationRepository = taskVerificationModel.repository;
@@ -329,3 +391,5 @@ export const DailyWorkLogRepository = dailyWorkLogModel.repository;
 export const ProjectKnowledgeBaseRepository = projectKnowledgeBaseModel.repository;
 export const ProjectDocumentFileRepository = projectDocumentFileModel.repository;
 export const TaskWorkflowConfigRepository = taskWorkflowConfigModel.repository;
+export const ProjectDraftRepository = projectDraftModel.repository;
+export const ProjectMemberHistoryRepository = projectMemberHistoryModel.repository;

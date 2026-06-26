@@ -5,6 +5,7 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 import { getEnv } from '@config/env.js';
 import { LogCategory } from '@shared/enums/index.js';
 import { getCorrelationId } from '@shared/context/request.context.js';
+import { redactUnknown } from '@shared/utils/sensitive-redact.util.js';
 
 const { combine, timestamp, json, errors, printf, colorize } = winston.format;
 
@@ -50,7 +51,11 @@ const consoleFormat = printf((info) => {
   return `${tsStr} [${levelStr}]: ${msgStr}${metaStr}`;
 });
 
-const baseFormat = combine(errors({ stack: true }), correlationFormat(), timestamp(), json());
+function redactFormat() {
+  return winston.format((info) => redactUnknown(info) as winston.Logform.TransformableInfo)();
+}
+
+const baseFormat = combine(errors({ stack: true }), correlationFormat(), redactFormat(), timestamp(), json());
 
 function createCategoryLogger(category: LogCategory, filename: string, level?: string): winston.Logger {
   return winston.createLogger({

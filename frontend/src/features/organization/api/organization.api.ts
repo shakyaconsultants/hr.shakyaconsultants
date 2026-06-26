@@ -1,6 +1,7 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginationMeta } from '@/shared/types/api.types';
 import type { MasterEntityKey } from '@/features/organization/constants/entity-catalog';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const ORG_PREFIX = '/api/v1/organization';
 
@@ -29,14 +30,16 @@ export async function listEntities(
   entityKey: MasterEntityKey,
   params: ListQueryParams = {},
 ): Promise<{ items: MasterDataRecord[]; pagination: PaginationMeta }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<MasterDataRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<ApiSuccessResponse<MasterDataRecord[] | { items?: MasterDataRecord[] }> & { pagination?: PaginationMeta }>(
     `${ORG_PREFIX}/entities/${entityKey}`,
     { params },
   );
 
+  const normalized = normalizePaginatedItems(data.data, params.pageSize ?? 20);
+
   return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
+    items: normalized.items,
+    pagination: data.pagination ?? normalized.pagination,
   };
 }
 

@@ -29,6 +29,11 @@ export const ProjectService = {
     if (!query.includeArchived) {
       filters.push({ isArchived: false });
     }
+    if (query.visibleProjectIds && query.visibleProjectIds.length > 0) {
+      filters.push({ id: { $in: query.visibleProjectIds } });
+    } else if (query.visibleProjectIds && query.visibleProjectIds.length === 0) {
+      return { items: [], pagination: { page: query.page ?? 1, pageSize: query.pageSize ?? 20, total: 0, totalPages: 0 } };
+    }
     if (query.status) {
       filters.push({ status: query.status });
     }
