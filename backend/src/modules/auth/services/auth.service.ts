@@ -8,6 +8,7 @@ import {
 } from '@domain/organization/organization.schemas.js';
 import { EmployeeRoleRepository, RoleRepository } from '@domain/permission/permission.schemas.js';
 import { USER_STATUS } from '@domain/auth/user.schema.js';
+import { EffectivePermissionService } from '@modules/rbac/services/effective-permission.service.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
 import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
 import { AuditAction } from '@shared/enums/index.js';
@@ -500,7 +501,7 @@ export const AuthService = {
         }
 
         const employeeRoles = await EmployeeRoleRepository.findMany(
-          { employeeId: user.employeeId },
+          { employeeId: user.employeeId, effectiveTo: null },
           { companyId: user.companyId },
         );
         const roleIds = employeeRoles.map((entry) => entry.roleId);
@@ -512,6 +513,20 @@ export const AuthService = {
           for (const role of roleDocs) {
             roles.push({ id: role.id, name: role.name, slug: role.slug });
           }
+        }
+      }
+    }
+
+    if (permissions.length === 0 && user.roleIds.length > 0) {
+      permissions = await EffectivePermissionService.calculateForRoleIds(user.companyId, user.roleIds);
+
+      if (roles.length === 0) {
+        const roleDocs = await RoleRepository.findMany(
+          { id: { $in: user.roleIds } },
+          { companyId: user.companyId },
+        );
+        for (const role of roleDocs) {
+          roles.push({ id: role.id, name: role.name, slug: role.slug });
         }
       }
     }
@@ -542,7 +557,7 @@ export const AuthService = {
     }
 
     const employeeRoles = await EmployeeRoleRepository.findMany(
-      { employeeId },
+      { employeeId, effectiveTo: null },
       { companyId },
     );
 

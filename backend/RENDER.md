@@ -14,6 +14,11 @@ Set these in **Render → Environment** (Dashboard). All other vars use safe def
 | `AUTH_COOKIE_SECURE` | Yes | `true` |
 | `FRONTEND_URL` | Yes | your deployed frontend URL |
 
+**Cross-origin auth (frontend and API on different domains):**
+- Set `AUTH_COOKIE_SAME_SITE=none` (not `strict`) on the backend
+- Set `VITE_AUTH_USE_HTTP_ONLY_COOKIES=true` on the frontend build
+- `FRONTEND_URL` must exactly match the frontend origin (no trailing slash)
+
 Optional but recommended: `CLOUDINARY_*`, `SMTP_*`, `LOG_LEVEL=info`
 
 Do **not** set `SEED_*` or `SUPER_ADMIN_*` on Render unless running seed locally.

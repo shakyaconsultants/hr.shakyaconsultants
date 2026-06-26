@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { SUPER_ADMIN_ROLE_SLUG } from '@/config/roles.constants';
 import { clearStoredTokens, setStoredTokens } from '@/shared/auth/token-storage';
 
 export interface AuthUser {
@@ -84,7 +85,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     return state.permissions.includes(code);
   },
   hasAnyPermission: (codes) => codes.some((code) => get().hasPermission(code)),
-  isSuperAdmin: () => get().roles.some((role) => role.slug === 'super_admin'),
+  isSuperAdmin: () => get().roles.some((role) => role.slug === SUPER_ADMIN_ROLE_SLUG),
 }));
 
 interface ThemeState {

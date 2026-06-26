@@ -40,6 +40,14 @@ AI agents and engineers must **append a session entry** after every completed ta
 
 ---
 
+### Fixed
+- Super Admin 403 in production: frontend checked role slug `super_admin` but backend uses `super-admin`
+- `/auth/me` now falls back to JWT role IDs when employee permission lookup returns empty
+- Employee role queries filter `effectiveTo: null` consistently
+
+### Changed
+- Production cookie docs: `AUTH_COOKIE_SAME_SITE=none` for cross-origin frontend/API
+
 ---
 
 ## 2025-06-25 — Render startup visibility + env defaults
