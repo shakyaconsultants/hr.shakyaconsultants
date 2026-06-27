@@ -1,8 +1,11 @@
 import { FormEvent, useState } from 'react';
 import { LeaveExitNav, LeaveExitPageHeader, StatusBadge } from '@/features/leave-exit/components/leave-exit-nav';
 import { useResignations, useSubmitResignation, useWithdrawResignation } from '@/features/leave-exit/hooks/use-leave-exit';
+import { DatePicker } from '@/shared/components/date-picker';
+import { DurationInput } from '@/shared/components/duration-input';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
+import { toDateInputValue } from '@/shared/utils/datetime';
 
 export function ResignationPage() {
   const { data, isLoading } = useResignations();
@@ -43,11 +46,11 @@ export function ResignationPage() {
         </label>
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Notice Period (days) *</span>
-          <input type="number" min={0} className="w-full rounded-md border p-2" value={noticePeriodDays} onChange={(e) => setNoticePeriodDays(Number(e.target.value))} required />
+          <DurationInput value={noticePeriodDays} onChange={(value) => setNoticePeriodDays(value ?? 0)} min={0} max={365} required />
         </label>
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Expected Last Working Day *</span>
-          <input type="date" className="w-full rounded-md border p-2" value={expectedLastWorkingDay} onChange={(e) => setExpectedLastWorkingDay(e.target.value)} required />
+          <DatePicker value={expectedLastWorkingDay} onChange={setExpectedLastWorkingDay} min={toDateInputValue(new Date())} required />
         </label>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <Button type="submit" disabled={submit.isPending}>{submit.isPending ? 'Submitting...' : 'Submit Resignation'}</Button>

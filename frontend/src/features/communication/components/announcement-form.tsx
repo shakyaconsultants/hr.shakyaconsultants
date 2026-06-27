@@ -5,7 +5,9 @@ import type {
   AnnouncementPriority,
   CreateAnnouncementPayload,
 } from '@/features/communication/api/communication.api';
+import { DateTimePicker, dateTimePickerValueToIso } from '@/shared/components/datetime-picker';
 import { Button } from '@/shared/components/ui/button';
+import { toDateTimeLocalValue } from '@/shared/utils/datetime';
 
 const AUDIENCES: AnnouncementAudience[] = ['all', 'department', 'branch', 'role', 'team', 'project'];
 const PRIORITIES: AnnouncementPriority[] = ['low', 'normal', 'high', 'urgent'];
@@ -22,8 +24,8 @@ export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: Ann
   const [content, setContent] = useState(initial?.content ?? '');
   const [targetAudience, setTargetAudience] = useState<AnnouncementAudience>(initial?.targetAudience ?? 'all');
   const [priority, setPriority] = useState<AnnouncementPriority>(initial?.priority ?? 'normal');
-  const [scheduledAt, setScheduledAt] = useState(initial?.scheduledAt?.slice(0, 16) ?? '');
-  const [expiresAt, setExpiresAt] = useState(initial?.expiresAt?.slice(0, 16) ?? '');
+  const [scheduledAt, setScheduledAt] = useState(toDateTimeLocalValue(initial?.scheduledAt));
+  const [expiresAt, setExpiresAt] = useState(toDateTimeLocalValue(initial?.expiresAt));
   const [isPinned, setIsPinned] = useState(initial?.isPinned ?? false);
   const [isEmergency, setIsEmergency] = useState(initial?.isEmergency ?? false);
   const [requiresAcknowledgement, setRequiresAcknowledgement] = useState(initial?.requiresAcknowledgement ?? false);
@@ -36,8 +38,8 @@ export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: Ann
       content,
       targetAudience,
       priority,
-      scheduledAt: scheduledAt || undefined,
-      expiresAt: expiresAt || undefined,
+      scheduledAt: scheduledAt ? dateTimePickerValueToIso(scheduledAt) : undefined,
+      expiresAt: expiresAt ? dateTimePickerValueToIso(expiresAt) : undefined,
       isPinned,
       isEmergency,
       requiresAcknowledgement,
@@ -94,21 +96,11 @@ export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: Ann
       </Field>
 
       <Field label="Schedule At">
-        <input
-          type="datetime-local"
-          className="w-full rounded-md border p-2 text-sm"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-        />
+        <DateTimePicker value={scheduledAt} onChange={setScheduledAt} min={toDateTimeLocalValue(new Date())} />
       </Field>
 
       <Field label="Expires At">
-        <input
-          type="datetime-local"
-          className="w-full rounded-md border p-2 text-sm"
-          value={expiresAt}
-          onChange={(e) => setExpiresAt(e.target.value)}
-        />
+        <DateTimePicker value={expiresAt} onChange={setExpiresAt} min={scheduledAt || undefined} />
       </Field>
 
       <Field label="Template Slug">

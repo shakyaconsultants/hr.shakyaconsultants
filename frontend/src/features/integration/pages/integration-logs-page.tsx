@@ -3,6 +3,7 @@ import { ScrollText } from 'lucide-react';
 import type { IntegrationLogEntry, LogLevel } from '@/features/integration/api/integration.api';
 import { LogTimeline } from '@/features/integration/components/log-timeline';
 import { useIntegrationLogs } from '@/features/integration/hooks/use-integration';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { PageHeader } from '@/shared/components/page-header';
 import { Input } from '@/shared/components/ui/input';
@@ -67,16 +68,8 @@ export function IntegrationLogsPage() {
           value={filters.category}
           onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value, page: 1 }))}
         />
-        <Input
-          type="date"
-          value={filters.from}
-          onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value, page: 1 }))}
-        />
-        <Input
-          type="date"
-          value={filters.to}
-          onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value, page: 1 }))}
-        />
+        <DatePicker value={filters.from} onChange={(value) => setFilters((f) => ({ ...f, from: value, page: 1 }))} max={filters.to || undefined} />
+        <DatePicker value={filters.to} onChange={(value) => setFilters((f) => ({ ...f, to: value, page: 1 }))} min={filters.from || undefined} />
       </div>
 
       {isLoading ? <Loading message="Loading integration logs..." /> : null}

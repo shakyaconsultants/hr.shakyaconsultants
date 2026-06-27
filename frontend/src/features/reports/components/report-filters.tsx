@@ -5,6 +5,7 @@ import { MASTER_ENTITIES } from '@/features/organization/constants/entity-catalo
 import { listEntities } from '@/features/organization/api/organization.api';
 import { useEmployees } from '@/features/employee/hooks/use-employees';
 import { useProjects } from '@/features/project/hooks/use-projects';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 
@@ -85,20 +86,18 @@ export function ReportFilters({
   return (
     <div className={`grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4 ${className ?? ''}`}>
       <Field label="Start Date">
-        <input
-          type="date"
-          className="w-full rounded-md border p-2 text-sm"
+        <DatePicker
           value={local.startDate ?? ''}
-          onChange={(e) => update({ startDate: e.target.value })}
+          onChange={(value) => update({ startDate: value })}
+          max={local.endDate || undefined}
         />
       </Field>
 
       <Field label="End Date">
-        <input
-          type="date"
-          className="w-full rounded-md border p-2 text-sm"
+        <DatePicker
           value={local.endDate ?? ''}
-          onChange={(e) => update({ endDate: e.target.value })}
+          onChange={(value) => update({ endDate: value })}
+          min={local.startDate || undefined}
         />
       </Field>
 

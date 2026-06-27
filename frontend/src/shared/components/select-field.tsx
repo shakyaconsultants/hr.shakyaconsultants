@@ -6,10 +6,11 @@ export interface SelectFieldProps {
   htmlFor?: string;
   required?: boolean;
   hint?: string;
+  error?: string;
   children: ReactNode;
 }
 
-export function SelectField({ label, htmlFor, required, hint, children }: SelectFieldProps) {
+export function SelectField({ label, htmlFor, required, hint, error, children }: SelectFieldProps) {
   return (
     <div className="space-y-1.5">
       <FormLabel htmlFor={htmlFor}>
@@ -17,7 +18,8 @@ export function SelectField({ label, htmlFor, required, hint, children }: Select
         {required ? ' *' : ''}
       </FormLabel>
       {children}
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {!error && hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

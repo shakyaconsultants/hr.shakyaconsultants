@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import type { AttendancePolicy } from '@/features/attendance/api/attendance.api';
 import { useAttendancePolicy, useUpdateAttendancePolicy } from '@/features/attendance/hooks/use-attendance';
+import { DurationInput } from '@/shared/components/duration-input';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 
@@ -53,27 +54,27 @@ export function PolicySettingsForm() {
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="max-w-2xl space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <NumberField
+        <DurationField
           label="Grace Period (minutes)"
           value={form.gracePeriodMinutes ?? 0}
           onChange={(v) => setForm({ ...form, gracePeriodMinutes: v })}
         />
-        <NumberField
+        <DurationField
           label="Late Threshold (minutes)"
           value={form.lateThresholdMinutes ?? 0}
           onChange={(v) => setForm({ ...form, lateThresholdMinutes: v })}
         />
-        <NumberField
+        <DurationField
           label="Early Exit Threshold (minutes)"
           value={form.earlyExitThresholdMinutes ?? 0}
           onChange={(v) => setForm({ ...form, earlyExitThresholdMinutes: v })}
         />
-        <NumberField
+        <DurationField
           label="Half Day Threshold (minutes)"
           value={form.halfDayThresholdMinutes ?? 0}
           onChange={(v) => setForm({ ...form, halfDayThresholdMinutes: v })}
         />
-        <NumberField
+        <DurationField
           label="Auto Mark Absent After (minutes)"
           value={form.autoMarkAbsentAfterMinutes ?? 0}
           onChange={(v) => setForm({ ...form, autoMarkAbsentAfterMinutes: v })}
@@ -115,7 +116,7 @@ export function PolicySettingsForm() {
   );
 }
 
-function NumberField({
+function DurationField({
   label,
   value,
   onChange,
@@ -127,13 +128,7 @@ function NumberField({
   return (
     <label className="block space-y-1 text-sm">
       <span className="font-medium">{label}</span>
-      <input
-        type="number"
-        min={0}
-        className="w-full rounded-md border p-2"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
+      <DurationInput value={value} onChange={(next) => onChange(next ?? 0)} min={0} max={1440} />
     </label>
   );
 }

@@ -1,5 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useCreateActivity, useCreateCallLog, useCreateFollowUp } from '@/features/sales/hooks/use-sales';
+import { DateTimePicker, dateTimePickerValueToIso } from '@/shared/components/datetime-picker';
+import { DurationInput } from '@/shared/components/duration-input';
 import { Button } from '@/shared/components/ui/button';
 
 type ActivityTab = 'note' | 'call' | 'meeting' | 'follow_up';
@@ -50,7 +52,7 @@ export function LeadActivityForm({ leadId, onSuccess }: LeadActivityFormProps) {
           setError('Scheduled date is required');
           return;
         }
-        await createFollowUp.mutateAsync({ leadId, scheduledAt, notes: description });
+        await createFollowUp.mutateAsync({ leadId, scheduledAt: dateTimePickerValueToIso(scheduledAt), notes: description });
       }
       resetForm();
       onSuccess?.();
@@ -100,13 +102,7 @@ export function LeadActivityForm({ leadId, onSuccess }: LeadActivityFormProps) {
           </label>
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Duration (seconds)</span>
-            <input
-              type="number"
-              min={0}
-              className="w-full rounded-md border p-2"
-              value={durationSeconds}
-              onChange={(e) => setDurationSeconds(Number(e.target.value))}
-            />
+            <DurationInput value={durationSeconds} onChange={(value) => setDurationSeconds(value ?? 0)} min={0} max={86400} suffix="sec" />
           </label>
           <label className="col-span-full block space-y-1 text-sm">
             <span className="font-medium">Outcome</span>
@@ -118,13 +114,7 @@ export function LeadActivityForm({ leadId, onSuccess }: LeadActivityFormProps) {
       {activeTab === 'follow_up' && (
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Scheduled At</span>
-          <input
-            type="datetime-local"
-            className="w-full rounded-md border p-2"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            required
-          />
+          <DateTimePicker value={scheduledAt} onChange={setScheduledAt} required />
         </label>
       )}
 

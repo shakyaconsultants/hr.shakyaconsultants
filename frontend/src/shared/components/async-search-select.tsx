@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
+import {
+  DropdownPanel,
+  dropdownListClassName,
+  dropdownOptionClassName,
+  dropdownOptionSelectedClassName,
+} from '@/shared/components/dropdown-panel';
 
 export interface AsyncSearchSelectOption {
   value: string;
@@ -192,8 +198,8 @@ export function AsyncSearchSelect({
       </button>
 
       {open ? (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
-          <div className="border-b p-2">
+        <DropdownPanel className="w-full">
+          <div className="border-b border-border bg-popover p-2">
             <input
               type="search"
               autoFocus
@@ -204,7 +210,7 @@ export function AsyncSearchSelect({
             />
           </div>
 
-          <div className="max-h-60 overflow-y-auto" role="listbox">
+          <div className={cn(dropdownListClassName, 'max-h-60')} role="listbox">
             {loading ? <SelectSkeleton /> : null}
 
             {!loading && loadOptions && !canSearch ? (
@@ -228,8 +234,9 @@ export function AsyncSearchSelect({
                       aria-selected={isSelected}
                       onClick={() => handleSelect(option.value)}
                       className={cn(
-                        'flex w-full items-start justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/60',
-                        isSelected && 'bg-muted/40',
+                        dropdownOptionClassName,
+                        'items-start justify-between gap-2 px-3 py-2.5',
+                        isSelected && dropdownOptionSelectedClassName,
                       )}
                     >
                       <span>
@@ -244,7 +251,7 @@ export function AsyncSearchSelect({
                 })
               : null}
           </div>
-        </div>
+        </DropdownPanel>
       ) : null}
     </div>
   );

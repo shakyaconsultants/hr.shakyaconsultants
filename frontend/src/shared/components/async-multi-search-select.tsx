@@ -2,6 +2,12 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import type { AsyncSearchSelectOption } from '@/shared/components/async-search-select';
+import {
+  DropdownPanel,
+  dropdownListClassName,
+  dropdownOptionClassName,
+  dropdownOptionSelectedClassName,
+} from '@/shared/components/dropdown-panel';
 
 export interface AsyncMultiSearchSelectProps {
   id?: string;
@@ -132,8 +138,8 @@ export function AsyncMultiSearchSelect({
       </button>
 
       {open ? (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
-          <div className="border-b p-2">
+        <DropdownPanel className="w-full">
+          <div className="border-b border-border bg-popover p-2">
             <input
               type="search"
               autoFocus
@@ -144,7 +150,7 @@ export function AsyncMultiSearchSelect({
             />
           </div>
 
-          <div className="max-h-60 overflow-y-auto" role="listbox">
+          <div className={cn(dropdownListClassName, 'max-h-60')} role="listbox">
             {isLoading ? <SelectSkeleton /> : null}
             {!isLoading && filtered.length === 0 ? (
               <p className="px-3 py-4 text-sm text-muted-foreground">{emptyLabel}</p>
@@ -160,8 +166,9 @@ export function AsyncMultiSearchSelect({
                       aria-selected={isSelected}
                       onClick={() => toggleOption(option.value)}
                       className={cn(
-                        'flex w-full items-start justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/60',
-                        isSelected && 'bg-muted/40',
+                        dropdownOptionClassName,
+                        'items-start justify-between gap-2 px-3 py-2.5',
+                        isSelected && dropdownOptionSelectedClassName,
                       )}
                     >
                       <span>
@@ -176,7 +183,7 @@ export function AsyncMultiSearchSelect({
                 })
               : null}
           </div>
-        </div>
+        </DropdownPanel>
       ) : null}
     </div>
   );

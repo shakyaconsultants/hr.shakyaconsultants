@@ -11,6 +11,7 @@ import {
   useShiftAssignments,
 } from '@/features/attendance/hooks/use-attendance';
 import { MASTER_ENTITIES } from '@/features/organization/constants/entity-catalog';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { StatCard } from '@/shared/components/stat-card';
 import { DataTable } from '@/shared/components/data-table';
@@ -140,12 +141,7 @@ export function AttendanceEnterprisePage() {
                 value={workShiftId}
                 onChange={(e) => setWorkShiftId(e.target.value)}
               />
-              <input
-                type="date"
-                className="rounded-md border p-2 text-sm"
-                value={effectiveFrom}
-                onChange={(e) => setEffectiveFrom(e.target.value)}
-              />
+              <DatePicker value={effectiveFrom} onChange={setEffectiveFrom} required />
             </div>
             <Button className="mt-3" onClick={() => void handleCreateAssignment()} disabled={createAssignment.isPending}>
               {createAssignment.isPending ? 'Assigning...' : 'Assign Shift'}

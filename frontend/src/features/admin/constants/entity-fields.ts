@@ -1,6 +1,6 @@
 import type { MasterEntityKey } from '@/features/organization/constants/entity-catalog';
 
-export type EntityFieldType = 'text' | 'number' | 'textarea' | 'select' | 'date' | 'boolean' | 'json';
+export type EntityFieldType = 'text' | 'number' | 'textarea' | 'select' | 'date' | 'time' | 'datetime' | 'duration' | 'boolean' | 'json';
 
 export interface EntityFieldDefinition {
   key: string;
@@ -77,13 +77,11 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
   ],
   'work-shift': [
     ...BASE_FIELDS,
-    { key: 'startTime', label: 'Start Time (HH:mm)', type: 'text' },
-    { key: 'endTime', label: 'End Time (HH:mm)', type: 'text' },
-    { key: 'graceMinutes', label: 'Grace Minutes', type: 'number' },
   ],
   holiday: [
-    ...BASE_FIELDS,
-    { key: 'date', label: 'Date', type: 'date', required: true },
+    ...BASE_FIELDS.filter((field) => field.key !== 'description'),
+    { key: 'date', label: 'Holiday Date', type: 'date', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
     { key: 'type', label: 'Type', type: 'select', options: [{ value: 'public', label: 'Public' }, { value: 'optional', label: 'Optional' }] },
     { key: 'isRecurring', label: 'Recurring', type: 'boolean' },
   ],
@@ -108,7 +106,7 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
   'leave-type': [
     ...BASE_FIELDS,
     { key: 'isPaid', label: 'Paid Leave', type: 'boolean' },
-    { key: 'maxDaysPerYear', label: 'Max Days/Year', type: 'number' },
+    { key: 'maxDaysPerYear', label: 'Max Days/Year', type: 'duration' },
     { key: 'color', label: 'Color', type: 'text' },
   ],
   'project-category': [...BASE_FIELDS],

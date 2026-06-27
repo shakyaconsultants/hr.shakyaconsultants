@@ -2,6 +2,7 @@ import { FormEvent, useState, type ReactNode } from 'react';
 import { FileDown } from 'lucide-react';
 import type { ReportParams } from '@/features/sales/api/sales.api';
 import { useExportSalesReport, useSalesReport } from '@/features/sales/hooks/use-sales';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
@@ -124,23 +125,11 @@ export function SalesReportsPage() {
         </Field>
 
         <Field label="Start Date">
-          <input
-            type="date"
-            className="w-full rounded-md border p-2 text-sm"
-            value={params.startDate}
-            onChange={(e) => setParams({ ...params, startDate: e.target.value })}
-            required
-          />
+          <DatePicker value={params.startDate} onChange={(value) => setParams({ ...params, startDate: value })} max={params.endDate || undefined} required />
         </Field>
 
         <Field label="End Date">
-          <input
-            type="date"
-            className="w-full rounded-md border p-2 text-sm"
-            value={params.endDate}
-            onChange={(e) => setParams({ ...params, endDate: e.target.value })}
-            required
-          />
+          <DatePicker value={params.endDate} onChange={(value) => setParams({ ...params, endDate: value })} min={params.startDate || undefined} required />
         </Field>
 
         <div className="flex items-end gap-2">

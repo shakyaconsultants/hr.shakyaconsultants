@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useCreateSalaryRevision, useEmployeeCompensation } from '@/features/payroll/hooks/use-payroll';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 
@@ -113,13 +114,7 @@ export function SalaryRevisionWizard({ employeeId, onSuccess }: SalaryRevisionWi
           </label>
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Effective From</span>
-            <input
-              type="date"
-              className="w-full rounded-md border p-2"
-              value={effectiveFrom}
-              onChange={(e) => setEffectiveFrom(e.target.value)}
-              required
-            />
+            <DatePicker value={effectiveFrom} onChange={setEffectiveFrom} required />
           </label>
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Reason</span>

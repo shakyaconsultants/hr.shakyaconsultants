@@ -2,6 +2,8 @@ import { FormEvent, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LeaveExitNav, LeaveExitPageHeader } from '@/features/leave-exit/components/leave-exit-nav';
 import { useApplyLeave, useLeavePolicies } from '@/features/leave-exit/hooks/use-leave-exit';
+import { DatePicker } from '@/shared/components/date-picker';
+import { compareDates } from '@/shared/utils/datetime';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
@@ -20,8 +22,17 @@ export function ApplyLeavePage() {
   const [isEmergency, setIsEmergency] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const dateRangeError =
+    startDate && endDate && compareDates(endDate, startDate) < 0
+      ? 'End date cannot be before start date.'
+      : null;
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (dateRangeError) {
+      setError(dateRangeError);
+      return;
+    }
     setError(null);
     try {
       await applyLeave.mutateAsync({
@@ -65,10 +76,10 @@ export function ApplyLeavePage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Start Date" required>
-            <input type="date" className="w-full rounded-md border p-2 text-sm" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+            <DatePicker value={startDate} onChange={setStartDate} max={endDate || undefined} required />
           </Field>
-          <Field label="End Date" required>
-            <input type="date" className="w-full rounded-md border p-2 text-sm" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+          <Field label="End Date" required error={dateRangeError ?? undefined}>
+            <DatePicker value={endDate} onChange={setEndDate} min={startDate || undefined} required error={dateRangeError ?? undefined} />
           </Field>
         </div>
 
@@ -99,7 +110,7 @@ export function ApplyLeavePage() {
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: ReactNode }) {
   return (
     <label className="block space-y-1 text-sm">
       <span className="font-medium">
@@ -107,6 +118,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {required ? ' *' : ''}
       </span>
       {children}
+      {error ? <span className="block text-xs text-destructive">{error}</span> : null}
     </label>
   );
 }

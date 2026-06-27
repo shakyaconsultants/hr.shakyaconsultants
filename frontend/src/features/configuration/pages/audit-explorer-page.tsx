@@ -5,6 +5,7 @@ import { AuditDetailDrawer } from '@/features/configuration/components/audit-det
 import { AuditTimeline } from '@/features/configuration/components/audit-timeline';
 import { useAuditLogs, useExportAuditLogs } from '@/features/configuration/hooks/use-configuration';
 import { PageHeader } from '@/shared/components/page-header';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -77,16 +78,8 @@ export function AuditExplorerPage() {
           value={filters.entity}
           onChange={(e) => setFilters((f) => ({ ...f, entity: e.target.value, page: 1 }))}
         />
-        <Input
-          type="date"
-          value={filters.from}
-          onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value, page: 1 }))}
-        />
-        <Input
-          type="date"
-          value={filters.to}
-          onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value, page: 1 }))}
-        />
+        <DatePicker value={filters.from} onChange={(value) => setFilters((f) => ({ ...f, from: value, page: 1 }))} max={filters.to || undefined} />
+        <DatePicker value={filters.to} onChange={(value) => setFilters((f) => ({ ...f, to: value, page: 1 }))} min={filters.from || undefined} />
       </div>
 
       {isLoading ? <Loading message="Loading audit events..." /> : null}

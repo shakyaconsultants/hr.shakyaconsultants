@@ -21,6 +21,7 @@ import {
 } from '@/features/project/hooks/use-projects';
 import type { ProjectRecord } from '@/features/project/api/project.api';
 import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { ConfirmDialog } from '@/shared/components/confirm-dialog';
@@ -193,8 +194,8 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
                   <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName} ({employee.employeeNumber})</option>
                 ))}
               </select>
-              <Input type="date" value={settingsForm.startDate} onChange={(e) => setSettingsForm((p) => ({ ...p, startDate: e.target.value }))} />
-              <Input type="date" value={settingsForm.targetDate} onChange={(e) => setSettingsForm((p) => ({ ...p, targetDate: e.target.value }))} />
+              <DatePicker value={settingsForm.startDate} onChange={(value) => setSettingsForm((p) => ({ ...p, startDate: value }))} max={settingsForm.targetDate || undefined} />
+              <DatePicker value={settingsForm.targetDate} onChange={(value) => setSettingsForm((p) => ({ ...p, targetDate: value }))} min={settingsForm.startDate || undefined} />
             </div>
             <textarea className="min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Description" value={settingsForm.description} onChange={(e) => setSettingsForm((p) => ({ ...p, description: e.target.value }))} />
             <Button size="sm" onClick={() => void saveSettings()} disabled={updateMutation.isPending}>Save Settings</Button>
@@ -249,7 +250,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             <h3 className="font-medium">Milestones</h3>
             <div className="grid gap-2 md:grid-cols-3">
               <Input placeholder="Milestone name" value={milestoneForm.name} onChange={(e) => setMilestoneForm((p) => ({ ...p, name: e.target.value }))} />
-              <Input type="date" value={milestoneForm.dueDate} onChange={(e) => setMilestoneForm((p) => ({ ...p, dueDate: e.target.value }))} />
+              <DatePicker value={milestoneForm.dueDate} onChange={(value) => setMilestoneForm((p) => ({ ...p, dueDate: value }))} />
               <Button size="sm" onClick={() => void createMilestoneMutation.mutateAsync({ projectId: project.id, name: milestoneForm.name, dueDate: milestoneForm.dueDate }).then(() => { setMilestoneForm({ name: '', dueDate: '' }); void refetchMilestones(); })} disabled={!milestoneForm.name || !milestoneForm.dueDate}>
                 Add Milestone
               </Button>
@@ -268,8 +269,8 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             <h3 className="font-medium">Sprints</h3>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
               <Input placeholder="Sprint name" value={sprintForm.name} onChange={(e) => setSprintForm((p) => ({ ...p, name: e.target.value }))} />
-              <Input type="date" value={sprintForm.startDate} onChange={(e) => setSprintForm((p) => ({ ...p, startDate: e.target.value }))} />
-              <Input type="date" value={sprintForm.endDate} onChange={(e) => setSprintForm((p) => ({ ...p, endDate: e.target.value }))} />
+              <DatePicker value={sprintForm.startDate} onChange={(value) => setSprintForm((p) => ({ ...p, startDate: value }))} max={sprintForm.endDate || undefined} />
+              <DatePicker value={sprintForm.endDate} onChange={(value) => setSprintForm((p) => ({ ...p, endDate: value }))} min={sprintForm.startDate || undefined} />
               <Input placeholder="Goal" value={sprintForm.goal} onChange={(e) => setSprintForm((p) => ({ ...p, goal: e.target.value }))} />
             </div>
             <Button size="sm" onClick={() => void createSprintMutation.mutateAsync({ projectId: project.id, name: sprintForm.name, startDate: sprintForm.startDate, endDate: sprintForm.endDate, goal: sprintForm.goal || undefined }).then(() => { setSprintForm({ name: '', startDate: '', endDate: '', goal: '' }); void refetchSprints(); })} disabled={!sprintForm.name || !sprintForm.startDate || !sprintForm.endDate}>

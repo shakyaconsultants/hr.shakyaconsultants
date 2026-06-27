@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useAssignCompensation, useEmployeeCompensation, useSalaryStructures } from '@/features/payroll/hooks/use-payroll';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 
@@ -102,13 +103,7 @@ export function CompensationAssignmentForm({ employeeId, onSuccess }: Compensati
 
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Effective From</span>
-        <input
-          type="date"
-          className="w-full rounded-md border p-2"
-          value={effectiveFrom}
-          onChange={(e) => setEffectiveFrom(e.target.value)}
-          required
-        />
+        <DatePicker value={effectiveFrom} onChange={setEffectiveFrom} required />
       </label>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}

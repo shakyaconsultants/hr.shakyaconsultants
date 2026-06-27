@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { ApiKey, CreateApiKeyPayload } from '@/features/integration/api/integration.api';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { toDateInputValue } from '@/shared/utils/datetime';
 
 interface ApiKeyFormProps {
   initial?: Partial<ApiKey>;
@@ -57,7 +59,7 @@ export function ApiKeyForm({ initial, onSubmit, onCancel, isSubmitting }: ApiKey
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium">Expires</label>
-          <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+          <DatePicker value={expiresAt} onChange={setExpiresAt} min={toDateInputValue(new Date())} />
         </div>
       </div>
       <div className="flex gap-2">

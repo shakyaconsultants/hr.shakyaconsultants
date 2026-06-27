@@ -7,7 +7,12 @@ import { EmployeeSearchSelect } from '@/shared/components/employee-search-select
 import { AsyncSearchSelect } from '@/shared/components/async-search-select';
 import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
 import { SelectField } from '@/shared/components/select-field';
+import { DatePicker } from '@/shared/components/date-picker';
+import { DateTimePicker } from '@/shared/components/datetime-picker';
+import { DurationInput } from '@/shared/components/duration-input';
+import { TimePicker } from '@/shared/components/time-picker';
 import { Input } from '@/shared/components/ui/input';
+import { toDateInputValue, toDateTimeLocalValue } from '@/shared/utils/datetime';
 
 function getNestedValue(record: Record<string, unknown>, key: string): unknown {
   if (!key.includes('.')) {
@@ -129,6 +134,62 @@ function EntityFieldInput({
     );
   }
 
+  if (field.type === 'date') {
+    return (
+      <SelectField label={field.label} htmlFor={fieldId} required={field.required}>
+        <DatePicker
+          id={fieldId}
+          value={toDateInputValue(String(raw ?? ''))}
+          onChange={(next) => updateField(field.key, next || undefined)}
+          required={field.required}
+        />
+      </SelectField>
+    );
+  }
+
+  if (field.type === 'time' || field.key.endsWith('Time')) {
+    return (
+      <SelectField label={field.label} htmlFor={fieldId} required={field.required}>
+        <TimePicker
+          id={fieldId}
+          value={String(raw ?? '')}
+          onChange={(next) => updateField(field.key, next || undefined)}
+          required={field.required}
+        />
+      </SelectField>
+    );
+  }
+
+  if (field.type === 'datetime') {
+    return (
+      <SelectField label={field.label} htmlFor={fieldId} required={field.required}>
+        <DateTimePicker
+          id={fieldId}
+          value={toDateTimeLocalValue(String(raw ?? ''))}
+          onChange={(next) => updateField(field.key, next || undefined)}
+          required={field.required}
+        />
+      </SelectField>
+    );
+  }
+
+  if (field.type === 'duration' || field.key.toLowerCase().includes('minutes') || field.key.toLowerCase().includes('duration')) {
+    const isDays = field.key.toLowerCase().includes('days');
+    return (
+      <SelectField label={field.label} htmlFor={fieldId} required={field.required}>
+        <DurationInput
+          id={fieldId}
+          value={typeof raw === 'number' ? raw : raw === undefined || raw === '' ? undefined : Number(raw)}
+          onChange={(next) => updateField(field.key, next)}
+          min={0}
+          max={isDays ? 366 : 1440}
+          suffix={isDays ? 'days' : 'min'}
+          required={field.required}
+        />
+      </SelectField>
+    );
+  }
+
   if (field.type === 'boolean') {
     return (
       <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2.5 text-sm">
@@ -147,7 +208,7 @@ function EntityFieldInput({
     <SelectField label={field.label} htmlFor={fieldId} required={field.required} hint={field.placeholder}>
       <Input
         id={fieldId}
-        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+        type={field.type === 'number' ? 'number' : 'text'}
         value={String(raw ?? '')}
         required={field.required}
         placeholder={field.placeholder}
@@ -219,7 +280,13 @@ export function recordToFormValue(record: MasterDataRecord | null, fields: Entit
   for (const field of fields) {
     const raw = getNestedValue(record, field.key);
     if (raw !== undefined) {
-      Object.assign(formValue, setNestedValue(formValue, field.key, raw));
+      let normalized = raw;
+      if (field.type === 'date') {
+        normalized = toDateInputValue(String(raw));
+      } else if (field.type === 'datetime') {
+        normalized = toDateTimeLocalValue(String(raw));
+      }
+      Object.assign(formValue, setNestedValue(formValue, field.key, normalized));
     }
   }
   if (Array.isArray(record.responsibilities)) {
@@ -228,7 +295,7 @@ export function recordToFormValue(record: MasterDataRecord | null, fields: Entit
   return formValue;
 }
 
-export function formValueToPayload(value: Record<string, unknown>, _fields: EntityFieldDefinition[]): Record<string, unknown> {
+export function formValueToPayload(value: Record<string, unknown>, fields: EntityFieldDefinition[]): Record<string, unknown> {
   const payload = { ...value };
   delete payload.code;
   if (typeof payload.responsibilities === 'string') {
@@ -237,5 +304,16 @@ export function formValueToPayload(value: Record<string, unknown>, _fields: Enti
       .map((item) => item.trim())
       .filter(Boolean);
   }
+
+  for (const field of fields) {
+    const raw = getNestedValue(payload, field.key);
+    if (field.type === 'date' && typeof raw === 'string' && raw) {
+      Object.assign(payload, setNestedValue(payload, field.key, new Date(`${raw}T00:00:00`).toISOString()));
+    }
+    if (field.type === 'datetime' && typeof raw === 'string' && raw) {
+      Object.assign(payload, setNestedValue(payload, field.key, new Date(raw).toISOString()));
+    }
+  }
+
   return payload;
 }

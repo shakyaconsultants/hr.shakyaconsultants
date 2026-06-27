@@ -23,6 +23,7 @@ import { useEmployees } from '@/features/employee/hooks/use-employees';
 import { useMasterDataList } from '@/features/organization/hooks/use-master-data';
 import { PageHeader } from '@/shared/components/page-header';
 import { Button } from '@/shared/components/ui/button';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Input } from '@/shared/components/ui/input';
 import { ROUTES } from '@/config/app.config';
 import { cn } from '@/shared/utils/cn';
@@ -331,8 +332,8 @@ export function ProjectCreateWizardPage() {
                   {(categories?.items ?? []).map((c) => <option key={c.id} value={c.id}>{String(c.name)}</option>)}
                 </select>
               </Field>
-              <Field label="Start Date *"><Input type="date" value={draft.basicInfo.startDate} onChange={(e) => updateBasic('startDate', e.target.value)} /></Field>
-              <Field label="Expected Completion"><Input type="date" value={draft.basicInfo.targetDate} onChange={(e) => updateBasic('targetDate', e.target.value)} /></Field>
+              <Field label="Start Date *"><DatePicker value={draft.basicInfo.startDate} onChange={(value) => updateBasic('startDate', value)} required /></Field>
+              <Field label="Expected Completion"><DatePicker value={draft.basicInfo.targetDate} onChange={(value) => updateBasic('targetDate', value)} min={draft.basicInfo.startDate || undefined} /></Field>
               <Field label="Budget"><Input type="number" min={0} value={draft.basicInfo.budget} onChange={(e) => updateBasic('budget', e.target.value)} /></Field>
               <Field label="Tags (comma-separated)"><Input value={draft.basicInfo.tags} onChange={(e) => updateBasic('tags', e.target.value)} /></Field>
               <div className="sm:col-span-2">
@@ -414,7 +415,7 @@ export function ProjectCreateWizardPage() {
               {draft.milestones.map((ms, index) => (
                 <div key={index} className="grid gap-3 rounded border p-4 sm:grid-cols-3">
                   <Field label="Name"><Input value={ms.name} onChange={(e) => updateMilestone(index, 'name', e.target.value)} /></Field>
-                  <Field label="Due Date"><Input type="date" value={ms.dueDate} onChange={(e) => updateMilestone(index, 'dueDate', e.target.value)} /></Field>
+                  <Field label="Due Date"><DatePicker value={ms.dueDate} onChange={(value) => updateMilestone(index, 'dueDate', value)} min={draft.basicInfo.startDate || undefined} /></Field>
                   <Field label="Description"><Input value={ms.description ?? ''} onChange={(e) => updateMilestone(index, 'description', e.target.value)} /></Field>
                 </div>
               ))}
@@ -426,8 +427,8 @@ export function ProjectCreateWizardPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Sprint Name"><Input value={draft.sprint.name} onChange={(e) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, name: e.target.value } }))} /></Field>
               <Field label="Goal"><Input value={draft.sprint.goal ?? ''} onChange={(e) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, goal: e.target.value } }))} /></Field>
-              <Field label="Start Date"><Input type="date" value={draft.sprint.startDate} onChange={(e) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, startDate: e.target.value } }))} /></Field>
-              <Field label="End Date"><Input type="date" value={draft.sprint.endDate} onChange={(e) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, endDate: e.target.value } }))} /></Field>
+              <Field label="Start Date"><DatePicker value={draft.sprint.startDate} onChange={(value) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, startDate: value } }))} max={draft.sprint.endDate || undefined} /></Field>
+              <Field label="End Date"><DatePicker value={draft.sprint.endDate} onChange={(value) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, endDate: value } }))} min={draft.sprint.startDate || undefined} /></Field>
             </div>
           )}
 

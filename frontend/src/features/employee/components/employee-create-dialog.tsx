@@ -5,6 +5,7 @@ import { FormDialog } from '@/shared/components/form-dialog';
 import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
 import { SelectField } from '@/shared/components/select-field';
 import { MasterDataSelect } from '@/shared/components/master-data-select';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Input } from '@/shared/components/ui/input';
 import { ROUTES } from '@/config/app.config';
 
@@ -124,11 +125,10 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
 
         <FormSection title={FORM_SECTIONS.BUSINESS} description="Employment start date.">
           <SelectField label="Joining Date" htmlFor="employee-joined-at" required>
-            <Input
+            <DatePicker
               id="employee-joined-at"
-              type="date"
               value={form.joinedAt}
-              onChange={(event) => updateField('joinedAt', event.target.value)}
+              onChange={(value) => updateField('joinedAt', value)}
               required
             />
           </SelectField>

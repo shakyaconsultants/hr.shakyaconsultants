@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { FileDown } from 'lucide-react';
 import type { CommunicationReportType, ReportParams } from '@/features/communication/api/communication.api';
 import { useCommunicationReport, useExportCommunicationReport } from '@/features/communication/hooks/use-communication';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 
@@ -75,21 +76,11 @@ export function CommunicationReportsPage() {
         </Field>
 
         <Field label="Start Date">
-          <input
-            type="date"
-            className="w-full rounded-md border p-2 text-sm"
-            value={params.startDate ?? ''}
-            onChange={(e) => setParams({ ...params, startDate: e.target.value })}
-          />
+          <DatePicker value={params.startDate ?? ''} onChange={(value) => setParams({ ...params, startDate: value })} max={params.endDate || undefined} />
         </Field>
 
         <Field label="End Date">
-          <input
-            type="date"
-            className="w-full rounded-md border p-2 text-sm"
-            value={params.endDate ?? ''}
-            onChange={(e) => setParams({ ...params, endDate: e.target.value })}
-          />
+          <DatePicker value={params.endDate ?? ''} onChange={(value) => setParams({ ...params, endDate: value })} min={params.startDate || undefined} />
         </Field>
 
         <div className="flex items-end gap-2">

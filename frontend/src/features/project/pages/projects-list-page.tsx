@@ -8,6 +8,7 @@ import { SelectField } from '@/shared/components/select-field';
 import { FilterBar } from '@/shared/components/filter-bar';
 import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
+import { DatePicker } from '@/shared/components/date-picker';
 import { Input } from '@/shared/components/ui/input';
 import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { PageHeader } from '@/shared/components/page-header';
@@ -134,10 +135,10 @@ export function ProjectsListPage() {
                 />
               </SelectField>
               <SelectField label="Start Date" required>
-                <Input
-                  type="date"
+                <DatePicker
                   value={createForm.startDate}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, startDate: event.target.value }))}
+                  onChange={(value) => setCreateForm((prev) => ({ ...prev, startDate: value }))}
+                  required
                 />
               </SelectField>
             </div>
