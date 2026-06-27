@@ -1,13 +1,14 @@
 import { useRouteError, isRouteErrorResponse, Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { ROUTES } from '@/config/app.config';
+import { usePortalHomeRoute } from '@/app/hooks/use-resolved-portal';
 import { logClientError } from '@/shared/utils/error-logger';
 import { useEffect } from 'react';
 
 export function RouteErrorFallback() {
   const error = useRouteError();
   const navigate = useNavigate();
+  const homeRoute = usePortalHomeRoute();
 
   useEffect(() => {
     logClientError(error, { source: 'route-error', route: window.location.pathname });
@@ -53,7 +54,7 @@ export function RouteErrorFallback() {
             Retry
           </Button>
           <Button asChild>
-            <Link to={ROUTES.WORKSPACE}>Go to workspace</Link>
+            <Link to={homeRoute}>Go to home</Link>
           </Button>
         </div>
       </div>

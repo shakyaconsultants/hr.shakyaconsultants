@@ -1,25 +1,40 @@
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
 import { useAssignLead } from '@/features/sales/hooks/use-sales';
-import { Button } from '@/shared/components/ui/button';
+import { EmployeeSearchSelect } from '@/shared/components/employee-search-select';
+import { AsyncSearchSelect } from '@/shared/components/async-search-select';
+import { FormDialog } from '@/shared/components/form-dialog';
+import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
+import { SelectField } from '@/shared/components/select-field';
+
+const ASSIGNMENT_TYPE_OPTIONS = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'manager_override', label: 'Manager Override' },
+];
 
 interface LeadAssignmentDialogProps {
+  open: boolean;
   leadId: string;
   currentAssigneeId?: string;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
-export function LeadAssignmentDialog({ leadId, currentAssigneeId, onClose, onSuccess }: LeadAssignmentDialogProps) {
+export function LeadAssignmentDialog({
+  open,
+  leadId,
+  currentAssigneeId,
+  onClose,
+  onSuccess,
+}: LeadAssignmentDialogProps) {
   const assignLead = useAssignLead();
   const [assignedToId, setAssignedToId] = useState(currentAssigneeId ?? '');
   const [reason, setReason] = useState('');
   const [assignmentType, setAssignmentType] = useState<'manual' | 'manager_override'>('manual');
   const [error, setError] = useState<string | null>(null);
 
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  async function handleSubmit() {
     if (!assignedToId.trim()) {
-      setError('Assignee employee ID is required');
+      setError('Select an assignee before submitting.');
       return;
     }
     setError(null);
@@ -30,62 +45,53 @@ export function LeadAssignmentDialog({ leadId, currentAssigneeId, onClose, onSuc
       });
       onSuccess?.();
       onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to assign lead');
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Failed to assign lead');
     }
-  };
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg">
-        <h2 className="mb-4 text-lg font-semibold">Assign Lead</h2>
-        <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Employee ID</span>
-            <input
-              className="w-full rounded-md border p-2"
-              value={assignedToId}
-              onChange={(e) => setAssignedToId(e.target.value)}
-              placeholder="Enter employee ID"
-              required
-            />
-          </label>
+    <FormDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+      title="Assign Lead"
+      description="Route this lead to the right owner."
+      submitLabel="Assign"
+      isSubmitting={assignLead.isPending}
+      onSubmit={handleSubmit}
+    >
+      <div className="space-y-4">
+        <FormSection title={FORM_SECTIONS.RELATIONSHIPS}>
+          <SelectField label="Assignee" required>
+            <EmployeeSearchSelect value={assignedToId} onChange={setAssignedToId} required />
+          </SelectField>
 
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Assignment Type</span>
-            <select
-              className="w-full rounded-md border p-2"
+          <SelectField label="Assignment Type">
+            <AsyncSearchSelect
               value={assignmentType}
-              onChange={(e) => setAssignmentType(e.target.value as 'manual' | 'manager_override')}
-            >
-              <option value="manual">Manual</option>
-              <option value="manager_override">Manager Override</option>
-            </select>
-          </label>
+              options={ASSIGNMENT_TYPE_OPTIONS}
+              onChange={(value) => setAssignmentType(value as 'manual' | 'manager_override')}
+              clearable={false}
+            />
+          </SelectField>
+        </FormSection>
 
-          <label className="block space-y-1 text-sm">
-            <span className="font-medium">Reason (optional)</span>
+        <FormSection title={FORM_SECTIONS.ADDITIONAL}>
+          <SelectField label="Reason">
             <textarea
-              className="w-full rounded-md border p-2"
+              className="min-h-[88px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               rows={3}
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Reason for assignment"
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Optional context for this assignment"
             />
-          </label>
+          </SelectField>
+        </FormSection>
 
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={assignLead.isPending}>
-              {assignLead.isPending ? 'Assigning...' : 'Assign'}
-            </Button>
-          </div>
-        </form>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </div>
-    </div>
+    </FormDialog>
   );
 }

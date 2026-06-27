@@ -5,6 +5,8 @@ import { useAssignPermissions, usePermissionMatrix, useRole, useRoles } from '@/
 import { PermissionTree } from '@/features/rbac/components/permission-tree';
 import { PageHeader } from '@/shared/components/page-header';
 import { Loading } from '@/shared/components/loading';
+import { AsyncSearchSelect } from '@/shared/components/async-search-select';
+import { SelectField } from '@/shared/components/select-field';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 import { useAuthStore } from '@/shared/stores/app.store';
@@ -33,6 +35,16 @@ export function PermissionMatrixPage() {
     return data.permissions.filter((p) => p.category === categoryFilter);
   }, [categoryFilter, data?.permissions]);
 
+  const roleOptions = useMemo(
+    () =>
+      (roles?.items ?? []).map((role) => ({
+        value: role.id,
+        label: role.name,
+        description: role.slug,
+      })),
+    [roles?.items],
+  );
+
   if (isLoading) return <Loading message="Loading permission matrix..." />;
 
   return (
@@ -43,15 +55,16 @@ export function PermissionMatrixPage() {
       </Link>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium">Target Role</span>
-          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)}>
-            <option value="">— Select role —</option>
-            {(roles?.items ?? []).map((role) => (
-              <option key={role.id} value={role.id}>{role.name}</option>
-            ))}
-          </select>
-        </label>
+        <div className="min-w-[280px]">
+          <SelectField label="Target Role">
+            <AsyncSearchSelect
+              value={selectedRoleId}
+              options={roleOptions}
+              placeholder="Select role…"
+              onChange={setSelectedRoleId}
+            />
+          </SelectField>
+        </div>
         {selectedRoleId && hasPermission('rbac.role.update') ? (
           <Button onClick={() => void assignMutation.mutateAsync({ roleId: selectedRoleId, permissionCodes: Array.from(selected) })} disabled={assignMutation.isPending}>
             {assignMutation.isPending ? 'Saving...' : 'Save to Role'}

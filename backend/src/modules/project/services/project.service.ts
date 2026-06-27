@@ -42,7 +42,7 @@ export const ProjectService = {
       const now = new Date();
       filters.push({
         $or: [
-          { riskLevel: { $in: [PROJECT_RISK_LEVEL.HIGH, PROJECT_RISK_LEVEL.CRITICAL] } },
+          { riskLevel: { $in: [PROJECT_RISK_LEVEL.HIGH, PROJECT_RISK_LEVEL.CRITICAL, PROJECT_RISK_LEVEL.MEDIUM] } },
           {
             targetDate: { $exists: true, $ne: null, $lt: now },
             status: { $ne: PROJECT_STATUS.COMPLETED },

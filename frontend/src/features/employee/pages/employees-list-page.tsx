@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, Plus, Users } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import { useEmployees, useExportEmployees } from '@/features/employee/hooks/use-employees';
 import { EmployeeCreateDialog } from '@/features/employee/components/employee-create-dialog';
 import { DataTable } from '@/shared/components/data-table';
 import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { PageHeader } from '@/shared/components/page-header';
+import { FilterBar } from '@/shared/components/filter-bar';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { ROUTES } from '@/config/app.config';
 import type { EmployeeRecord } from '@/features/employee/api/employee.api';
 import { Link } from 'react-router-dom';
@@ -69,28 +69,21 @@ export function EmployeesListPage() {
         description="Manage employee records, profiles, and employment details."
         breadcrumbs={[{ label: 'Employees' }]}
         actions={
-          <div className="flex gap-2">
-            {canExport ? (
-              <Button variant="outline" onClick={() => void handleExport()} disabled={exportMutation.isPending}>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
-            ) : null}
-            {canCreate ? (
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Employee
-              </Button>
-            ) : null}
-          </div>
+          canCreate ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Employee
+            </Button>
+          ) : undefined
         }
       />
 
-      <Input
-        placeholder="Search by name, email, or employee number..."
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        className="max-w-md"
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by name, email, or employee number…"
+        onExport={canExport ? () => void handleExport() : undefined}
+        exportLabel="Export CSV"
       />
 
       <PageDataBoundary

@@ -11,13 +11,19 @@ import { EnterpriseLayout } from '@/app/layouts/enterprise-layout';
 import { ManagerLayout } from '@/app/layouts/manager-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { Loading } from '@/shared/components/loading';
 
 const PORTAL_HOME_PATHS = [ROUTES.ENTERPRISE, ROUTES.MANAGER, ROUTES.WORKSPACE] as const;
 
 export function PortalGuard() {
   const location = useLocation();
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const permissions = useAuthStore((s) => s.permissions);
+  const roles = useAuthStore((s) => s.roles);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
+  const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
 
   const portal = useMemo(
     () => resolvePortal(hasAnyPermission),
@@ -25,6 +31,23 @@ export function PortalGuard() {
   );
 
   const homeRoute = getPortalHomeRoute(portal);
+
+  if (!isInitialized || isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loading message="Loading your workspace..." />
+      </div>
+    );
+  }
+
+  const sessionReady = isSuperAdmin() || permissions.length > 0 || roles.length > 0;
+  if (!sessionReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loading message="Resolving permissions..." />
+      </div>
+    );
+  }
 
   if (location.pathname === ROUTES.HOME) {
     return <Navigate to={homeRoute} replace />;

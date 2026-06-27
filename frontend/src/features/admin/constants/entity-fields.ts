@@ -14,7 +14,6 @@ export interface EntityFieldDefinition {
 
 const BASE_FIELDS: EntityFieldDefinition[] = [
   { key: 'name', label: 'Name', type: 'text', required: true },
-  { key: 'code', label: 'Code', type: 'text', required: true },
   { key: 'description', label: 'Description', type: 'textarea' },
   {
     key: 'status',
@@ -26,6 +25,11 @@ const BASE_FIELDS: EntityFieldDefinition[] = [
     ],
   },
 ];
+
+/** Fields used on create/edit forms — code is always system-generated */
+export function getEntityFormFields(entityKey: MasterEntityKey): EntityFieldDefinition[] {
+  return getEntityFields(entityKey).filter((field) => field.key !== 'code');
+}
 
 export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefinition[]> = {
   branch: [
@@ -40,17 +44,17 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     { key: 'address.postalCode', label: 'Postal Code', type: 'text', required: true },
   ],
   department: [
-    ...BASE_FIELDS,
+    ...BASE_FIELDS.map((field) => (field.key === 'code' ? { ...field, required: false } : field)),
     { key: 'parentDepartmentId', label: 'Parent Department', type: 'select', refEntity: 'department' },
-    { key: 'headEmployeeId', label: 'Department Head (Employee ID)', type: 'text' },
+    { key: 'headEmployeeId', label: 'Department Head', type: 'text' },
     { key: 'branchId', label: 'Branch', type: 'select', refEntity: 'branch' },
-    { key: 'costCenterCode', label: 'Cost Center', type: 'text' },
-    { key: 'color', label: 'Color', type: 'text' },
+    { key: 'email', label: 'Email', type: 'text' },
+    { key: 'internalNotes', label: 'Internal Notes', type: 'textarea' },
   ],
   designation: [
-    ...BASE_FIELDS,
-    { key: 'level', label: 'Level', type: 'number' },
-    { key: 'grade', label: 'Grade', type: 'text' },
+    ...BASE_FIELDS.map((field) => (field.key === 'code' ? { ...field, required: false } : field)),
+    { key: 'hierarchyLevel', label: 'Hierarchy Level', type: 'number' },
+    { key: 'departmentId', label: 'Department', type: 'select', refEntity: 'department' },
     { key: 'salaryGradeId', label: 'Salary Grade', type: 'select', refEntity: 'salary-grade' },
   ],
   'job-role': [

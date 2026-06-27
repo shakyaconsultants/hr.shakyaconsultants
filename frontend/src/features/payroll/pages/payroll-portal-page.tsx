@@ -9,17 +9,20 @@ export function PayrollPortalPage() {
   const navigate = useNavigate();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const isLoading = useAuthStore((s) => s.isLoading);
 
   useEffect(() => {
+    if (!isInitialized || isLoading) {
+      return;
+    }
+
+    const portal = resolvePortal(hasAnyPermission);
+
     if (hasPermission('payroll.update') || hasPermission('settings.manage')) {
       navigate(ROUTES.PAYROLL_ADMIN, { replace: true });
       return;
     }
-    if (hasPermission('payroll.process')) {
-      navigate(ROUTES.PAYROLL_FINANCE, { replace: true });
-      return;
-    }
-    const portal = resolvePortal(hasAnyPermission);
     if (portal === PORTAL.ENTERPRISE && hasPermission('payroll.read')) {
       navigate(ROUTES.PAYROLL_HR, { replace: true });
       return;
@@ -28,8 +31,12 @@ export function PayrollPortalPage() {
       navigate(ROUTES.PAYROLL_FINANCE, { replace: true });
       return;
     }
-    navigate(ROUTES.WORKSPACE_PAYROLL, { replace: true });
-  }, [navigate, hasPermission, hasAnyPermission]);
+    if (portal === PORTAL.WORKSPACE && hasPermission('payslip.read')) {
+      navigate(ROUTES.WORKSPACE_PAYROLL, { replace: true });
+      return;
+    }
+    navigate(ROUTES.FORBIDDEN, { replace: true });
+  }, [navigate, hasPermission, hasAnyPermission, isInitialized, isLoading]);
 
   return <Loading message="Redirecting to payroll..." />;
 }

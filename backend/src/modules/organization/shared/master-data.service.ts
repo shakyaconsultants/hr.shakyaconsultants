@@ -2,8 +2,15 @@ import type { BaseDocument } from '@infrastructure/database/types/base-document.
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
+import { CodeGenerationService } from '@modules/organization/services/code-generation.service.js';
+import { entitySupportsAutoCode } from '@modules/organization/constants/code-generation.constants.js';
 import { resolveEntityConfig } from '@modules/organization/constants/entity-registry.constants.js';
 import type { MasterDataEntityKey } from '@modules/organization/constants/organization.constants.js';
+import { MASTER_DATA_ENTITY } from '@modules/organization/constants/organization.constants.js';
+import { DepartmentService } from '@modules/organization/services/department.service.js';
+import { DepartmentValidationService } from '@modules/organization/services/department-validation.service.js';
+import { DesignationService } from '@modules/organization/services/designation.service.js';
+import { DesignationValidationService } from '@modules/organization/services/designation-validation.service.js';
 import { DependencyValidatorService } from '@modules/organization/shared/dependency-validator.service.js';
 import { MasterDataAuditService } from '@modules/organization/shared/master-data-audit.service.js';
 import { MasterDataCacheService } from '@modules/organization/shared/master-data-cache.service.js';
@@ -27,6 +34,39 @@ function extractNameCode(payload: Record<string, unknown>): { name?: string; cod
     name: typeof payload.name === 'string' ? payload.name : undefined,
     code: typeof payload.code === 'string' ? payload.code : undefined,
   };
+}
+
+async function ensureAutoCode(
+  entityKey: MasterDataEntityKey,
+  companyId: string,
+  userId: string,
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  if (!entitySupportsAutoCode(entityKey)) {
+    return payload;
+  }
+
+  if (typeof payload.code === 'string' && payload.code.trim()) {
+    return { ...payload, code: payload.code.trim().toUpperCase() };
+  }
+
+  const name = typeof payload.name === 'string' ? payload.name : undefined;
+  const config = resolveEntityConfig(entityKey);
+  const code = await CodeGenerationService.ensureUnique(
+    companyId,
+    userId,
+    entityKey,
+    name,
+    async (candidate) => config.repository.exists({ code: candidate }, { companyId }),
+  );
+
+  return { ...payload, code };
+}
+
+function stripImmutableCode(payload: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...payload };
+  delete next.code;
+  return next;
 }
 
 export const MasterDataService = {
@@ -67,6 +107,14 @@ export const MasterDataService = {
     context: MasterDataActorContext,
     query: MasterDataListQuery,
   ): Promise<PaginatedResult<BaseDocument> | CursorPaginationResult<BaseDocument>> {
+    if (entityKey === MASTER_DATA_ENTITY.DEPARTMENT && !query.useCursor) {
+      return DepartmentService.list(context.companyId, query) as Promise<PaginatedResult<BaseDocument>>;
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.DESIGNATION && !query.useCursor) {
+      return DesignationService.list(context.companyId, query) as Promise<PaginatedResult<BaseDocument>>;
+    }
+
     if (query.useCursor) {
       const result = await MasterDataQueryService.listCursor(entityKey, context.companyId, query);
       if (MasterDataQueryService.shouldEnrichEmployeeCount(entityKey)) {
@@ -94,7 +142,24 @@ export const MasterDataService = {
     context: MasterDataActorContext,
   ): Promise<BaseDocument> {
     const config = resolveEntityConfig(entityKey);
-    const { name, code } = extractNameCode(payload);
+    let finalPayload = payload;
+
+    if (entityKey === MASTER_DATA_ENTITY.DEPARTMENT) {
+      finalPayload = await DepartmentValidationService.validateWrite(context.companyId, payload);
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.DESIGNATION) {
+      finalPayload = await DesignationValidationService.validateWrite(context.companyId, payload);
+      await DesignationValidationService.assertUniqueName(
+        context.companyId,
+        String(finalPayload.name ?? ''),
+        typeof finalPayload.departmentId === 'string' ? finalPayload.departmentId : undefined,
+      );
+    }
+
+    finalPayload = await ensureAutoCode(entityKey, context.companyId, context.userId, finalPayload);
+
+    const { name, code } = extractNameCode(finalPayload);
 
     await DependencyValidatorService.assertNoDuplicateNameOrCode(
       entityKey,
@@ -107,7 +172,7 @@ export const MasterDataService = {
       {
         id,
         companyId: context.companyId,
-        ...payload,
+        ...finalPayload,
         createdBy: context.userId,
         updatedBy: context.userId,
       },
@@ -141,7 +206,27 @@ export const MasterDataService = {
     const config = resolveEntityConfig(entityKey);
     const existing = await config.repository.findByIdOrFail(id, { companyId: context.companyId });
     const before = toRecord(existing);
-    const { name, code } = extractNameCode(payload);
+    let finalPayload = payload;
+
+    if (entityKey === MASTER_DATA_ENTITY.DEPARTMENT) {
+      const merged = { ...before, ...payload };
+      finalPayload = await DepartmentValidationService.validateWrite(context.companyId, merged, id);
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.DESIGNATION) {
+      const merged = { ...before, ...payload };
+      finalPayload = await DesignationValidationService.validateWrite(context.companyId, merged, id);
+      await DesignationValidationService.assertUniqueName(
+        context.companyId,
+        String(finalPayload.name ?? merged.name ?? ''),
+        typeof finalPayload.departmentId === 'string' ? finalPayload.departmentId : undefined,
+        id,
+      );
+    }
+
+    finalPayload = stripImmutableCode(finalPayload);
+
+    const { name, code } = extractNameCode(finalPayload);
 
     await DependencyValidatorService.assertNoDuplicateNameOrCode(
       entityKey,
@@ -152,7 +237,7 @@ export const MasterDataService = {
 
     const updated = await config.repository.update(
       id,
-      { $set: { ...payload, updatedBy: context.userId } },
+      { $set: { ...finalPayload, updatedBy: context.userId } },
       { companyId: context.companyId, updatedBy: context.userId },
     );
 

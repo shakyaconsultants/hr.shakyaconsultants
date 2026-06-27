@@ -25,7 +25,10 @@ export const projectListQuerySchema = z.object({
   branchId: z.uuid().optional(),
   projectManagerId: z.uuid().optional(),
   includeArchived: z.coerce.boolean().optional(),
-  atRisk: z.coerce.boolean().optional(),
+  atRisk: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
   scope: z.enum(['all', 'assigned']).optional(),

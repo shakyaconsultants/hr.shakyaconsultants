@@ -163,11 +163,11 @@ export async function seedConfigurationDefaults(section?: string): Promise<{ see
 }
 
 export async function fetchSettingHistory(
-  params: { key?: string; page?: number; pageSize?: number } = {},
+  params: { key: string; page?: number; pageSize?: number },
 ): Promise<PaginatedResult<SettingHistoryEntry>> {
   const { data } = await apiClient.get<ApiSuccessResponse<SettingHistoryEntry[]> & { pagination?: PaginationMeta }>(
-    `${SETTINGS_PREFIX}/history`,
-    { params },
+    `${SETTINGS_PREFIX}/history/${encodeURIComponent(params.key)}`,
+    { params: { page: params.page, pageSize: params.pageSize } },
   );
   return {
     items: data.data,
@@ -185,11 +185,12 @@ export async function fetchFeatureFlagDefinitions(): Promise<FeatureFlagDefiniti
 }
 
 export async function updateFeatureFlags(flags: Record<string, boolean>): Promise<FeatureFlagDefinition[]> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<FeatureFlagDefinition[]>>(
-    `${SETTINGS_PREFIX}/feature-flags`,
-    { flags },
+  await Promise.all(
+    Object.entries(flags).map(([flagKey, enabled]) =>
+      apiClient.patch(`${SETTINGS_PREFIX}/feature-flags/${encodeURIComponent(flagKey)}`, { enabled }),
+    ),
   );
-  return data.data;
+  return fetchFeatureFlagDefinitions();
 }
 
 export async function fetchNavigationConfig(): Promise<NavigationConfig> {
@@ -202,7 +203,7 @@ export async function fetchNavigationConfig(): Promise<NavigationConfig> {
 }
 
 export async function updateNavigationConfig(items: NavigationItemConfig[]): Promise<NavigationConfig> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<NavigationConfig>>(`${SETTINGS_PREFIX}/navigation`, {
+  const { data } = await apiClient.put<ApiSuccessResponse<NavigationConfig>>(`${SETTINGS_PREFIX}/navigation`, {
     items,
   });
   return data.data;

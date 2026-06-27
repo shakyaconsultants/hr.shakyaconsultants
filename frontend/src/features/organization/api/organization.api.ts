@@ -24,6 +24,9 @@ export interface ListQueryParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeDeleted?: boolean;
+  branchId?: string;
+  parentDepartmentId?: string;
+  headEmployeeId?: string;
 }
 
 export async function listEntities(

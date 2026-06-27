@@ -11,8 +11,8 @@ export interface DepartmentDocument extends BaseDocument {
   parentDepartmentId?: string;
   headEmployeeId?: string;
   branchId?: string;
-  costCenterCode?: string;
-  color?: string;
+  email?: string;
+  internalNotes?: string;
   status: string;
 }
 
@@ -36,9 +36,10 @@ export interface DesignationDocument extends BaseDocument {
   name: string;
   code: string;
   description?: string;
-  level?: number;
-  grade?: string;
+  hierarchyLevel?: number;
   salaryGradeId?: string;
+  departmentId?: string;
+  applicableJobRoleIds: string[];
   promotionDesignationId?: string;
   status: string;
 }
@@ -126,8 +127,8 @@ const departmentFields: SchemaDefinition = {
   parentDepartmentId: { type: String, index: true },
   headEmployeeId: { type: String, index: true },
   branchId: { type: String, index: true },
-  costCenterCode: { type: String, trim: true },
-  color: { type: String, trim: true },
+  email: { type: String, trim: true, lowercase: true },
+  internalNotes: { type: String, trim: true },
   status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
 };
 
@@ -151,9 +152,10 @@ const designationFields: SchemaDefinition = {
   name: { type: String, required: true, trim: true },
   code: { type: String, required: true, trim: true, uppercase: true },
   description: { type: String, trim: true },
-  level: { type: Number, min: 1 },
-  grade: { type: String, trim: true },
+  hierarchyLevel: { type: Number, min: 1, max: 12, index: true },
   salaryGradeId: { type: String, index: true },
+  departmentId: { type: String, index: true },
+  applicableJobRoleIds: { type: [String], default: [] },
   promotionDesignationId: { type: String, index: true },
   status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
 };
@@ -258,6 +260,7 @@ export const designationModel = defineDomainModel<DesignationDocument>(
   {
     indexes: [
       { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_designations_company_code' } },
+      { fields: { companyId: 1, departmentId: 1, name: 1 }, options: { name: 'idx_designations_company_department_name' } },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_designations_company_status' } },
     ],
   },

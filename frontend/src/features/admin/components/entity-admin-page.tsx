@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { getEntityMeta, type MasterEntityKey } from '@/features/organization/constants/entity-catalog';
 import {
   getEntityPermissions,
   ORG_BULK_PERMISSION,
   ORG_EXPORT_PERMISSION,
 } from '@/features/admin/constants/entity-permissions';
-import { getEntityFields } from '@/features/admin/constants/entity-fields';
+import { getEntityFormFields } from '@/features/admin/constants/entity-fields';
 import {
   EntityForm,
   formValueToPayload,
   recordToFormValue,
-  useReferenceOptions,
 } from '@/features/admin/components/entity-form';
 import {
   useCreateEntity,
@@ -28,8 +27,9 @@ import { DataTable } from '@/shared/components/data-table';
 import { ConfirmDialog } from '@/shared/components/confirm-dialog';
 import { Sheet } from '@/shared/components/ui/sheet';
 import { PageDataBoundary } from '@/shared/components/page-data-boundary';
+import { FilterBar, FilterField } from '@/shared/components/filter-bar';
+import { StatusFilterSelect } from '@/shared/components/status-filter-select';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { ROUTES } from '@/config/app.config';
 import { useAuthStore } from '@/shared/stores/app.store';
 import type { ApiErrorResponse } from '@/shared/types/api.types';
@@ -40,7 +40,7 @@ export interface EntityAdminPageProps {
 
 export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
   const meta = getEntityMeta(entityKey);
-  const fields = getEntityFields(entityKey);
+  const fields = getEntityFormFields(entityKey);
   const permissions = getEntityPermissions(entityKey);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const navigate = useNavigate();
@@ -75,30 +75,6 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
   const updateMutation = useUpdateEntity(entityKey);
   const deleteMutation = useDeleteEntity(entityKey);
   const restoreMutation = useRestoreEntity(entityKey);
-
-  const needsBranch = fields.some((field) => field.refEntity === 'branch');
-  const needsDepartment = fields.some((field) => field.refEntity === 'department');
-  const needsDesignation = fields.some((field) => field.refEntity === 'designation');
-  const needsEmploymentType = fields.some((field) => field.refEntity === 'employment-type');
-  const needsSalaryGrade = fields.some((field) => field.refEntity === 'salary-grade');
-
-  const branchQuery = useMasterDataList('branch', { page: 1, pageSize: 100, status: 'active' }, needsBranch);
-  const departmentQuery = useMasterDataList('department', { page: 1, pageSize: 100, status: 'active' }, needsDepartment);
-  const designationQuery = useMasterDataList('designation', { page: 1, pageSize: 100, status: 'active' }, needsDesignation);
-  const employmentTypeQuery = useMasterDataList(
-    'employment-type',
-    { page: 1, pageSize: 100, status: 'active' },
-    needsEmploymentType,
-  );
-  const salaryGradeQuery = useMasterDataList('salary-grade', { page: 1, pageSize: 100, status: 'active' }, needsSalaryGrade);
-
-  const referenceOptions = useReferenceOptions(fields, {
-    branch: branchQuery.data?.items,
-    department: departmentQuery.data?.items,
-    designation: designationQuery.data?.items,
-    'employment-type': employmentTypeQuery.data?.items,
-    'salary-grade': salaryGradeQuery.data?.items,
-  });
 
   if (!meta) {
     return <p className="text-destructive">Unknown entity type.</p>;
@@ -251,55 +227,50 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
           { label: meta.pluralLabel },
         ]}
         actions={
-          <div className="flex flex-wrap gap-2">
-            {canExport ? (
-              <Button variant="outline" size="sm" onClick={() => void handleExport()}>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
-            ) : null}
-            {canCreate ? (
-              <Button size="sm" className="whitespace-nowrap" onClick={openCreate}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add {meta.label}
-              </Button>
-            ) : null}
-          </div>
+          canCreate ? (
+            <Button size="sm" className="whitespace-nowrap" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add {meta.label}
+            </Button>
+          ) : undefined
         }
       />
 
-      <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Search..."
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          className="max-w-xs"
-        />
-        <select
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          value={statusFilter}
-          onChange={(event) => {
-            setStatusFilter(event.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
-          Show archived
-        </label>
-        {selectedIds.size > 0 && canBulk ? (
-          <Button variant="outline" size="sm" className="text-destructive" onClick={() => void handleBulkDelete()}>
-            Delete selected ({selectedIds.size})
-          </Button>
-        ) : null}
-      </div>
+      <FilterBar
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        searchPlaceholder={`Search ${meta.pluralLabel.toLowerCase()}…`}
+        onReset={() => {
+          setSearch('');
+          setStatusFilter('');
+          setShowArchived(false);
+          setPage(1);
+        }}
+        onExport={canExport ? () => void handleExport() : undefined}
+        exportLabel="Export CSV"
+        showArchived={showArchived}
+        onShowArchivedChange={setShowArchived}
+        extras={
+          selectedIds.size > 0 && canBulk ? (
+            <Button variant="outline" size="sm" className="text-destructive" onClick={() => void handleBulkDelete()}>
+              Delete selected ({selectedIds.size})
+            </Button>
+          ) : null
+        }
+      >
+        <FilterField label="Status">
+          <StatusFilterSelect
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+          />
+        </FilterField>
+      </FilterBar>
 
       {listError ? <p className="text-sm text-destructive">{listError}</p> : null}
 
@@ -353,7 +324,7 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
         }
       >
         <form onSubmit={handleSubmit}>
-          <EntityForm fields={fields} value={formValue} onChange={setFormValue} referenceOptions={referenceOptions} />
+          <EntityForm fields={fields} value={formValue} onChange={setFormValue} />
           {formError ? <p className="mt-2 text-sm text-destructive">{formError}</p> : null}
         </form>
       </Sheet>

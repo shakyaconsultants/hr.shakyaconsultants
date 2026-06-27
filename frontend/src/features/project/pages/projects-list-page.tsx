@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Briefcase, Plus } from 'lucide-react';
 import { useCreateProject, useProjects } from '@/features/project/hooks/use-projects';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { EmployeeSearchSelect } from '@/shared/components/employee-search-select';
+import { FormSection } from '@/shared/components/form-section';
+import { SelectField } from '@/shared/components/select-field';
+import { FilterBar } from '@/shared/components/filter-bar';
 import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Loading } from '@/shared/components/loading';
+import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { PageHeader } from '@/shared/components/page-header';
 import { ROUTES } from '@/config/app.config';
 import { useAuthStore } from '@/shared/stores/app.store';
@@ -34,7 +37,6 @@ export function ProjectsListPage() {
     pageSize: 50,
     includeArchived: showArchived || undefined,
   });
-  const { data: employees } = useEmployees({ pageSize: 200 });
   const createMutation = useCreateProject();
 
   useEffect(() => {
@@ -67,8 +69,16 @@ export function ProjectsListPage() {
   ];
 
   async function handleCreateProject() {
+    const code =
+      createForm.name
+        .trim()
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toUpperCase()
+        .slice(0, 12) || `PRJ${Date.now()}`;
+
     const created = await createMutation.mutateAsync({
       ...createForm,
+      code,
       description: createForm.description || undefined,
       clientName: createForm.clientName || undefined,
     });
@@ -76,8 +86,8 @@ export function ProjectsListPage() {
     navigate(ROUTES.projectDetail(created.id));
   }
 
-  if (isLoading) {
-    return <Loading message="Loading projects..." />;
+  if (isLoading && !data) {
+    return null;
   }
 
   return (
@@ -99,41 +109,78 @@ export function ProjectsListPage() {
       />
 
       {showCreate && hasPermission('project.create') ? (
-        <section className="rounded-lg border bg-card p-4 space-y-3">
-          <h2 className="font-semibold">Create Project</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input placeholder="Project name" value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} />
-            <Input placeholder="Code" value={createForm.code} onChange={(e) => setCreateForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))} />
-            <Input placeholder="Client" value={createForm.clientName} onChange={(e) => setCreateForm((p) => ({ ...p, clientName: e.target.value }))} />
-            <Input type="date" value={createForm.startDate} onChange={(e) => setCreateForm((p) => ({ ...p, startDate: e.target.value }))} />
-            <select className="h-10 rounded-md border px-3 text-sm" value={createForm.projectManagerId} onChange={(e) => setCreateForm((p) => ({ ...p, projectManagerId: e.target.value }))}>
-              <option value="">Project manager</option>
-              {(employees?.items ?? []).map((employee) => (
-                <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName}</option>
-              ))}
-            </select>
-          </div>
-          <textarea className="min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Description" value={createForm.description} onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))} />
-          <div className="flex gap-2">
-            <Button onClick={() => void handleCreateProject()} disabled={createMutation.isPending || !createForm.name || !createForm.code || !createForm.projectManagerId}>
-              Create Project
-            </Button>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-          </div>
+        <section className="rounded-lg border bg-card p-4">
+          <FormSection title="New Project" description="Create a project with essential business fields only.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <SelectField label="Project Name" required>
+                <Input
+                  placeholder="Project name"
+                  value={createForm.name}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                />
+              </SelectField>
+              <SelectField label="Client">
+                <Input
+                  placeholder="Client name"
+                  value={createForm.clientName}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, clientName: event.target.value }))}
+                />
+              </SelectField>
+              <SelectField label="Project Manager" required>
+                <EmployeeSearchSelect
+                  value={createForm.projectManagerId}
+                  onChange={(value) => setCreateForm((prev) => ({ ...prev, projectManagerId: value }))}
+                  required
+                />
+              </SelectField>
+              <SelectField label="Start Date" required>
+                <Input
+                  type="date"
+                  value={createForm.startDate}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, startDate: event.target.value }))}
+                />
+              </SelectField>
+            </div>
+            <SelectField label="Description">
+              <textarea
+                className="min-h-20 w-full rounded-md border px-3 py-2 text-sm"
+                placeholder="Description"
+                value={createForm.description}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
+              />
+            </SelectField>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => void handleCreateProject()}
+                disabled={createMutation.isPending || !createForm.name || !createForm.projectManagerId}
+              >
+                Create Project
+              </Button>
+              <Button variant="outline" onClick={() => setShowCreate(false)}>
+                Cancel
+              </Button>
+            </div>
+          </FormSection>
         </section>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <Input placeholder="Search projects..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-md" />
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-          Include archived
-        </label>
-      </div>
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search projects…"
+        onReset={() => {
+          setSearch('');
+          setShowArchived(false);
+        }}
+        showArchived={showArchived}
+        onShowArchivedChange={setShowArchived}
+      />
 
-      {isError && <p className="text-destructive">Failed to load projects.</p>}
+      {isError ? <p className="text-destructive">Failed to load projects.</p> : null}
 
-      <DataTable columns={columns} data={data?.items ?? []} onRowClick={(row) => navigate(ROUTES.projectDetail(row.id))} />
+      <PageDataBoundary isLoading={isLoading} isError={isError} source="projects-list">
+        <DataTable columns={columns} data={data?.items ?? []} onRowClick={(row) => navigate(ROUTES.projectDetail(row.id))} />
+      </PageDataBoundary>
     </div>
   );
 }

@@ -164,6 +164,7 @@ export function SalesManagerPage() {
 
       {assignLeadId ? (
         <LeadAssignmentDialog
+          open={Boolean(assignLeadId)}
           leadId={assignLeadId}
           onClose={() => setAssignLeadId(null)}
           onSuccess={() => setAssignLeadId(null)}

@@ -6,6 +6,7 @@ import {
   JobRoleRepository,
   OfficeLocationRepository,
 } from '@domain/organization/organization.schemas.js';
+import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { resolveEntityConfig } from '@modules/organization/constants/entity-registry.constants.js';
 import type { MasterDataEntityKey } from '@modules/organization/constants/organization.constants.js';
 import { MASTER_DATA_ENTITY } from '@modules/organization/constants/organization.constants.js';
@@ -42,8 +43,18 @@ const DELETE_DEPENDENCY_MAP: Partial<Record<MasterDataEntityKey, DependencyCheck
       filter: (id) => ({ departmentId: id }),
       message: 'Department is referenced by one or more job roles',
     },
+    {
+      repository: EmployeeRepository,
+      filter: (id) => ({ departmentId: id }),
+      message: 'Department has assigned employees',
+    },
   ],
   [MASTER_DATA_ENTITY.DESIGNATION]: [
+    {
+      repository: EmployeeRepository,
+      filter: (id) => ({ designationId: id }),
+      message: 'Designation has assigned employees',
+    },
     {
       repository: DesignationRepository,
       filter: (id) => ({ promotionDesignationId: id }),

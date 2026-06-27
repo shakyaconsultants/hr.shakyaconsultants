@@ -25,6 +25,10 @@ export interface MasterDataListQuery {
   includeDeleted?: boolean;
   branchId?: string;
   departmentId?: string;
+  parentDepartmentId?: string;
+  headEmployeeId?: string;
+  salaryGradeId?: string;
+  hierarchyLevel?: number;
   type?: string;
   group?: string;
   dateFrom?: string;

@@ -11,6 +11,7 @@ import {
 } from '@/features/rbac/hooks/use-rbac';
 import { PageHeader } from '@/shared/components/page-header';
 import { DataTable } from '@/shared/components/data-table';
+import { FilterBar } from '@/shared/components/filter-bar';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Loading } from '@/shared/components/loading';
@@ -96,7 +97,7 @@ export function RolesPage() {
           </div>
         }
       />
-      <Input placeholder="Search roles..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+      <FilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Search roles…" />
       <PageDataBoundary isLoading={false} isError={isError} source="roles-list">
         <DataTable columns={columns} data={data?.items ?? []} emptyTitle="No roles yet" emptyMessage="Create a role to get started." />
       </PageDataBoundary>

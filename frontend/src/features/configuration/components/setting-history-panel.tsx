@@ -10,7 +10,7 @@ interface SettingHistoryPanelProps {
 
 export function SettingHistoryPanel({ settingKey, onClose }: SettingHistoryPanelProps) {
   const { data, isLoading, isError } = useSettingHistory({
-    key: settingKey ?? undefined,
+    key: settingKey ?? '',
     page: 1,
     pageSize: 50,
   });

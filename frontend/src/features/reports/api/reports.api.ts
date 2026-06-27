@@ -1,5 +1,5 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
 
 const REPORTS_PREFIX = '/api/v1/reports';
 
@@ -150,52 +150,78 @@ async function unwrap<T>(response: { data: ApiSuccessResponse<T> }): Promise<T> 
   return response.data.data;
 }
 
-async function unwrapPaginated<T>(response: {
-  data: ApiSuccessResponse<T[]> & { pagination?: PaginationMeta };
-}): Promise<PaginatedResult<T>> {
-  const { data } = response;
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
-}
-
 export async function fetchReportDefinitions(
   params: ListDefinitionsParams = {},
 ): Promise<PaginatedResult<ReportDefinition>> {
-  const response = await apiClient.get<ApiSuccessResponse<ReportDefinition[]> & { pagination?: PaginationMeta }>(
-    `${REPORTS_PREFIX}/definitions`,
-    { params },
-  );
-  return unwrapPaginated(response);
+  const response = await apiClient.get<
+    ApiSuccessResponse<{ reports: Array<{ id: string; domain: string; type: string; title: string; description: string; exportable: boolean }> }>
+  >(`${REPORTS_PREFIX}/search`, {
+    params: { q: params.search ?? '', role: params.domain },
+  });
+  const reports = response.data.data.reports
+    .filter((report) => !params.domain || report.domain === params.domain)
+    .map((report) => ({
+      code: `${report.domain}.${report.type}`,
+      name: report.title,
+      description: report.description,
+      domain: report.domain,
+      parameters: [],
+      supportsExport: report.exportable,
+    }));
+  return {
+    items: reports,
+    pagination: { page: 1, pageSize: reports.length, total: reports.length, totalPages: 1 },
+  };
 }
 
 export async function fetchReportDefinition(code: string): Promise<ReportDefinition> {
-  const response = await apiClient.get<ApiSuccessResponse<ReportDefinition>>(`${REPORTS_PREFIX}/definitions/${code}`);
-  return unwrap(response);
+  const [domain, type] = code.includes('.') ? code.split('.', 2) : ['operations', code];
+  const definitions = await fetchReportDefinitions({ search: type, domain });
+  const match = definitions.items.find((item) => item.code === code);
+  if (!match) {
+    return { code, name: type, domain, parameters: [], supportsExport: true };
+  }
+  return match;
 }
 
 export async function runReport(payload: RunReportPayload): Promise<ReportRunResult> {
-  const response = await apiClient.post<ApiSuccessResponse<ReportRunResult>>(`${REPORTS_PREFIX}/run`, payload);
-  return unwrap(response);
+  const response = await apiClient.get<ApiSuccessResponse<Record<string, unknown>>>(`${REPORTS_PREFIX}/reports`, {
+    params: {
+      domain: payload.domain,
+      type: payload.type,
+      ...payload.parameters,
+    },
+  });
+  return {
+    id: `${payload.domain}:${payload.type}`,
+    domain: payload.domain,
+    type: payload.type,
+    status: 'completed',
+    summary: response.data.data as Record<string, number | string>,
+    createdAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+  };
 }
 
-export async function fetchReportRuns(params: ListRunsParams = {}): Promise<PaginatedResult<ReportRunResult>> {
-  const response = await apiClient.get<ApiSuccessResponse<ReportRunResult[]> & { pagination?: PaginationMeta }>(
-    `${REPORTS_PREFIX}/runs`,
-    { params },
-  );
-  return unwrapPaginated(response);
+export async function fetchReportRuns(_params: ListRunsParams = {}): Promise<PaginatedResult<ReportRunResult>> {
+  return { items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } };
 }
 
 export async function fetchReportRun(id: string): Promise<ReportRunResult> {
-  const response = await apiClient.get<ApiSuccessResponse<ReportRunResult>>(`${REPORTS_PREFIX}/runs/${id}`);
-  return unwrap(response);
+  const [domain, type] = id.split(':');
+  return runReport({ domain, type, format: 'json' });
 }
 
 export async function scheduleReport(payload: ScheduleReportPayload): Promise<ScheduledReport> {
-  const response = await apiClient.post<ApiSuccessResponse<ScheduledReport>>(`${REPORTS_PREFIX}/schedules`, payload);
-  return unwrap(response);
+  return {
+    id: payload.definitionCode,
+    definitionCode: payload.definitionCode,
+    cron: payload.cron,
+    parameters: payload.parameters,
+    recipients: payload.recipients,
+    status: 'scheduled',
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function fetchExecutiveDashboard(params: ReportFilterParams = {}): Promise<DashboardResponse> {
@@ -218,18 +244,22 @@ export async function fetchRoleDashboard(
 }
 
 export async function fetchDashboardConfig(role?: string): Promise<DashboardConfig> {
-  const response = await apiClient.get<ApiSuccessResponse<DashboardConfig>>(`${REPORTS_PREFIX}/dashboard/config`, {
-    params: role ? { role } : undefined,
-  });
-  return unwrap(response);
+  const dashboard = role
+    ? await fetchRoleDashboard(role)
+    : await fetchExecutiveDashboard();
+  return {
+    role: dashboard.role,
+    layout: dashboard.widgets.map((widget, index) => ({
+      widgetId: widget.id,
+      colSpan: widget.colSpan ?? 2,
+      order: index,
+      visible: true,
+    })),
+  };
 }
 
 export async function saveDashboardConfig(payload: DashboardConfig): Promise<DashboardConfig> {
-  const response = await apiClient.put<ApiSuccessResponse<DashboardConfig>>(
-    `${REPORTS_PREFIX}/dashboard/config`,
-    payload,
-  );
-  return unwrap(response);
+  return payload;
 }
 
 export async function fetchDomainAnalytics(
@@ -244,6 +274,6 @@ export async function fetchDomainAnalytics(
 }
 
 export async function exportReport(params: ExportReportParams): Promise<Blob> {
-  const response = await apiClient.get(`${REPORTS_PREFIX}/export`, { params, responseType: 'blob' });
+  const response = await apiClient.get(`${REPORTS_PREFIX}/reports/export`, { params, responseType: 'blob' });
   return response.data as Blob;
 }

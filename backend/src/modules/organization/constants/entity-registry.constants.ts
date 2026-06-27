@@ -68,7 +68,7 @@ export const MASTER_DATA_ENTITY_REGISTRY: Record<MasterDataEntityKey, MasterData
       update: ORG_PERMISSIONS.DEPARTMENT_UPDATE,
       delete: ORG_PERMISSIONS.DEPARTMENT_DELETE,
     },
-    searchFields: ['name', 'code', 'description'],
+    searchFields: ['name', 'code', 'description', 'email'],
     duplicateFields: ['name', 'code'],
     cacheEnabled: true,
   },

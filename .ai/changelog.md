@@ -40,8 +40,25 @@ AI agents and engineers must **append a session entry** after every completed ta
 
 ---
 
+## 2025-06-26 — Full production stabilization audit
+
 ### Fixed
-- Super Admin 403 in production: frontend checked role slug `super_admin` but backend uses `super-admin`
+- Deployment: SPA rewrites (`vercel.json`, `_redirects`), Render `AUTH_COOKIE_SAME_SITE=none`, Docker httpOnly flag
+- Payroll/reports/settings API paths aligned with backend routes
+- Portal redirect loops (sales, payroll); leave-exit nav portal/permission filtering
+- Portal guard waits for permissions; 403/404/error pages use portal home
+- Employee create + lead assignment use searchable master-data/employee selects
+- Unified project at-risk logic across dashboard and list API
+
+### Added
+- `.ai/PRODUCTION-STABILIZATION.md` — full audit report and remaining items
+- `SearchableSelect`, `MasterDataSelect`, `EmployeeSearchSelect` shared components
+
+---
+
+## 2025-06-25 — Super Admin slug + auth fallback
+
+### Fixed
 - `/auth/me` now falls back to JWT role IDs when employee permission lookup returns empty
 - Employee role queries filter `effectiveTo: null` consistently
 

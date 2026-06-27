@@ -2,6 +2,7 @@ import { ProjectRepository } from '@domain/project/project.schemas.js';
 import { TaskRepository } from '@domain/project/project.schemas.js';
 import { SprintRepository, SPRINT_STATUS } from '@domain/project/project.schemas.js';
 import { ProjectMemberRepository } from '@domain/project/project.schemas.js';
+import { isProjectAtRisk } from '@modules/project/utils/project-risk.util.js';
 import { TaskVerificationRepository, VERIFICATION_STATUS, PROJECT_RISK_LEVEL } from '@domain/project/project-extended.schemas.js';
 import { ActivityLogRepository } from '@domain/audit/audit.schemas.js';
 import { PROJECT_STATUS } from '@shared/constants/status.constants.js';
@@ -123,11 +124,7 @@ export const ProjectDashboardService = {
     ]);
 
     const now = new Date();
-    const projectsAtRisk = projects.filter((p) =>
-      p.riskLevel === PROJECT_RISK_LEVEL.HIGH
-      || p.riskLevel === PROJECT_RISK_LEVEL.CRITICAL
-      || (p.targetDate && p.targetDate < now && p.status !== PROJECT_STATUS.COMPLETED),
-    ).length;
+    const projectsAtRisk = projects.filter((p) => isProjectAtRisk(p, now)).length;
 
     const budgetSummary = {
       totalBudget: projects.reduce((sum, p) => sum + (p.budget ?? 0), 0),
@@ -151,7 +148,7 @@ export const ProjectDashboardService = {
 
     const projectHealth = {
       healthy: projects.filter((p) => p.riskLevel === PROJECT_RISK_LEVEL.LOW).length,
-      atRisk: projects.filter((p) => p.riskLevel === PROJECT_RISK_LEVEL.MEDIUM || p.riskLevel === PROJECT_RISK_LEVEL.HIGH).length,
+      atRisk: projects.filter((p) => isProjectAtRisk(p, now)).length,
       critical: projects.filter((p) => p.riskLevel === PROJECT_RISK_LEVEL.CRITICAL).length,
     };
 

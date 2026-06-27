@@ -55,7 +55,7 @@ export function useConfigurationSettingsByGroup(group: string) {
   });
 }
 
-export function useSettingHistory(params: { key?: string; page?: number; pageSize?: number } = {}) {
+export function useSettingHistory(params: { key: string; page?: number; pageSize?: number }) {
   return useQuery({
     queryKey: [...CONFIG_QUERY_KEY, 'history', params],
     queryFn: () => fetchSettingHistory(params),

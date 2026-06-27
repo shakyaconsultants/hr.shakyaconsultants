@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, Plus, Users } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import { useCandidates, useExportCandidates } from '@/features/recruitment/hooks/use-recruitment';
 import { CandidateCreateDialog } from '@/features/recruitment/components/candidate-create-dialog';
 import { RecruitmentNav } from '@/features/recruitment/components/recruitment-nav';
 import { DataTable } from '@/shared/components/data-table';
 import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { PageHeader } from '@/shared/components/page-header';
+import { FilterBar, FilterField } from '@/shared/components/filter-bar';
+import { AsyncSearchSelect } from '@/shared/components/async-search-select';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { ROUTES } from '@/config/app.config';
 import type { CandidateRecord } from '@/features/recruitment/api/recruitment.api';
 import { useAuthStore } from '@/shared/stores/app.store';
+
+const PIPELINE_STAGE_OPTIONS = [
+  { value: '', label: 'All stages' },
+  { value: 'applied', label: 'Applied' },
+  { value: 'screening', label: 'Screening' },
+  { value: 'interview', label: 'Interview' },
+  { value: 'offer', label: 'Offer' },
+  { value: 'hired', label: 'Hired' },
+  { value: 'rejected', label: 'Rejected' },
+];
 
 function formatStage(slug: string): string {
   return (slug ?? '')
@@ -92,39 +103,34 @@ export function CandidatesListPage() {
           { label: 'Candidates' },
         ]}
         actions={
-          <div className="flex gap-2">
-            {canExport ? (
-              <Button variant="outline" onClick={() => void handleExport()} disabled={exportMutation.isPending}>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
-            ) : null}
-            {canCreate ? (
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Candidate
-              </Button>
-            ) : null}
-          </div>
+          canCreate ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Candidate
+            </Button>
+          ) : undefined
         }
       />
 
       <RecruitmentNav />
 
-      <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Search by name, email, or phone..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className="max-w-md"
-        />
-        <Input
-          placeholder="Filter by stage slug..."
-          value={stageFilter}
-          onChange={(event) => setStageFilter(event.target.value)}
-          className="max-w-xs"
-        />
-      </div>
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by name, email, or phone…"
+        onExport={canExport ? () => void handleExport() : undefined}
+        exportLabel="Export CSV"
+      >
+        <FilterField label="Stage">
+          <AsyncSearchSelect
+            value={stageFilter}
+            options={PIPELINE_STAGE_OPTIONS}
+            placeholder="All stages"
+            onChange={setStageFilter}
+            clearable={false}
+          />
+        </FilterField>
+      </FilterBar>
 
       <PageDataBoundary
         isLoading={isLoading}

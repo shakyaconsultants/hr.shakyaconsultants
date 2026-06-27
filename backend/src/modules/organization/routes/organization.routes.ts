@@ -20,11 +20,34 @@ import {
   updateCompany,
   updateEntity,
 } from '@modules/organization/controllers/master-data.controller.js';
+import {
+  getDepartmentDetail,
+  getDepartmentStats,
+} from '@modules/organization/controllers/department.controller.js';
+import { getDesignationDetail } from '@modules/organization/controllers/designation.controller.js';
 
 const organizationRoutes = Router();
 
 organizationRoutes.use(authenticateMiddleware);
 organizationRoutes.use(companyScopeMiddleware());
+
+organizationRoutes.get(
+  '/departments/stats',
+  authorize(ORG_PERMISSIONS.DEPARTMENT_READ),
+  getDepartmentStats,
+);
+
+organizationRoutes.get(
+  '/departments/:id/detail',
+  authorize(ORG_PERMISSIONS.DEPARTMENT_READ),
+  getDepartmentDetail,
+);
+
+organizationRoutes.get(
+  '/designations/:id/detail',
+  authorize(ORG_PERMISSIONS.DESIGNATION_READ),
+  getDesignationDetail,
+);
 
 /**
  * @swagger

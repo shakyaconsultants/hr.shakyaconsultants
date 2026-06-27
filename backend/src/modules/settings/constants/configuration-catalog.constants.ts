@@ -89,7 +89,23 @@ export const CONFIGURATION_CATALOG: ConfigurationSettingDefinition[] = [
   // Organization
   def('organization.default_employment_type', 'Default Employment Type', 'Default employment type code', SETTING_VALUE_TYPE.STRING, 'FULL_TIME', SETTING_GROUP.ORGANIZATION),
   def('organization.employee_number_prefix', 'Employee Number Prefix', 'Prefix for auto-generated employee numbers', SETTING_VALUE_TYPE.STRING, 'EMP', SETTING_GROUP.ORGANIZATION),
+  def('organization.department_code_prefix', 'Department Code Prefix', 'Prefix for auto-generated department codes', SETTING_VALUE_TYPE.STRING, 'DEPT', SETTING_GROUP.ORGANIZATION),
+  def('organization.designation_code_prefix', 'Designation Code Prefix', 'Prefix for auto-generated designation codes', SETTING_VALUE_TYPE.STRING, 'DESG', SETTING_GROUP.ORGANIZATION),
+  def('organization.designation_department_required', 'Designation Department Required', 'Require department mapping on designations', SETTING_VALUE_TYPE.BOOLEAN, false, SETTING_GROUP.ORGANIZATION),
   def('organization.require_branch', 'Require Branch', 'Branch required on employee profile', SETTING_VALUE_TYPE.BOOLEAN, true, SETTING_GROUP.ORGANIZATION),
+  def('organization.code_pad_length', 'Code Pad Length', 'Zero-pad length for auto-generated master data codes', SETTING_VALUE_TYPE.NUMBER, 4, SETTING_GROUP.ORGANIZATION),
+  def('organization.code_include_year', 'Code Include Year', 'Include YY year segment in generated codes', SETTING_VALUE_TYPE.BOOLEAN, false, SETTING_GROUP.ORGANIZATION),
+  def('organization.code_include_month', 'Code Include Month', 'Include MM month segment in generated codes', SETTING_VALUE_TYPE.BOOLEAN, false, SETTING_GROUP.ORGANIZATION),
+  def('organization.branch_code_prefix', 'Branch Code Prefix', 'Prefix for auto-generated branch codes', SETTING_VALUE_TYPE.STRING, 'BR', SETTING_GROUP.ORGANIZATION),
+  def('organization.job_role_code_prefix', 'Job Role Code Prefix', 'Prefix for auto-generated job role codes', SETTING_VALUE_TYPE.STRING, 'ROLE', SETTING_GROUP.ORGANIZATION),
+  def('organization.office_location_code_prefix', 'Office Location Code Prefix', 'Prefix for auto-generated office location codes', SETTING_VALUE_TYPE.STRING, 'LOC', SETTING_GROUP.ORGANIZATION),
+  def('organization.work_shift_code_prefix', 'Work Shift Code Prefix', 'Prefix for auto-generated work shift codes', SETTING_VALUE_TYPE.STRING, 'SHIFT', SETTING_GROUP.ORGANIZATION),
+  def('organization.employment_type_code_prefix', 'Employment Type Code Prefix', 'Prefix for auto-generated employment type codes', SETTING_VALUE_TYPE.STRING, 'EMPT', SETTING_GROUP.ORGANIZATION),
+  def('organization.salary_grade_code_prefix', 'Salary Grade Code Prefix', 'Prefix for auto-generated salary grade codes', SETTING_VALUE_TYPE.STRING, 'SG', SETTING_GROUP.ORGANIZATION),
+  def('organization.leave_type_code_prefix', 'Leave Type Code Prefix', 'Prefix for auto-generated leave type codes', SETTING_VALUE_TYPE.STRING, 'LV', SETTING_GROUP.ORGANIZATION),
+  def('organization.project_category_code_prefix', 'Project Category Code Prefix', 'Prefix for auto-generated project category codes', SETTING_VALUE_TYPE.STRING, 'PCAT', SETTING_GROUP.ORGANIZATION),
+  def('organization.technology_code_prefix', 'Technology Code Prefix', 'Prefix for auto-generated technology codes', SETTING_VALUE_TYPE.STRING, 'TECH', SETTING_GROUP.ORGANIZATION),
+  def('organization.skill_code_prefix', 'Skill Code Prefix', 'Prefix for auto-generated skill codes', SETTING_VALUE_TYPE.STRING, 'SKL', SETTING_GROUP.ORGANIZATION),
 
   // Attendance
   def('attendance.grace_minutes', 'Grace Minutes', 'Grace period before marking late', SETTING_VALUE_TYPE.NUMBER, 15, SETTING_GROUP.ATTENDANCE),

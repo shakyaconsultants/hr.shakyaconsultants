@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
+import { usePortalHomeRoute } from '@/app/hooks/use-resolved-portal';
 import { Button } from '@/shared/components/ui/button';
 
 interface EnterpriseStatusPageProps {
@@ -59,25 +60,27 @@ export function UnauthorizedPage() {
 }
 
 export function ForbiddenPage() {
+  const homeRoute = usePortalHomeRoute();
   return (
     <EnterpriseStatusPage
       code="403"
       title="Access denied"
       description="You do not have permission to view this page."
-      actionLabel="Go to workspace"
-      actionTo={ROUTES.WORKSPACE}
+      actionLabel="Go to home"
+      actionTo={homeRoute}
     />
   );
 }
 
 export function NotFoundPage() {
+  const homeRoute = usePortalHomeRoute();
   return (
     <EnterpriseStatusPage
       code="404"
       title="Page not found"
       description="The page you requested does not exist or has moved."
-      actionLabel="Go to workspace"
-      actionTo={ROUTES.WORKSPACE}
+      actionLabel="Go to home"
+      actionTo={homeRoute}
     />
   );
 }

@@ -1,25 +1,45 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config/app.config';
+import { PORTAL, resolvePortal, type PortalType } from '@/config/portals';
+import { useAuthStore } from '@/shared/stores/app.store';
 import { cn } from '@/shared/utils/cn';
 
-const NAV_ITEMS = [
-  { label: 'Overview', path: ROUTES.LEAVE_EXIT },
-  { label: 'Apply Leave', path: ROUTES.LEAVE_APPLY },
-  { label: 'My Requests', path: ROUTES.LEAVE_REQUESTS },
-  { label: 'Calendar', path: ROUTES.LEAVE_CALENDAR },
-  { label: 'Balances', path: ROUTES.LEAVE_BALANCES },
-  { label: 'Policies', path: ROUTES.LEAVE_POLICIES },
-  { label: 'Resignation', path: ROUTES.RESIGNATION },
-  { label: 'Exit', path: ROUTES.EXIT },
-  { label: 'Approvals', path: ROUTES.APPROVAL_INBOX },
-] as const;
+const NAV_ITEMS: Array<{
+  label: string;
+  path: string;
+  portals: PortalType[];
+  permission?: string;
+}> = [
+  { label: 'Overview', path: ROUTES.LEAVE_EXIT, portals: [PORTAL.ENTERPRISE, PORTAL.MANAGER, PORTAL.WORKSPACE] },
+  { label: 'Apply Leave', path: ROUTES.LEAVE_APPLY, permission: 'leave.apply', portals: [PORTAL.WORKSPACE, PORTAL.MANAGER] },
+  { label: 'My Requests', path: ROUTES.LEAVE_REQUESTS, permission: 'leave.read', portals: [PORTAL.WORKSPACE, PORTAL.MANAGER, PORTAL.ENTERPRISE] },
+  { label: 'Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.read', portals: [PORTAL.WORKSPACE, PORTAL.MANAGER, PORTAL.ENTERPRISE] },
+  { label: 'Balances', path: ROUTES.LEAVE_BALANCES, permission: 'leave.read', portals: [PORTAL.WORKSPACE, PORTAL.MANAGER] },
+  { label: 'Policies', path: ROUTES.LEAVE_POLICIES, permission: 'leave.read', portals: [PORTAL.ENTERPRISE, PORTAL.MANAGER] },
+  { label: 'Resignation', path: ROUTES.RESIGNATION, permission: 'resignation.create', portals: [PORTAL.WORKSPACE] },
+  { label: 'Exit', path: ROUTES.EXIT, permission: 'exit.read', portals: [PORTAL.ENTERPRISE] },
+  { label: 'Approvals', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read', portals: [PORTAL.MANAGER] },
+];
 
 export function LeaveExitNav() {
   const location = useLocation();
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
+  const portal = resolvePortal(hasAnyPermission);
+
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (!item.portals.includes(portal)) {
+      return false;
+    }
+    if ('permission' in item && item.permission && !hasPermission(item.permission)) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <nav className="flex flex-wrap gap-1 border-b pb-px">
-      {NAV_ITEMS.map((item) => {
+      {visibleItems.map((item) => {
         const isActive =
           location.pathname === item.path ||
           (item.path !== ROUTES.LEAVE_EXIT && location.pathname.startsWith(item.path));
