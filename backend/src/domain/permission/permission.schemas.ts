@@ -149,6 +149,10 @@ export const employeeRoleModel = defineDomainModel<EmployeeRoleDocument>(
   {
     indexes: [
       { fields: { employeeId: 1, roleId: 1 }, options: { unique: true, name: 'uq_employee_roles' } },
+      {
+        fields: { companyId: 1, employeeId: 1, effectiveTo: 1 },
+        options: { name: 'idx_employee_roles_company_employee_active' },
+      },
     ],
   },
 );

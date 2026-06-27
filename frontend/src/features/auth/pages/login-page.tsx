@@ -12,8 +12,7 @@ import { Loading } from '@/shared/components/loading';
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const authStatus = useAuthStore((s) => s.authStatus);
   const portalHome = usePortalHomeRoute();
   const [companyCode, setCompanyCode] = useState('HRS');
   const [email, setEmail] = useState('');
@@ -22,11 +21,11 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!isInitialized) {
+  if (authStatus === 'loading') {
     return <Loading message="Loading..." />;
   }
 
-  if (isAuthenticated) {
+  if (authStatus === 'authenticated') {
     return <Navigate to={portalHome} replace />;
   }
 

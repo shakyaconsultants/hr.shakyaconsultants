@@ -42,9 +42,13 @@ export const CacheService = {
 
   async get(key: string): Promise<string | null> {
     if (isRedisAvailable()) {
-      const value = await getRedisClient().get(key);
-      if (value !== null) {
-        return value;
+      try {
+        const value = await getRedisClient().get(key);
+        if (value !== null) {
+          return value;
+        }
+      } catch {
+        // Fall through to Mongo when Redis is temporarily unavailable.
       }
     }
 
@@ -53,11 +57,17 @@ export const CacheService = {
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
     if (isRedisAvailable()) {
-      const client = getRedisClient();
-      if (ttlSeconds !== undefined && ttlSeconds > 0) {
-        await client.set(key, value, 'EX', ttlSeconds);
-      } else {
-        await client.set(key, value);
+      try {
+        const client = getRedisClient();
+        if (ttlSeconds !== undefined && ttlSeconds > 0) {
+          await client.set(key, value, 'EX', ttlSeconds);
+        } else {
+          await client.set(key, value);
+        }
+        void setMongoCacheValue(key, value, ttlSeconds).catch(() => undefined);
+        return true;
+      } catch {
+        // Fall through to Mongo-only persistence.
       }
     }
 
@@ -65,9 +75,40 @@ export const CacheService = {
     return true;
   },
 
+  /** Redis-only replay marker — never blocks auth when Redis is unavailable. */
+  async setReplayKey(key: string, ttlSeconds: number): Promise<void> {
+    if (!isRedisAvailable()) {
+      return;
+    }
+
+    try {
+      await getRedisClient().set(key, '1', 'EX', ttlSeconds);
+    } catch {
+      // Replay protection is best-effort when Redis is unavailable.
+    }
+  },
+
+  /** Redis-only replay lookup — returns false when Redis is unavailable. */
+  async existsReplayKey(key: string): Promise<boolean> {
+    if (!isRedisAvailable()) {
+      return false;
+    }
+
+    try {
+      const value = await getRedisClient().get(key);
+      return value !== null;
+    } catch {
+      return false;
+    }
+  },
+
   async del(key: string): Promise<boolean> {
     if (isRedisAvailable()) {
-      await getRedisClient().del(key);
+      try {
+        await getRedisClient().del(key);
+      } catch {
+        // Continue with Mongo cleanup.
+      }
     }
 
     const entry = await CacheEntryRepository.findOne({ cacheKey: key });

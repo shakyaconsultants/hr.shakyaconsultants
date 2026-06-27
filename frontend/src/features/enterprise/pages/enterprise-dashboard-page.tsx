@@ -10,7 +10,6 @@ import { EnterpriseWidgetComponents } from '@/features/enterprise/widgets/widget
 import { PageHeader } from '@/shared/components/page-header';
 import { LazyWidget, WidgetGrid } from '@/shared/components/widget-system/widget-frame';
 import { useAuthStore } from '@/shared/stores/app.store';
-import { Loading } from '@/shared/components/loading';
 
 export function EnterpriseDashboardPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
@@ -18,7 +17,7 @@ export function EnterpriseDashboardPage() {
   const company = useAuthStore((s) => s.company);
   const { data: featureFlags } = useFeatureFlags();
 
-  const { data: companyProfile, isLoading } = useQuery({
+  const { data: companyProfile } = useQuery({
     queryKey: ['organization', 'company'],
     queryFn: getCompany,
   });
@@ -33,10 +32,6 @@ export function EnterpriseDashboardPage() {
       }),
     [hasPermission, hasAnyPermission, featureFlags],
   );
-
-  if (isLoading) {
-    return <Loading message="Loading enterprise control center..." />;
-  }
 
   return (
     <div className="space-y-6">

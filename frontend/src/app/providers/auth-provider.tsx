@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { fetchMe, loginRequest, logoutRequest, refreshTokens } from '@/features/auth/api/auth.api';
+import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.api';
+import { prefetchAuthenticatedResources, restoreSession } from '@/shared/auth/auth-session';
+import { getRefreshToken, markCookieSessionActive, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
-import { getRefreshToken, hasStoredAuth, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 
 interface AuthContextValue {
   login: (payload: { companyCode: string; email: string; password: string; rememberMe?: boolean }) => Promise<void>;
@@ -15,76 +16,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const setSession = useAuthStore((s) => s.setSession);
   const clearAuth = useAuthStore((s) => s.clearAuth);
-  const setInitialized = useAuthStore((s) => s.setInitialized);
-  const setLoading = useAuthStore((s) => s.setLoading);
+  const setAuthStatus = useAuthStore((s) => s.setAuthStatus);
 
   useEffect(() => {
     let cancelled = false;
 
     async function bootstrapAuth() {
-      setLoading(true);
+      setAuthStatus('loading');
 
-      if (!usesHttpOnlyCookies() && !hasStoredAuth()) {
-        if (!cancelled) {
-          clearAuth();
-          setInitialized(true);
-        }
+      const me = await restoreSession();
+      if (cancelled) return;
+
+      if (!me) {
+        clearAuth();
         return;
       }
 
-      try {
-        const me = await fetchMe();
-        if (!cancelled) {
-          setSession({
-            user: me.user,
-            company: me.company,
-            permissions: me.permissions,
-            roles: me.roles,
-            sessionId: me.sessionId,
-          });
-          setInitialized(true);
-        }
-      } catch {
-        const refreshToken = getRefreshToken();
-        if (usesHttpOnlyCookies() || refreshToken) {
-          try {
-            const refreshed = await refreshTokens(refreshToken ?? undefined);
-            setStoredTokens(refreshed.tokens.accessToken, refreshed.tokens.refreshToken);
-            const me = await fetchMe();
-            if (!cancelled) {
-              setSession({
-                user: me.user,
-                company: me.company,
-                permissions: me.permissions,
-                roles: me.roles,
-                sessionId: me.sessionId,
-              });
-              setInitialized(true);
-            }
-            return;
-          } catch {
-            // fall through
-          }
-        }
-        if (!cancelled) {
-          clearAuth();
-          setInitialized(true);
-        }
-      }
+      setSession({
+        user: me.user,
+        company: me.company,
+        permissions: me.permissions,
+        roles: me.roles,
+        sessionId: me.sessionId,
+      });
+
+      void prefetchAuthenticatedResources(queryClient);
+      if (cancelled) return;
+
+      setAuthStatus('authenticated');
     }
 
     void bootstrapAuth();
     return () => {
       cancelled = true;
     };
-  }, [clearAuth, setInitialized, setLoading, setSession]);
+  }, [clearAuth, queryClient, setAuthStatus, setSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       login: async (payload) => {
+        setAuthStatus('loading');
         const result = await loginRequest(payload);
         setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
-        const me = await fetchMe();
+        if (usesHttpOnlyCookies()) {
+          markCookieSessionActive();
+        }
+
+        const [me] = await Promise.all([
+          fetchMe(),
+          prefetchAuthenticatedResources(queryClient),
+        ]);
         setSession({
           user: me.user,
           company: me.company,
@@ -92,19 +73,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           roles: me.roles,
           sessionId: me.sessionId,
         });
-        setInitialized(true);
+
+        setAuthStatus('authenticated');
       },
       logout: async () => {
         const refreshToken = getRefreshToken() ?? undefined;
         try {
-          await logoutRequest(refreshToken);
+          await logoutRequest(usesHttpOnlyCookies() ? undefined : refreshToken);
         } finally {
           queryClient.clear();
           clearAuth();
         }
       },
     }),
-    [clearAuth, queryClient, setInitialized, setSession],
+    [clearAuth, queryClient, setAuthStatus, setSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

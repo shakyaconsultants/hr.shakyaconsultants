@@ -88,7 +88,7 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
-  const result = await AuthService.getCurrentUser(authReq.user);
+  const result = await AuthService.getCurrentUser(authReq.user, authReq.authUserRecord);
   ResponseService.success(res, req, result);
 });
 

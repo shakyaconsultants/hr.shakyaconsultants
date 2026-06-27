@@ -9,11 +9,10 @@ export function SalesPortalPage() {
   const navigate = useNavigate();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
-  const isInitialized = useAuthStore((s) => s.isInitialized);
-  const isLoading = useAuthStore((s) => s.isLoading);
+  const authStatus = useAuthStore((s) => s.authStatus);
 
   useEffect(() => {
-    if (!isInitialized || isLoading) {
+    if (authStatus !== 'authenticated') {
       return;
     }
 
@@ -36,7 +35,7 @@ export function SalesPortalPage() {
       return;
     }
     navigate(ROUTES.FORBIDDEN, { replace: true });
-  }, [navigate, hasPermission, hasAnyPermission, isInitialized, isLoading]);
+  }, [navigate, hasPermission, hasAnyPermission, authStatus]);
 
   return <Loading message="Redirecting to sales CRM..." />;
 }

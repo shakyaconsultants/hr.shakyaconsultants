@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware';
 import { SUPER_ADMIN_ROLE_SLUG } from '@/config/roles.constants';
 import { clearStoredTokens, setStoredTokens } from '@/shared/auth/token-storage';
 
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -23,6 +25,7 @@ export interface AuthRole {
 }
 
 interface AuthState {
+  authStatus: AuthStatus;
   isAuthenticated: boolean;
   isInitialized: boolean;
   isLoading: boolean;
@@ -39,8 +42,7 @@ interface AuthState {
     roles: AuthRole[];
     sessionId: string;
   }) => void;
-  setInitialized: (value: boolean) => void;
-  setLoading: (value: boolean) => void;
+  setAuthStatus: (status: AuthStatus) => void;
   clearAuth: () => void;
   hasPermission: (code: string) => boolean;
   hasAnyPermission: (codes: string[]) => boolean;
@@ -48,6 +50,7 @@ interface AuthState {
 }
 
 const initialState = {
+  authStatus: 'loading' as AuthStatus,
   isAuthenticated: false,
   isInitialized: false,
   isLoading: true,
@@ -72,11 +75,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       sessionId: payload.sessionId,
       isAuthenticated: true,
     }),
-  setInitialized: (value) => set({ isInitialized: value, isLoading: false }),
-  setLoading: (value) => set({ isLoading: value }),
+  setAuthStatus: (status) =>
+    set({
+      authStatus: status,
+      isAuthenticated: status === 'authenticated',
+      isInitialized: status !== 'loading',
+      isLoading: status === 'loading',
+    }),
   clearAuth: () => {
     clearStoredTokens();
-    set({ ...initialState, isInitialized: true, isLoading: false });
+    set({
+      ...initialState,
+      authStatus: 'unauthenticated',
+      isInitialized: true,
+      isLoading: false,
+    });
   },
   hasPermission: (code) => {
     const state = get();

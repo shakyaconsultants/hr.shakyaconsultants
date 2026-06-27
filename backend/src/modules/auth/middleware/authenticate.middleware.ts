@@ -40,7 +40,11 @@ export async function authenticateMiddleware(
     }
 
     const payload = TokenService.verifyAccessToken(token);
-    const user = await AuthUserRepository.findById(payload.sub, payload.companyId);
+
+    const [user, session] = await Promise.all([
+      AuthUserRepository.findById(payload.sub, payload.companyId),
+      SessionService.findActiveSessionForAuth(payload.companyId, payload.sessionId),
+    ]);
 
     if (!user) {
       throw new AuthenticationError('User not found', ERROR_CODES.AUTH_UNAUTHORIZED);
@@ -50,7 +54,6 @@ export async function authenticateMiddleware(
       throw new AuthenticationError('Token revoked', ERROR_CODES.AUTH_TOKEN_INVALID);
     }
 
-    const session = await SessionService.findActiveSession(payload.companyId, payload.sessionId);
     if (!session) {
       throw new AuthenticationError('Session revoked', ERROR_CODES.AUTH_SESSION_REVOKED);
     }
@@ -73,7 +76,9 @@ export async function authenticateMiddleware(
       email: user.email,
     };
 
-    (req as AuthenticatedRequest).user = authenticatedUser;
+    const authReq = req as AuthenticatedRequest;
+    authReq.user = authenticatedUser;
+    authReq.authUserRecord = user;
     next();
   } catch (error) {
     next(error);

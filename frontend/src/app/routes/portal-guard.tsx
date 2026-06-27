@@ -17,8 +17,7 @@ const PORTAL_HOME_PATHS = [ROUTES.ENTERPRISE, ROUTES.MANAGER, ROUTES.WORKSPACE] 
 
 export function PortalGuard() {
   const location = useLocation();
-  const isInitialized = useAuthStore((s) => s.isInitialized);
-  const isLoading = useAuthStore((s) => s.isLoading);
+  const authStatus = useAuthStore((s) => s.authStatus);
   const permissions = useAuthStore((s) => s.permissions);
   const roles = useAuthStore((s) => s.roles);
   const hasPermission = useAuthStore((s) => s.hasPermission);
@@ -32,12 +31,16 @@ export function PortalGuard() {
 
   const homeRoute = getPortalHomeRoute(portal);
 
-  if (!isInitialized || isLoading) {
+  if (authStatus === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loading message="Loading your workspace..." />
       </div>
     );
+  }
+
+  if (authStatus === 'unauthenticated') {
+    return <Navigate to={ROUTES.LOGIN} replace state={{ from: location.pathname }} />;
   }
 
   const sessionReady = isSuperAdmin() || permissions.length > 0 || roles.length > 0;

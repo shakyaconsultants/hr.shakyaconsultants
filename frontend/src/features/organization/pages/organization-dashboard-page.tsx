@@ -4,19 +4,19 @@ import { ENTITY_CATALOG } from '@/features/organization/constants/entity-catalog
 import { ROUTES } from '@/config/app.config';
 import { useQuery } from '@tanstack/react-query';
 import { getCompany } from '@/features/organization/api/organization.api';
-import { Loading } from '@/shared/components/loading';
 import { PageHeader } from '@/shared/components/page-header';
 import { Button } from '@/shared/components/ui/button';
+import { useAuthStore } from '@/shared/stores/app.store';
 
 export function OrganizationDashboardPage() {
-  const { data: company, isLoading } = useQuery({
+  const authCompany = useAuthStore((s) => s.company);
+  const { data: company } = useQuery({
     queryKey: ['organization', 'company'],
     queryFn: getCompany,
   });
 
-  if (isLoading) {
-    return <Loading message="Loading organization..." />;
-  }
+  const companyName = String(company?.name ?? authCompany?.name ?? '—');
+  const companyCode = String(company?.code ?? authCompany?.code ?? '');
 
   return (
     <div className="space-y-8">
@@ -47,8 +47,8 @@ export function OrganizationDashboardPage() {
             <Building2 className="h-5 w-5" />
             <h2 className="font-semibold">Company</h2>
           </div>
-          <p className="text-2xl font-bold">{String(company?.name ?? '—')}</p>
-          <p className="text-sm text-muted-foreground">{String(company?.code ?? '')}</p>
+          <p className="text-2xl font-bold">{companyName}</p>
+          <p className="text-sm text-muted-foreground">{companyCode}</p>
         </div>
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="mb-2 flex items-center gap-2 text-primary">

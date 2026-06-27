@@ -7,6 +7,7 @@ import {
   buildRefreshReplayKey,
 } from '@modules/auth/constants/auth.constants.js';
 import { AuthSessionRepository } from '@modules/auth/repositories/session.repository.js';
+import { SessionCacheService } from '@modules/auth/services/session-cache.service.js';
 import { hashRefreshToken, parseExpiresInToMs } from '@modules/auth/services/token.service.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
@@ -110,11 +111,29 @@ export const SessionService = {
     return AuthSessionRepository.findActiveBySessionId(companyId, sessionId);
   },
 
+  async findActiveSessionForAuth(
+    companyId: string,
+    sessionId: string,
+  ): Promise<DeviceSessionDocument | null> {
+    const cached = SessionCacheService.get(companyId, sessionId);
+    if (cached === false) {
+      return null;
+    }
+    if (cached === true) {
+      return { sessionId } as DeviceSessionDocument;
+    }
+
+    const session = await AuthSessionRepository.findActiveBySessionIdForAuth(companyId, sessionId);
+    SessionCacheService.set(companyId, sessionId, session !== null);
+    return session;
+  },
+
   async revokeSession(
     companyId: string,
     sessionId: string,
     updatedBy: string,
   ): Promise<void> {
+    SessionCacheService.invalidate(companyId, sessionId);
     await AuthSessionRepository.revokeSession(companyId, sessionId, updatedBy);
   },
 
@@ -123,6 +142,7 @@ export const SessionService = {
     userId: string,
     updatedBy: string,
   ): Promise<number> {
+    SessionCacheService.invalidateUser(companyId, userId);
     return AuthSessionRepository.revokeAllForUser(companyId, userId, updatedBy);
   },
 
@@ -137,7 +157,7 @@ export const SessionService = {
     const replayKey = buildRefreshReplayKey(env.QUEUE_PREFIX, params.oldJti);
     const replayTtlSeconds = Math.ceil(parseExpiresInToMs(env.JWT_REFRESH_EXPIRES_IN) / 1000);
 
-    await CacheService.set(replayKey, '1', replayTtlSeconds);
+    await CacheService.setReplayKey(replayKey, replayTtlSeconds);
 
     await AuthSessionRepository.updateRefreshTokenHash(
       params.companyId,
@@ -150,7 +170,7 @@ export const SessionService = {
   async isRefreshReplay(jti: string): Promise<boolean> {
     const env = getEnv();
     const replayKey = buildRefreshReplayKey(env.QUEUE_PREFIX, jti);
-    return CacheService.exists(replayKey);
+    return CacheService.existsReplayKey(replayKey);
   },
 
   async updateLastActivity(companyId: string, sessionId: string): Promise<void> {

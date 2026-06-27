@@ -77,6 +77,7 @@ export const userModel = defineDomainModel<UserDocument>(
   {
     indexes: [
       { fields: { companyId: 1, email: 1 }, options: { unique: true, name: 'uq_users_company_email' } },
+      { fields: { companyId: 1, id: 1 }, options: { unique: true, name: 'uq_users_company_id' } },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_users_company_status' } },
     ],
   },

@@ -9,13 +9,12 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ permission, permissionsAny }: ProtectedRouteProps) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const authStatus = useAuthStore((s) => s.authStatus);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
   const location = useLocation();
 
-  if (!isInitialized) {
+  if (authStatus === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loading message="Securing your session..." />
@@ -23,7 +22,7 @@ export function ProtectedRoute({ permission, permissionsAny }: ProtectedRoutePro
     );
   }
 
-  if (!isAuthenticated) {
+  if (authStatus === 'unauthenticated') {
     return <Navigate to={ROUTES.LOGIN} replace state={{ from: location.pathname }} />;
   }
 

@@ -1,45 +1,32 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { APP_CONFIG, ROUTES } from '@/config/app.config';
 import type { ApiErrorResponse } from '@/shared/types/api.types';
-import { refreshTokens } from '@/features/auth/api/auth.api';
-import {
-  clearStoredTokens,
-  getAccessToken,
-  getRefreshToken,
-  setStoredTokens,
-  usesHttpOnlyCookies,
-} from '@/shared/auth/token-storage';
+import { isAuthBootstrapActive, refreshAccessTokenOnce } from '@/shared/auth/auth-session';
+import { clearStoredTokens, resolveBearerToken, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
+import { useAuthStore } from '@/shared/stores/app.store';
+
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  _authRetried?: boolean;
+}
+
+const AUTH_REFRESH_SKIP_PATHS = ['/auth/login', '/auth/refresh', '/auth/forgot-password', '/auth/reset-password'];
+
+function shouldSkipAuthRefresh(url: string | undefined): boolean {
+  if (!url) return false;
+  return AUTH_REFRESH_SKIP_PATHS.some((path) => url.includes(path));
+}
 
 export const apiClient = axios.create({
   baseURL: APP_CONFIG.apiBaseUrl,
-  timeout: 30000,
+  timeout: 15_000,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
 });
 
-let refreshPromise: Promise<string | null> | null = null;
-
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!usesHttpOnlyCookies() && !refreshToken) {
-    return null;
-  }
-
-  const result = await refreshTokens(refreshToken ?? undefined);
-  const accessToken = result.tokens.accessToken;
-  const nextRefreshToken = result.tokens.refreshToken;
-
-  if (accessToken || nextRefreshToken) {
-    setStoredTokens(accessToken, nextRefreshToken);
-  }
-
-  return accessToken || getAccessToken();
-}
-
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = getAccessToken();
+  const token = resolveBearerToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -49,24 +36,27 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiErrorResponse>) => {
-    const original = error.config;
+    const original = error.config as RetryableRequestConfig | undefined;
     const status = error.response?.status;
 
-    if (status === 401 && original && !original.url?.includes('/auth/login')) {
-      if (!refreshPromise) {
-        refreshPromise = refreshAccessToken().finally(() => {
-          refreshPromise = null;
-        });
-      }
+    if (status === 401 && original && !original._authRetried && !shouldSkipAuthRefresh(original.url)) {
+      original._authRetried = true;
 
-      const newToken = await refreshPromise;
-      if (newToken && original.headers) {
-        original.headers.Authorization = `Bearer ${newToken}`;
+      const refreshed = await refreshAccessTokenOnce();
+      if (refreshed) {
+        const token = resolveBearerToken();
+        if (token) {
+          original.headers.Authorization = `Bearer ${token}`;
+        } else if (usesHttpOnlyCookies()) {
+          delete original.headers.Authorization;
+        }
         return apiClient(original);
       }
 
       clearStoredTokens();
-      if (window.location.pathname !== ROUTES.LOGIN) {
+      useAuthStore.getState().clearAuth();
+
+      if (!isAuthBootstrapActive() && window.location.pathname !== ROUTES.LOGIN) {
         window.location.assign(ROUTES.LOGIN);
       }
     }

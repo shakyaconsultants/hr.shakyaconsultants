@@ -4,11 +4,10 @@ import { usePortalHomeRoute } from '@/app/hooks/use-resolved-portal';
 import { Loading } from '@/shared/components/loading';
 
 export function PublicRoute() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const authStatus = useAuthStore((s) => s.authStatus);
   const portalHome = usePortalHomeRoute();
 
-  if (!isInitialized) {
+  if (authStatus === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loading message="Loading..." />
@@ -16,7 +15,7 @@ export function PublicRoute() {
     );
   }
 
-  if (isAuthenticated) {
+  if (authStatus === 'authenticated') {
     return <Navigate to={portalHome} replace />;
   }
 

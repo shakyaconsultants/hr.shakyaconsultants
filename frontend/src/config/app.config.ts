@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
   name: import.meta.env.VITE_APP_NAME ?? 'HR Shakya ERP',
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
   apiPrefix: import.meta.env.VITE_API_PREFIX ?? '/api/v1',
   authUseHttpOnlyCookies: import.meta.env.VITE_AUTH_USE_HTTP_ONLY_COOKIES === 'true',
 } as const;

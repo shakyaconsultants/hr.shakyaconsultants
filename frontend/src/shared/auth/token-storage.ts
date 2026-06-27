@@ -1,5 +1,8 @@
 import { APP_CONFIG, STORAGE_KEYS } from '@/config/app.config';
 
+/** In-memory marker when auth is cookie-based (no Bearer token in JS). */
+export const COOKIE_AUTH_SENTINEL = '__http_only_cookie__';
+
 let memoryAccessToken: string | null = null;
 let memoryRefreshToken: string | null = null;
 
@@ -21,15 +24,27 @@ export function getRefreshToken(): string | null {
   return localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 }
 
+export function markCookieSessionActive(): void {
+  if (usesHttpOnlyCookies()) {
+    memoryAccessToken = COOKIE_AUTH_SENTINEL;
+    memoryRefreshToken = COOKIE_AUTH_SENTINEL;
+  }
+}
+
 export function setStoredTokens(accessToken: string, refreshToken: string): void {
   if (usesHttpOnlyCookies()) {
-    memoryAccessToken = accessToken || null;
-    memoryRefreshToken = refreshToken || null;
+    if (accessToken || refreshToken) {
+      markCookieSessionActive();
+    }
     return;
   }
 
-  localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
-  localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+  if (accessToken) {
+    localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+  }
+  if (refreshToken) {
+    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+  }
 }
 
 export function clearStoredTokens(): void {
@@ -44,4 +59,16 @@ export function hasStoredAuth(): boolean {
     return true;
   }
   return Boolean(getAccessToken() || getRefreshToken());
+}
+
+export function isCookieAuthSession(): boolean {
+  return usesHttpOnlyCookies() && getAccessToken() === COOKIE_AUTH_SENTINEL;
+}
+
+export function resolveBearerToken(): string | null {
+  const token = getAccessToken();
+  if (!token || token === COOKIE_AUTH_SENTINEL) {
+    return null;
+  }
+  return token;
 }

@@ -50,6 +50,8 @@ import { AuthenticationError, NotFoundError } from '@shared/errors/app.error.js'
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
+import type { UserDocument } from '@domain/auth/user.schema.js';
+import { AuthPerfTimer } from '@modules/auth/utils/auth-perf.util.js';
 
 export interface AuthRequestMeta {
   ipAddress: string;
@@ -59,19 +61,25 @@ export interface AuthRequestMeta {
 
 export const AuthService = {
   async login(input: LoginInput, meta: AuthRequestMeta): Promise<LoginResponse> {
+    const perf = new AuthPerfTimer('login');
+
     await SystemInitService.assertSystemInitialized();
+    perf.mark('system_init');
 
     const company = await CompanyRepository.findOne({ code: input.companyCode });
+    perf.mark('company_lookup');
     if (!company) {
       await PasswordService.comparePassword(input.password, undefined);
       throw new AuthenticationError('Invalid credentials', ERROR_CODES.AUTH_INVALID_CREDENTIALS);
     }
 
     const user = await AuthUserRepository.findByEmailWithPassword(input.email, company.id);
+    perf.mark('user_lookup');
     const passwordValid = await PasswordService.comparePassword(
       input.password,
       user?.passwordHash,
     );
+    perf.mark('password_verify');
 
     if (!user || !passwordValid) {
       if (user) {
@@ -113,6 +121,7 @@ export const AuthService = {
     }
 
     const roleIds = await this.getRoleIdsForUser(company.id, user.employeeId);
+    perf.mark('role_lookup');
     const sessionId = generateUuid();
     const accessJti = generateUuid();
     const refreshJti = generateUuid();
@@ -138,6 +147,7 @@ export const AuthService = {
       rememberMe: input.rememberMe,
       createdBy: user.id,
     });
+    perf.mark('session_create');
 
     const accessToken = TokenService.signAccessToken({
       userId: user.id,
@@ -147,19 +157,26 @@ export const AuthService = {
       roleIds,
       jti: accessJti,
     });
+    perf.mark('token_generation');
 
-    await AuthUserRepository.resetFailedAttempts(user.id, company.id);
-    await AuthUserRepository.updateLastLogin(user.id, company.id);
+    await Promise.all([
+      AuthUserRepository.resetFailedAttempts(user.id, company.id),
+      AuthUserRepository.updateLastLogin(user.id, company.id),
+      LoginHistoryService.recordLoginAttempt({
+        userId: user.id,
+        companyId: company.id,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        success: true,
+        correlationId: meta.correlationId,
+        createdBy: user.id,
+      }),
+    ]);
+    perf.mark('post_login_persistence');
 
-    await LoginHistoryService.recordLoginAttempt({
-      userId: user.id,
-      companyId: company.id,
-      ipAddress: meta.ipAddress,
-      userAgent: meta.userAgent,
-      success: true,
-      correlationId: meta.correlationId,
-      createdBy: user.id,
-    });
+    if (user.employeeId) {
+      void PermissionEngineService.getPermissionsForUser(company.id, user.employeeId).catch(() => undefined);
+    }
 
     AuditLogService.log({
       who: user.id,
@@ -173,14 +190,17 @@ export const AuthService = {
       correlationId: meta.correlationId,
       tenantId: company.id,
     });
+    perf.mark('audit_log');
 
-    return toLoginResponse({
+    const response = toLoginResponse({
       user: toAuthUserResponse(user),
       accessToken,
       refreshToken,
       expiresIn: getJwtConfig().accessExpiresIn,
       sessionId: session.sessionId,
     });
+    perf.finish({ companyId: company.id, userId: user.id });
+    return response;
   },
 
   async refresh(refreshToken: string, _meta: AuthRequestMeta): Promise<RefreshResponse> {
@@ -421,104 +441,126 @@ export const AuthService = {
     return { message: 'Password reset successfully' };
   },
 
-  async getCurrentUser(user: AuthenticatedUser): Promise<CurrentUserResponse> {
-    const dbUser = await AuthUserRepository.findById(user.userId, user.companyId);
+  async getCurrentUser(
+    user: AuthenticatedUser,
+    cachedUser?: UserDocument,
+  ): Promise<CurrentUserResponse> {
+    const perf = new AuthPerfTimer('auth_me');
+
+    const dbUser =
+      cachedUser ?? (await AuthUserRepository.findById(user.userId, user.companyId));
+    perf.mark('user_lookup');
     if (!dbUser) {
       throw new NotFoundError('User not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const company = await CompanyRepository.findById(user.companyId, { companyId: user.companyId });
+    const companyPromise = CompanyRepository.findById(user.companyId, { companyId: user.companyId });
+    const permissionsPromise = user.employeeId
+      ? PermissionEngineService.getPermissionsForUser(user.companyId, user.employeeId)
+      : Promise.resolve([] as string[]);
+    const employeePromise = user.employeeId
+      ? EmployeeRepository.findById(user.employeeId, { companyId: user.companyId })
+      : Promise.resolve(null);
+
+    const [company, permissionsResult, employee] = await Promise.all([
+      companyPromise,
+      permissionsPromise,
+      employeePromise,
+    ]);
+    perf.mark('core_parallel_fetch');
+
     if (!company) {
       throw new NotFoundError('Company not found', ERROR_CODES.NOT_FOUND);
     }
 
-    let permissions: string[] = [];
+    let permissions = permissionsResult;
     let employeeSummary: CurrentUserResponse['employee'];
     let branchSummary: CurrentUserResponse['branch'];
     let departmentSummary: CurrentUserResponse['department'];
     let managerSummary: CurrentUserResponse['manager'];
     const roles: CurrentUserResponse['roles'] = [];
 
-    if (user.employeeId) {
-      permissions = await PermissionEngineService.getPermissionsForUser(
-        user.companyId,
-        user.employeeId,
-      );
+    const roleIdsForLookup =
+      user.roleIds.length > 0
+        ? user.roleIds
+        : employee
+          ? (
+              await EmployeeRoleRepository.findMany(
+                { employeeId: user.employeeId!, effectiveTo: null },
+                { companyId: user.companyId },
+              )
+            ).map((entry) => entry.roleId)
+          : [];
 
-      const employee = await EmployeeRepository.findById(user.employeeId, {
-        companyId: user.companyId,
-      });
+    const roleDocsPromise =
+      roleIdsForLookup.length > 0
+        ? RoleRepository.findMany({ id: { $in: roleIdsForLookup } }, { companyId: user.companyId })
+        : Promise.resolve([]);
 
-      if (employee) {
-        employeeSummary = {
-          id: employee.id,
-          employeeNumber: employee.employeeNumber,
-          firstName: employee.firstName,
-          lastName: employee.lastName,
-          email: employee.email,
-          phone: employee.phone,
-          departmentId: employee.departmentId,
-          designationId: employee.designationId,
-          branchId: employee.branchId,
-          reportingManagerId: employee.reportingManagerId,
-          employmentType: employee.employmentType,
-          status: employee.status,
-          joinedAt: employee.joinedAt.toISOString(),
-        };
+    if (employee) {
+      employeeSummary = {
+        id: employee.id,
+        employeeNumber: employee.employeeNumber,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        email: employee.email,
+        phone: employee.phone,
+        departmentId: employee.departmentId,
+        designationId: employee.designationId,
+        branchId: employee.branchId,
+        reportingManagerId: employee.reportingManagerId,
+        employmentType: employee.employmentType,
+        status: employee.status,
+        joinedAt: employee.joinedAt.toISOString(),
+      };
 
-        if (employee.branchId) {
-          const branch = await BranchRepository.findById(employee.branchId, {
-            companyId: user.companyId,
-          });
-          if (branch) {
-            branchSummary = { id: branch.id, name: branch.name, code: branch.code };
-          }
-        }
-
-        const department = await DepartmentRepository.findById(employee.departmentId, {
+      const [branch, department, manager, roleDocs] = await Promise.all([
+        employee.branchId
+          ? BranchRepository.findById(employee.branchId, { companyId: user.companyId })
+          : Promise.resolve(null),
+        DepartmentRepository.findById(employee.departmentId, {
           companyId: user.companyId,
-        });
-        if (department) {
-          departmentSummary = {
-            id: department.id,
-            name: department.name,
-            code: department.code,
-          };
-        }
+        }),
+        employee.reportingManagerId
+          ? EmployeeRepository.findById(employee.reportingManagerId, {
+              companyId: user.companyId,
+            })
+          : Promise.resolve(null),
+        roleDocsPromise,
+      ]);
+      perf.mark('employee_enrichment');
 
-        if (employee.reportingManagerId) {
-          const manager = await EmployeeRepository.findById(employee.reportingManagerId, {
-            companyId: user.companyId,
-          });
-          if (manager) {
-            managerSummary = {
-              id: manager.id,
-              employeeNumber: manager.employeeNumber,
-              firstName: manager.firstName,
-              lastName: manager.lastName,
-            };
-          }
-        }
-
-        const employeeRoles = await EmployeeRoleRepository.findMany(
-          { employeeId: user.employeeId, effectiveTo: null },
-          { companyId: user.companyId },
-        );
-        const roleIds = employeeRoles.map((entry) => entry.roleId);
-        if (roleIds.length > 0) {
-          const roleDocs = await RoleRepository.findMany(
-            { id: { $in: roleIds } },
-            { companyId: user.companyId },
-          );
-          for (const role of roleDocs) {
-            roles.push({ id: role.id, name: role.name, slug: role.slug });
-          }
-        }
+      if (branch) {
+        branchSummary = { id: branch.id, name: branch.name, code: branch.code };
+      }
+      if (department) {
+        departmentSummary = {
+          id: department.id,
+          name: department.name,
+          code: department.code,
+        };
+      }
+      if (manager) {
+        managerSummary = {
+          id: manager.id,
+          employeeNumber: manager.employeeNumber,
+          firstName: manager.firstName,
+          lastName: manager.lastName,
+        };
+      }
+      for (const role of roleDocs) {
+        roles.push({ id: role.id, name: role.name, slug: role.slug });
+      }
+    } else if (roleIdsForLookup.length > 0) {
+      const roleDocs = await roleDocsPromise;
+      for (const role of roleDocs) {
+        roles.push({ id: role.id, name: role.name, slug: role.slug });
       }
     }
 
     if (permissions.length === 0 && user.roleIds.length > 0) {
       permissions = await EffectivePermissionService.calculateForRoleIds(user.companyId, user.roleIds);
+      perf.mark('permission_fallback');
 
       if (roles.length === 0) {
         const roleDocs = await RoleRepository.findMany(
@@ -530,6 +572,8 @@ export const AuthService = {
         }
       }
     }
+
+    perf.finish({ companyId: user.companyId, userId: user.userId });
 
     return {
       user: toAuthUserResponse(dbUser),

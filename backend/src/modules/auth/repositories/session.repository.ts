@@ -37,6 +37,21 @@ export const AuthSessionRepository = {
       .exec();
   },
 
+  async findActiveBySessionIdForAuth(
+    companyId: string,
+    sessionId: string,
+  ): Promise<DeviceSessionDocument | null> {
+    return DeviceSessionModel.findOne({
+      companyId,
+      sessionId,
+      isActive: true,
+      revoked: false,
+      expiresAt: { $gt: new Date() },
+    })
+      .select('sessionId userId companyId isActive revoked expiresAt')
+      .exec();
+  },
+
   async findBySessionId(
     companyId: string,
     sessionId: string,
