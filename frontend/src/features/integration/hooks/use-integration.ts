@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ON_DEMAND_QUERY_OPTIONS, MASTER_DATA_QUERY_OPTIONS } from '@/shared/api/query-config';
 import {
   createApiKey,
   createBackup,
@@ -58,8 +59,7 @@ export function useIntegrationDashboard() {
   return useQuery({
     queryKey: [...INTEGRATION_QUERY_KEY, 'dashboard'],
     queryFn: fetchIntegrationDashboard,
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -67,6 +67,7 @@ export function useConnectors() {
   return useQuery({
     queryKey: [...INTEGRATION_QUERY_KEY, 'connectors'],
     queryFn: fetchConnectors,
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -258,7 +259,7 @@ export function useImportModules() {
   return useQuery({
     queryKey: [...INTEGRATION_QUERY_KEY, 'import', 'modules'],
     queryFn: fetchImportModules,
-    staleTime: 300_000,
+    ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
 
@@ -288,10 +289,7 @@ export function useImportJob(id: string) {
     queryKey: [...INTEGRATION_QUERY_KEY, 'import', 'jobs', id],
     queryFn: () => fetchImportJob(id),
     enabled: Boolean(id),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'pending' || status === 'running' ? 2000 : false;
-    },
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -315,10 +313,7 @@ export function useExportJob(id: string) {
     queryKey: [...INTEGRATION_QUERY_KEY, 'export', 'jobs', id],
     queryFn: () => fetchExportJob(id),
     enabled: Boolean(id),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'pending' || status === 'running' ? 2000 : false;
-    },
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -332,7 +327,7 @@ export function useSchedulerJobs() {
   return useQuery({
     queryKey: [...INTEGRATION_QUERY_KEY, 'scheduler', 'jobs'],
     queryFn: fetchSchedulerJobs,
-    refetchInterval: 60_000,
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 

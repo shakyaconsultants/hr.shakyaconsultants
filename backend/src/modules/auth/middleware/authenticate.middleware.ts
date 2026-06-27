@@ -9,6 +9,7 @@ import type { AuthenticatedUser } from '@modules/auth/interfaces/auth-user.inter
 import { AuthenticationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { HEADERS } from '@shared/constants/http.constants.js';
+import { authServerDiag } from '@modules/auth/utils/auth-diagnostics.util.js';
 
 function extractBearerToken(req: Request): string | undefined {
   const header = req.headers[HEADERS.AUTHORIZATION];
@@ -36,6 +37,12 @@ export async function authenticateMiddleware(
   try {
     const token = extractAccessToken(req);
     if (!token) {
+      authServerDiag.log('auth_authenticate_failed', {
+        reason: 'missing_token',
+        hasAccessCookie: Boolean(req.cookies[AUTH_COOKIE_NAMES.ACCESS]),
+        hasBearer: Boolean(extractBearerToken(req)),
+        path: req.path,
+      });
       throw new AuthenticationError('Authentication required', ERROR_CODES.AUTH_UNAUTHORIZED);
     }
 
@@ -81,6 +88,13 @@ export async function authenticateMiddleware(
     authReq.authUserRecord = user;
     next();
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      authServerDiag.log('auth_authenticate_failed', {
+        reason: error.message,
+        code: error.code,
+        path: req.path,
+      });
+    }
     next(error);
   }
 }

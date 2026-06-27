@@ -1,11 +1,8 @@
 import { useMemo } from 'react';
 import { Building2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getEnterpriseDashboardWidgets } from '@/config/module-registry';
+import { DEFAULT_FEATURE_FLAGS, getEnterpriseDashboardWidgets } from '@/config/module-registry';
 import { PORTAL } from '@/config/portals';
-import { useFeatureFlags } from '@/features/admin/hooks/use-settings';
 import { QuickActionCenter } from '@/features/enterprise/widgets/quick-actions-widget';
-import { getCompany } from '@/features/organization/api/organization.api';
 import { EnterpriseWidgetComponents } from '@/features/enterprise/widgets/widget-registry';
 import { PageHeader } from '@/shared/components/page-header';
 import { LazyWidget, WidgetGrid } from '@/shared/components/widget-system/widget-frame';
@@ -15,12 +12,7 @@ export function EnterpriseDashboardPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
   const company = useAuthStore((s) => s.company);
-  const { data: featureFlags } = useFeatureFlags();
-
-  const { data: companyProfile } = useQuery({
-    queryKey: ['organization', 'company'],
-    queryFn: getCompany,
-  });
+  const featureFlags = useAuthStore((s) => s.featureFlags);
 
   const widgets = useMemo(
     () =>
@@ -28,7 +20,7 @@ export function EnterpriseDashboardPage() {
         portal: PORTAL.ENTERPRISE,
         hasPermission,
         hasAnyPermission,
-        featureFlags: featureFlags ?? undefined,
+        featureFlags: Object.keys(featureFlags).length > 0 ? featureFlags : DEFAULT_FEATURE_FLAGS,
       }),
     [hasPermission, hasAnyPermission, featureFlags],
   );
@@ -38,7 +30,7 @@ export function EnterpriseDashboardPage() {
       <PageHeader
         icon={<Building2 className="h-6 w-6 text-primary" />}
         title="Enterprise Dashboard"
-        description={`How is the company performing? Executive overview for ${companyProfile?.name ?? company?.name ?? 'your organization'}.`}
+        description={`How is the company performing? Executive overview for ${company?.name ?? 'your organization'}.`}
       />
 
       <QuickActionCenter />

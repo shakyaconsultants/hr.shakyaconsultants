@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { ROUTES } from '@/config/app.config';
-import { Loading } from '@/shared/components/loading';
 
 interface ProtectedRouteProps {
   permission?: string;
@@ -14,24 +14,18 @@ export function ProtectedRoute({ permission, permissionsAny }: ProtectedRoutePro
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
   const location = useLocation();
 
-  if (authStatus === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loading message="Securing your session..." />
-      </div>
-    );
-  }
-
-  if (authStatus === 'unauthenticated') {
+  if (authStatus === AUTH_STATUS.UNAUTHENTICATED) {
     return <Navigate to={ROUTES.LOGIN} replace state={{ from: location.pathname }} />;
   }
 
-  if (permission && !hasPermission(permission)) {
-    return <Navigate to={ROUTES.FORBIDDEN} replace />;
-  }
+  if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+    if (permission && !hasPermission(permission)) {
+      return <Navigate to={ROUTES.FORBIDDEN} replace />;
+    }
 
-  if (permissionsAny && !hasAnyPermission(permissionsAny)) {
-    return <Navigate to={ROUTES.FORBIDDEN} replace />;
+    if (permissionsAny && !hasAnyPermission(permissionsAny)) {
+      return <Navigate to={ROUTES.FORBIDDEN} replace />;
+    }
   }
 
   return <Outlet />;

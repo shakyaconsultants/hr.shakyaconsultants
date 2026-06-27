@@ -1,21 +1,13 @@
 import { Navigate, Outlet } from 'react-router-dom';
+import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { usePortalHomeRoute } from '@/app/hooks/use-resolved-portal';
-import { Loading } from '@/shared/components/loading';
 
 export function PublicRoute() {
   const authStatus = useAuthStore((s) => s.authStatus);
   const portalHome = usePortalHomeRoute();
 
-  if (authStatus === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loading message="Loading..." />
-      </div>
-    );
-  }
-
-  if (authStatus === 'authenticated') {
+  if (authStatus === AUTH_STATUS.AUTHENTICATED) {
     return <Navigate to={portalHome} replace />;
   }
 

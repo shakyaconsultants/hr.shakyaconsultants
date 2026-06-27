@@ -3,11 +3,10 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/auth-provider';
 import { usePortalHomeRoute } from '@/app/hooks/use-resolved-portal';
 import { ROUTES } from '@/config/app.config';
-import { getPortalHomeRoute, resolvePortal } from '@/config/portals';
+import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Loading } from '@/shared/components/loading';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -21,11 +20,11 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (authStatus === 'loading') {
-    return <Loading message="Loading..." />;
+  if (authStatus === AUTH_STATUS.LOADING) {
+    return null;
   }
 
-  if (authStatus === 'authenticated') {
+  if (authStatus === AUTH_STATUS.AUTHENTICATED) {
     return <Navigate to={portalHome} replace />;
   }
 
@@ -35,8 +34,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login({ companyCode, email, password, rememberMe });
-      const { hasAnyPermission } = useAuthStore.getState();
-      navigate(getPortalHomeRoute(resolvePortal(hasAnyPermission)), { replace: true });
+      navigate(useAuthStore.getState().homeRoute ?? portalHome, { replace: true });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Invalid credentials';
       setError(message);

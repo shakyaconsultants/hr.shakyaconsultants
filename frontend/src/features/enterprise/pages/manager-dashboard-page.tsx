@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { Users } from 'lucide-react';
-import { getManagerDashboardWidgets } from '@/config/module-registry';
+import { getManagerDashboardWidgets, DEFAULT_FEATURE_FLAGS } from '@/config/module-registry';
 import { PORTAL } from '@/config/portals';
-import { useFeatureFlags } from '@/features/admin/hooks/use-settings';
 import { EnterpriseWidgetComponents } from '@/features/enterprise/widgets/widget-registry';
 import { PageHeader } from '@/shared/components/page-header';
 import { LazyWidget, WidgetGrid } from '@/shared/components/widget-system/widget-frame';
@@ -11,7 +10,7 @@ import { useAuthStore } from '@/shared/stores/app.store';
 export function ManagerDashboardPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
-  const { data: featureFlags } = useFeatureFlags();
+  const featureFlags = useAuthStore((s) => s.featureFlags);
 
   const widgets = useMemo(
     () =>
@@ -19,7 +18,7 @@ export function ManagerDashboardPage() {
         portal: PORTAL.MANAGER,
         hasPermission,
         hasAnyPermission,
-        featureFlags: featureFlags ?? undefined,
+        featureFlags: Object.keys(featureFlags).length > 0 ? featureFlags : DEFAULT_FEATURE_FLAGS,
       }),
     [hasPermission, hasAnyPermission, featureFlags],
   );

@@ -48,6 +48,12 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .pipe(z.boolean()),
   AUTH_COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('lax'),
+  AUTH_COOKIE_DOMAIN: z.string().optional().default(''),
+  AUTH_DEBUG: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true')
+    .pipe(z.boolean()),
   AUTH_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   AUTH_LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
   AUTH_PERMISSION_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(900),

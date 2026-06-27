@@ -1,6 +1,7 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse } from '@/shared/types/api.types';
-import type { AuthCompany, AuthRole, AuthUser } from '@/shared/stores/app.store';
+import type { FeatureFlags } from '@/config/module-registry';
+import type { AuthCompany, AuthEmployeeProfile, AuthRole, AuthUser, SessionNavigationItem } from '@/shared/stores/app.store';
 
 const AUTH_PREFIX = '/api/v1/auth';
 
@@ -20,8 +21,13 @@ export interface LoginResult {
 export interface MeResult {
   user: AuthUser;
   company: AuthCompany;
+  employee?: AuthEmployeeProfile | null;
   permissions: string[];
   roles: AuthRole[];
+  portal: string;
+  homeRoute: string;
+  navigation: { items: SessionNavigationItem[] };
+  featureFlags: FeatureFlags;
   sessionId: string;
 }
 

@@ -22,6 +22,7 @@ import {
 import { ValidationError } from '@shared/errors/app.error.js';
 import { ResponseService } from '@shared/services/response.service.js';
 import { asyncHandler } from '@middleware/async-handler.middleware.js';
+import { authServerDiag } from '@modules/auth/utils/auth-diagnostics.util.js';
 
 function getRequestMeta(req: Request) {
   return {
@@ -39,6 +40,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
+  authServerDiag.log('auth_refresh_started', {
+    hasRefreshCookie: Boolean(req.cookies[AUTH_COOKIE_NAMES.REFRESH]),
+    hasBodyToken: Boolean(req.body?.refreshToken),
+  });
+
   const body = validateInput(refreshSchema, req.body);
   const refreshToken = extractRefreshToken(
     body.refreshToken,
@@ -46,11 +52,13 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
   );
 
   if (!refreshToken) {
+    authServerDiag.log('auth_refresh_failed', { reason: 'missing_refresh_token' });
     throw new ValidationError('Refresh token is required');
   }
 
   const result = await AuthService.refresh(refreshToken, getRequestMeta(req));
   setAuthCookies(res, result.tokens.accessToken, result.tokens.refreshToken);
+  authServerDiag.log('auth_refresh_success', { sessionId: result.sessionId });
   ResponseService.success(res, req, sanitizeAuthRefreshResponse(result));
 });
 
@@ -88,7 +96,16 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
+  authServerDiag.log('auth_me_started', {
+    userId: authReq.user.userId,
+    sessionId: authReq.user.sessionId,
+  });
   const result = await AuthService.getCurrentUser(authReq.user, authReq.authUserRecord);
+  authServerDiag.log('auth_me_success', {
+    userId: authReq.user.userId,
+    permissionCount: result.permissions.length,
+    roleCount: result.roles.length,
+  });
   ResponseService.success(res, req, result);
 });
 

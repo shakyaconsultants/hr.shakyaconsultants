@@ -52,7 +52,7 @@ export function NavigationManagerPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canManage = hasPermission('settings.manage');
   const baseItems = useMemo(() => flattenNavItems(), []);
-  const { data: navConfig, isLoading } = useNavigationConfig();
+  const { data: navConfig, isLoading } = useNavigationConfig({ fetchFresh: true });
   const updateMutation = useUpdateNavigationConfig();
 
   const [draftItems, setDraftItems] = useState<NavigationItemConfig[] | null>(null);

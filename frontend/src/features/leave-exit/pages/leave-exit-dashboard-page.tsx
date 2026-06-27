@@ -3,7 +3,6 @@ import { CalendarDays, ClipboardList, LogOut, Scale, Wallet } from 'lucide-react
 import { LeaveExitNav, LeaveExitPageHeader } from '@/features/leave-exit/components/leave-exit-nav';
 import { useLeaveBalances, useLeaveRequests, useResignations } from '@/features/leave-exit/hooks/use-leave-exit';
 import { useApprovalInbox } from '@/features/approval/hooks/use-approval';
-import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 
@@ -14,7 +13,28 @@ export function LeaveExitDashboardPage() {
   const { data: resignations, isLoading: resignationsLoading } = useResignations();
 
   if (balancesLoading || requestsLoading || inboxLoading || resignationsLoading) {
-    return <Loading message="Loading leave & exit overview..." />;
+    const pendingApprovals = inbox?.items.length ?? null;
+    const pendingLeave = requests?.items.filter((r) => r.status === 'pending').length ?? null;
+    const totalAvailable = balances ? balances.reduce((sum, b) => sum + b.available, 0) : null;
+    const activeResignation = resignations?.find((r) => !['withdrawn', 'rejected', 'completed'].includes(r.status));
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <LeaveExitPageHeader title="Leave & Exit" description="Policies, balances, approvals, resignation, and exit clearance." />
+          <Button asChild>
+            <Link to={ROUTES.LEAVE_APPLY}>Apply Leave</Link>
+          </Button>
+        </div>
+        <LeaveExitNav />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon={Wallet} label="Available Leave Days" value={totalAvailable === null ? '…' : String(totalAvailable)} />
+          <StatCard icon={ClipboardList} label="Pending Leave Requests" value={pendingLeave === null ? '…' : String(pendingLeave)} />
+          <StatCard icon={Scale} label="Pending Approvals" value={pendingApprovals === null ? '…' : String(pendingApprovals)} />
+          <StatCard icon={LogOut} label="Resignation Status" value={activeResignation?.status ?? (resignationsLoading ? '…' : 'None')} />
+        </div>
+      </div>
+    );
   }
 
   const pendingApprovals = inbox?.items.length ?? 0;

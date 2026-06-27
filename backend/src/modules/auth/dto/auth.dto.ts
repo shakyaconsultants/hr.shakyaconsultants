@@ -27,6 +27,16 @@ export interface RefreshResponse {
   sessionId: string;
 }
 
+export interface SessionNavigationItem {
+  id: string;
+  enabled: boolean;
+  order: number;
+  label?: string;
+  icon?: string;
+  portals?: string[];
+  path?: string;
+}
+
 export interface CurrentUserResponse {
   user: AuthUserResponse;
   company: {
@@ -37,24 +47,8 @@ export interface CurrentUserResponse {
     timezone: string;
     currency: string;
   };
-  branch?: {
-    id: string;
-    name: string;
-    code: string;
-  };
-  department?: {
-    id: string;
-    name: string;
-    code: string;
-  };
   roles: Array<{ id: string; name: string; slug: string }>;
   permissions: string[];
-  manager?: {
-    id: string;
-    employeeNumber: string;
-    firstName: string;
-    lastName: string;
-  };
   employee?: {
     id: string;
     employeeNumber: string;
@@ -70,6 +64,10 @@ export interface CurrentUserResponse {
     status: string;
     joinedAt: string;
   };
+  portal: 'enterprise' | 'manager' | 'workspace';
+  homeRoute: string;
+  navigation: { items: SessionNavigationItem[] };
+  featureFlags: Record<string, boolean>;
   sessionId: string;
 }
 

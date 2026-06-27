@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ON_DEMAND_QUERY_OPTIONS } from '@/shared/api/query-config';
 import {
   exportReport,
   fetchDashboardConfig,
@@ -25,6 +26,7 @@ export function useReportDefinitions(params: ListDefinitionsParams = {}) {
   return useQuery({
     queryKey: ['reports', 'definitions', params],
     queryFn: () => fetchReportDefinitions(params),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -33,6 +35,7 @@ export function useReportDefinition(code: string) {
     queryKey: ['reports', 'definition', code],
     queryFn: () => fetchReportDefinition(code),
     enabled: Boolean(code),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -48,6 +51,7 @@ export function useReportRuns(params: ListRunsParams = {}) {
   return useQuery({
     queryKey: ['reports', 'runs', params],
     queryFn: () => fetchReportRuns(params),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -56,10 +60,7 @@ export function useReportRun(id: string) {
     queryKey: ['reports', 'run', id],
     queryFn: () => fetchReportRun(id),
     enabled: Boolean(id),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'pending' || status === 'running' ? 2000 : false;
-    },
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -73,6 +74,7 @@ export function useExecutiveDashboard(params: ReportFilterParams = {}) {
   return useQuery({
     queryKey: ['reports', 'dashboard', 'executive', params],
     queryFn: () => fetchExecutiveDashboard(params),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -81,6 +83,7 @@ export function useRoleDashboard(role: string, params: ReportFilterParams = {}) 
     queryKey: ['reports', 'dashboard', role, params],
     queryFn: () => fetchRoleDashboard(role, params),
     enabled: Boolean(role),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -88,6 +91,7 @@ export function useDashboardConfig(role?: string) {
   return useQuery({
     queryKey: ['reports', 'dashboard', 'config', role],
     queryFn: () => fetchDashboardConfig(role),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -108,6 +112,7 @@ export function useDomainAnalytics(domain: string, params: ReportFilterParams = 
     queryKey: ['reports', 'analytics', domain, params],
     queryFn: () => fetchDomainAnalytics(domain, params),
     enabled: Boolean(domain),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -128,5 +133,6 @@ export function useReportResult(domain: string, type: string, params: ReportFilt
         format: 'json',
       }),
     enabled: Boolean(domain && type),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }

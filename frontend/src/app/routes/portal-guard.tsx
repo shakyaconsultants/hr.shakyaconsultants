@@ -1,17 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useMemo } from 'react';
+import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 import { ROUTES } from '@/config/app.config';
-import {
-  getPortalHomeRoute,
-  PORTAL,
-  resolvePortal,
-} from '@/config/portals';
+import { useResolvedPortal, usePortalHomeRoute } from '@/app/hooks/use-resolved-portal';
+import { PORTAL } from '@/config/portals';
 import { isPathAllowedForPortal } from '@/config/module-registry';
 import { EnterpriseLayout } from '@/app/layouts/enterprise-layout';
 import { ManagerLayout } from '@/app/layouts/manager-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
 import { useAuthStore } from '@/shared/stores/app.store';
-import { Loading } from '@/shared/components/loading';
 
 const PORTAL_HOME_PATHS = [ROUTES.ENTERPRISE, ROUTES.MANAGER, ROUTES.WORKSPACE] as const;
 
@@ -24,34 +20,17 @@ export function PortalGuard() {
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
   const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
 
-  const portal = useMemo(
-    () => resolvePortal(hasAnyPermission),
-    [hasAnyPermission],
-  );
+  const portal = useResolvedPortal();
+  const homeRoute = usePortalHomeRoute();
 
-  const homeRoute = getPortalHomeRoute(portal);
-
-  if (authStatus === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loading message="Loading your workspace..." />
-      </div>
-    );
-  }
-
-  if (authStatus === 'unauthenticated') {
+  if (authStatus === AUTH_STATUS.UNAUTHENTICATED) {
     return <Navigate to={ROUTES.LOGIN} replace state={{ from: location.pathname }} />;
   }
 
   const sessionReady = isSuperAdmin() || permissions.length > 0 || roles.length > 0;
   if (!sessionReady) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loading message="Resolving permissions..." />
-      </div>
-    );
+    return <Navigate to={ROUTES.FORBIDDEN} replace />;
   }
-
   if (location.pathname === ROUTES.HOME) {
     return <Navigate to={homeRoute} replace />;
   }

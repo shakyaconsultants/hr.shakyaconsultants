@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DEFAULT_FEATURE_FLAGS, type FeatureFlags } from '@/config/module-registry';
+import { ON_DEMAND_QUERY_OPTIONS, MASTER_DATA_QUERY_OPTIONS } from '@/shared/api/query-config';
+import { queryKeys } from '@/shared/api/query-keys';
+import { useAuthStore } from '@/shared/stores/app.store';
 import {
   exportAuditLogsCsv,
   fetchAuditLogs,
@@ -26,24 +29,25 @@ const CONFIG_QUERY_KEY = ['configuration'] as const;
 
 export function useConfigurationCatalog() {
   return useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'catalog'],
+    queryKey: queryKeys.configuration.catalog,
     queryFn: fetchConfigurationCatalog,
-    staleTime: 60_000,
+    ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
 
 export function useConfigurationSections() {
   return useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'sections'],
+    queryKey: queryKeys.configuration.sections,
     queryFn: fetchConfigurationSections,
-    staleTime: 60_000,
+    ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
 
 export function useConfigurationSettings(params: SettingListParams = {}) {
   return useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'settings', params],
+    queryKey: queryKeys.configuration.settings(params as Record<string, unknown>),
     queryFn: () => fetchSettings(params),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -52,6 +56,7 @@ export function useConfigurationSettingsByGroup(group: string) {
     queryKey: [...CONFIG_QUERY_KEY, 'settings', 'group', group],
     queryFn: () => fetchSettingsByGroup(group),
     enabled: Boolean(group),
+    ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
 
@@ -60,6 +65,7 @@ export function useSettingHistory(params: { key: string; page?: number; pageSize
     queryKey: [...CONFIG_QUERY_KEY, 'history', params],
     queryFn: () => fetchSettingHistory(params),
     enabled: Boolean(params.key),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -116,6 +122,7 @@ function parseFeatureFlagsFromDefinitions(
 
 export function useConfigurationFeatureFlags() {
   const queryClient = useQueryClient();
+  const setSessionFeatureFlags = useAuthStore((s) => s.setSessionFeatureFlags);
   const query = useQuery({
     queryKey: [...CONFIG_QUERY_KEY, 'feature-flags'],
     queryFn: async () => {
@@ -132,15 +139,15 @@ export function useConfigurationFeatureFlags() {
       }
       return parseFeatureFlagsFromDefinitions(definitions);
     },
-    staleTime: 30_000,
+    ...MASTER_DATA_QUERY_OPTIONS,
   });
 
   const mutation = useMutation({
     mutationFn: (flags: Record<string, boolean>) => updateFeatureFlags(flags),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      setSessionFeatureFlags({ ...DEFAULT_FEATURE_FLAGS, ...variables } as FeatureFlags);
       void queryClient.invalidateQueries({ queryKey: [...CONFIG_QUERY_KEY, 'feature-flags'] });
-      void queryClient.invalidateQueries({ queryKey: ['feature-flags'] });
-      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags });
     },
   });
 
@@ -151,32 +158,50 @@ export function useFeatureFlagDefinitions() {
   return useQuery({
     queryKey: [...CONFIG_QUERY_KEY, 'feature-flag-definitions'],
     queryFn: fetchFeatureFlagDefinitions,
+    ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
 
-export function useNavigationConfig() {
+export function useNavigationConfig(options?: { fetchFresh?: boolean }) {
+  const sessionNavigation = useAuthStore((s) => s.navigation);
+  const useSessionSeed = !options?.fetchFresh && sessionNavigation.length > 0;
+
   return useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'navigation'],
+    queryKey: queryKeys.configuration.navigation,
     queryFn: fetchNavigationConfig,
-    staleTime: 60_000,
+    initialData: useSessionSeed ? { items: sessionNavigation } : undefined,
+    ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
 
 export function useUpdateNavigationConfig() {
   const queryClient = useQueryClient();
+  const setSessionNavigation = useAuthStore((s) => s.setSessionNavigation);
+
   return useMutation({
     mutationFn: (items: NavigationItemConfig[]) => updateNavigationConfig(items),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...CONFIG_QUERY_KEY, 'navigation'] });
-      void queryClient.invalidateQueries({ queryKey: ['navigation-config'] });
+    onSuccess: (data) => {
+      setSessionNavigation(
+        data.items.map((item) => ({
+          id: item.id,
+          enabled: item.enabled,
+          order: item.order,
+          label: item.label,
+          icon: item.icon,
+          portals: item.portals,
+          path: item.path,
+        })),
+      );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.configuration.navigation });
     },
   });
 }
 
 export function useAuditLogs(params: AuditListParams = {}) {
   return useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'audit', params],
+    queryKey: queryKeys.configuration.audit(params as Record<string, unknown>),
     queryFn: () => fetchAuditLogs(params),
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }
 
@@ -188,9 +213,8 @@ export function useExportAuditLogs() {
 
 export function useSystemHealth() {
   return useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'system-health'],
+    queryKey: queryKeys.configuration.systemHealth,
     queryFn: fetchSystemHealth,
-    refetchInterval: 30_000,
-    staleTime: 15_000,
+    ...ON_DEMAND_QUERY_OPTIONS,
   });
 }

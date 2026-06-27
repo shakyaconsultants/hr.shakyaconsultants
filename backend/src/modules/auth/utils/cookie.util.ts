@@ -5,11 +5,15 @@ import { TokenService } from '@modules/auth/services/token.service.js';
 
 function getBaseCookieOptions(): CookieOptions {
   const env = getEnv();
-  return {
+  const options: CookieOptions = {
     httpOnly: true,
     secure: env.AUTH_COOKIE_SECURE,
     sameSite: env.AUTH_COOKIE_SAME_SITE,
   };
+  if (env.AUTH_COOKIE_DOMAIN) {
+    options.domain = env.AUTH_COOKIE_DOMAIN;
+  }
+  return options;
 }
 
 export function setAuthCookies(

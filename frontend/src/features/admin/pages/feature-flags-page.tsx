@@ -6,7 +6,7 @@ import { useAuthStore } from '@/shared/stores/app.store';
 
 export function FeatureFlagsPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
-  const { data: flags, isLoading } = useFeatureFlags();
+  const { data: flags, isLoading } = useFeatureFlags({ fetchFresh: true });
   const { data: settings } = useSettingsGroup('feature_flags');
   const updateMutation = useUpdateSetting();
   const createMutation = useCreateSetting();

@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { APP_CONFIG, ROUTES } from '@/config/app.config';
 import type { ApiErrorResponse } from '@/shared/types/api.types';
+import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { isAuthBootstrapActive, refreshAccessTokenOnce } from '@/shared/auth/auth-session';
 import { clearStoredTokens, resolveBearerToken, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
@@ -53,11 +54,15 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
 
-      clearStoredTokens();
-      useAuthStore.getState().clearAuth();
+      if (!isAuthBootstrapActive()) {
+        clearStoredTokens();
+        authDiag.log('session_cleared', { reason: '401_after_refresh_failed', url: original.url });
+        useAuthStore.getState().clearAuth();
 
-      if (!isAuthBootstrapActive() && window.location.pathname !== ROUTES.LOGIN) {
-        window.location.assign(ROUTES.LOGIN);
+        if (window.location.pathname !== ROUTES.LOGIN) {
+          authDiag.log('redirect_to_login', { reason: '401_confirmed', from: window.location.pathname });
+          window.location.assign(ROUTES.LOGIN);
+        }
       }
     }
 

@@ -1,14 +1,19 @@
-import { useMemo } from 'react';
-import { resolvePortal, getPortalHomeRoute } from '@/config/portals';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { resolvePortal, getPortalHomeRoute, type PortalType } from '@/config/portals';
 
-export function useResolvedPortal() {
+export function useResolvedPortal(): PortalType {
+  const sessionPortal = useAuthStore((s) => s.portal);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
 
-  return useMemo(() => resolvePortal(hasAnyPermission), [hasAnyPermission]);
+  if (sessionPortal) {
+    return sessionPortal;
+  }
+
+  return resolvePortal(hasAnyPermission);
 }
 
-export function usePortalHomeRoute() {
+export function usePortalHomeRoute(): string {
+  const homeRoute = useAuthStore((s) => s.homeRoute);
   const portal = useResolvedPortal();
-  return getPortalHomeRoute(portal);
+  return homeRoute ?? getPortalHomeRoute(portal);
 }

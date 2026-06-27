@@ -2,13 +2,16 @@ import { randomBytes } from 'node:crypto';
 import { getEnv } from '@config/env.js';
 import { CompanyRepository } from '@domain/company/company.schema.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
-import {
-  BranchRepository,
-  DepartmentRepository,
-} from '@domain/organization/organization.schemas.js';
 import { EmployeeRoleRepository, RoleRepository } from '@domain/permission/permission.schemas.js';
 import { USER_STATUS } from '@domain/auth/user.schema.js';
 import { EffectivePermissionService } from '@modules/rbac/services/effective-permission.service.js';
+import { NavigationConfigService } from '@modules/settings/services/navigation-config.service.js';
+import { FeatureFlagService } from '@modules/settings/services/feature-flag.service.js';
+import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
+import {
+  getAuthPortalHomeRoute,
+  resolveAuthPortal,
+} from '@modules/auth/utils/auth-portal.util.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
 import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
 import { AuditAction } from '@shared/enums/index.js';
@@ -173,10 +176,6 @@ export const AuthService = {
       }),
     ]);
     perf.mark('post_login_persistence');
-
-    if (user.employeeId) {
-      void PermissionEngineService.getPermissionsForUser(company.id, user.employeeId).catch(() => undefined);
-    }
 
     AuditLogService.log({
       who: user.id,
@@ -454,48 +453,58 @@ export const AuthService = {
       throw new NotFoundError('User not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const companyPromise = CompanyRepository.findById(user.companyId, { companyId: user.companyId });
-    const permissionsPromise = user.employeeId
-      ? PermissionEngineService.getPermissionsForUser(user.companyId, user.employeeId)
-      : Promise.resolve([] as string[]);
-    const employeePromise = user.employeeId
-      ? EmployeeRepository.findById(user.employeeId, { companyId: user.companyId })
-      : Promise.resolve(null);
-
-    const [company, permissionsResult, employee] = await Promise.all([
-      companyPromise,
-      permissionsPromise,
-      employeePromise,
-    ]);
-    perf.mark('core_parallel_fetch');
+    const [company, permissionsResult, employee, navigationItems, featureFlagList] =
+      await Promise.all([
+        CompanyRepository.findById(user.companyId, { companyId: user.companyId }),
+        user.employeeId
+          ? PermissionEngineService.getPermissionsForUser(user.companyId, user.employeeId)
+          : Promise.resolve([] as string[]),
+        user.employeeId
+          ? EmployeeRepository.findById(user.employeeId, { companyId: user.companyId })
+          : Promise.resolve(null),
+        NavigationConfigService.getEffectiveNavigation(user.companyId),
+        FeatureFlagService.list(user.companyId),
+      ]);
+    perf.mark('session_shell_fetch');
 
     if (!company) {
       throw new NotFoundError('Company not found', ERROR_CODES.NOT_FOUND);
     }
 
     let permissions = permissionsResult;
-    let employeeSummary: CurrentUserResponse['employee'];
-    let branchSummary: CurrentUserResponse['branch'];
-    let departmentSummary: CurrentUserResponse['department'];
-    let managerSummary: CurrentUserResponse['manager'];
     const roles: CurrentUserResponse['roles'] = [];
+    let employeeSummary: CurrentUserResponse['employee'];
 
     const roleIdsForLookup =
       user.roleIds.length > 0
         ? user.roleIds
-        : employee
+        : user.employeeId
           ? (
               await EmployeeRoleRepository.findMany(
-                { employeeId: user.employeeId!, effectiveTo: null },
+                { employeeId: user.employeeId, effectiveTo: null },
                 { companyId: user.companyId },
               )
             ).map((entry) => entry.roleId)
           : [];
 
-    const roleDocsPromise =
-      roleIdsForLookup.length > 0
-        ? RoleRepository.findMany({ id: { $in: roleIdsForLookup } }, { companyId: user.companyId })
-        : Promise.resolve([]);
+    if (roleIdsForLookup.length > 0) {
+      const roleDocs = await RoleRepository.findMany(
+        { id: { $in: roleIdsForLookup } },
+        { companyId: user.companyId },
+      );
+      for (const role of roleDocs) {
+        roles.push({ id: role.id, name: role.name, slug: role.slug });
+      }
+    }
+    perf.mark('roles_fetch');
+
+    if (permissions.length === 0 && user.roleIds.length > 0) {
+      permissions = await EffectivePermissionService.calculateForRoleIds(
+        user.companyId,
+        user.roleIds,
+      );
+      perf.mark('permission_fallback');
+    }
 
     if (employee) {
       employeeSummary = {
@@ -513,64 +522,14 @@ export const AuthService = {
         status: employee.status,
         joinedAt: employee.joinedAt.toISOString(),
       };
-
-      const [branch, department, manager, roleDocs] = await Promise.all([
-        employee.branchId
-          ? BranchRepository.findById(employee.branchId, { companyId: user.companyId })
-          : Promise.resolve(null),
-        DepartmentRepository.findById(employee.departmentId, {
-          companyId: user.companyId,
-        }),
-        employee.reportingManagerId
-          ? EmployeeRepository.findById(employee.reportingManagerId, {
-              companyId: user.companyId,
-            })
-          : Promise.resolve(null),
-        roleDocsPromise,
-      ]);
-      perf.mark('employee_enrichment');
-
-      if (branch) {
-        branchSummary = { id: branch.id, name: branch.name, code: branch.code };
-      }
-      if (department) {
-        departmentSummary = {
-          id: department.id,
-          name: department.name,
-          code: department.code,
-        };
-      }
-      if (manager) {
-        managerSummary = {
-          id: manager.id,
-          employeeNumber: manager.employeeNumber,
-          firstName: manager.firstName,
-          lastName: manager.lastName,
-        };
-      }
-      for (const role of roleDocs) {
-        roles.push({ id: role.id, name: role.name, slug: role.slug });
-      }
-    } else if (roleIdsForLookup.length > 0) {
-      const roleDocs = await roleDocsPromise;
-      for (const role of roleDocs) {
-        roles.push({ id: role.id, name: role.name, slug: role.slug });
-      }
     }
 
-    if (permissions.length === 0 && user.roleIds.length > 0) {
-      permissions = await EffectivePermissionService.calculateForRoleIds(user.companyId, user.roleIds);
-      perf.mark('permission_fallback');
-
-      if (roles.length === 0) {
-        const roleDocs = await RoleRepository.findMany(
-          { id: { $in: user.roleIds } },
-          { companyId: user.companyId },
-        );
-        for (const role of roleDocs) {
-          roles.push({ id: role.id, name: role.name, slug: role.slug });
-        }
-      }
+    const isSuperAdmin = roles.some((role) => role.slug === SYSTEM_ROLE_SLUG.SUPER_ADMIN);
+    const portal = resolveAuthPortal(permissions, isSuperAdmin);
+    const homeRoute = getAuthPortalHomeRoute(portal);
+    const featureFlags: Record<string, boolean> = {};
+    for (const flag of featureFlagList) {
+      featureFlags[flag.key.replace(/^feature\./, '')] = flag.enabled;
     }
 
     perf.finish({ companyId: user.companyId, userId: user.userId });
@@ -585,12 +544,22 @@ export const AuthService = {
         timezone: company.timezone,
         currency: company.currency,
       },
-      branch: branchSummary,
-      department: departmentSummary,
       roles,
       permissions,
-      manager: managerSummary,
       employee: employeeSummary,
+      portal,
+      homeRoute,
+      navigation: {
+        items: navigationItems.map((item) => ({
+          id: item.id,
+          enabled: item.enabled ?? true,
+          order: item.sortOrder,
+          label: item.label,
+          icon: item.icon,
+          portals: item.portals,
+        })),
+      },
+      featureFlags,
       sessionId: user.sessionId,
     };
   },
