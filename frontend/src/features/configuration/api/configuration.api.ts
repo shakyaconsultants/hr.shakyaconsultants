@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 import {
   createSetting,
   deleteSetting,
@@ -165,14 +166,11 @@ export async function seedConfigurationDefaults(section?: string): Promise<{ see
 export async function fetchSettingHistory(
   params: { key: string; page?: number; pageSize?: number },
 ): Promise<PaginatedResult<SettingHistoryEntry>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<SettingHistoryEntry[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     `${SETTINGS_PREFIX}/history/${encodeURIComponent(params.key)}`,
     { params: { page: params.page, pageSize: params.pageSize } },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<SettingHistoryEntry>(data.data);
 }
 
 export async function fetchFeatureFlagDefinitions(): Promise<FeatureFlagDefinition[]> {
@@ -210,14 +208,11 @@ export async function updateNavigationConfig(items: NavigationItemConfig[]): Pro
 }
 
 export async function fetchAuditLogs(params: AuditListParams = {}): Promise<PaginatedResult<AuditLogEntry>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<AuditLogEntry[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     `${SETTINGS_PREFIX}/audit`,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 50, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<AuditLogEntry>(data.data, 50);
 }
 
 export async function exportAuditLogsCsv(params: Omit<AuditListParams, 'page' | 'pageSize'> = {}): Promise<Blob> {

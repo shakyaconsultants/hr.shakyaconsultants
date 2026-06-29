@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const EMPLOYEE_PREFIX = '/api/v1/employees';
 
@@ -46,14 +47,11 @@ export interface ListEmployeesParams {
 }
 
 export async function fetchEmployees(params: ListEmployeesParams = {}): Promise<PaginatedResult<EmployeeRecord>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     EMPLOYEE_PREFIX,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<EmployeeRecord>(data.data);
 }
 
 export async function fetchEmployee(id: string): Promise<EmployeeRecord> {

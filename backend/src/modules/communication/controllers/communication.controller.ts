@@ -135,7 +135,7 @@ export const listAnnouncements: RequestHandler = async (req, res, next) => {
     const query = validateInput(announcementListQuerySchema, req.query);
     const perms = await permissions(authReq);
     const data = await AnnouncementService.listAdmin(actor(authReq), perms, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -249,7 +249,7 @@ export const listChannels: RequestHandler = async (req, res, next) => {
     const query = validateInput(channelListQuerySchema, req.query);
     const perms = await permissions(authReq);
     const data = await ChannelService.list(actor(authReq), perms, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -351,7 +351,7 @@ export const listMessages: RequestHandler = async (req, res, next) => {
     const { id } = validateInput(idParamSchema, req.params);
     const query = validateInput(listQuerySchema, req.query);
     const data = await MessageService.list(actor(authReq), id, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -438,7 +438,7 @@ export const listNotifications: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(notificationListQuerySchema, req.query);
     const data = await NotificationCenterService.list(actor(authReq), query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;

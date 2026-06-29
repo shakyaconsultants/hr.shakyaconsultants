@@ -3,7 +3,8 @@ import type { AuthenticatedUser } from '@modules/auth/interfaces/auth-user.inter
 import type { UserDocument } from '@domain/auth/user.schema.js';
 
 export interface AuthContext {
-  permissions: string[];
+  permissions?: string[];
+  isSuperAdmin?: boolean;
 }
 
 export interface AuthenticatedRequest extends Request {

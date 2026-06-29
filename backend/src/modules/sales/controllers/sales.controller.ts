@@ -137,7 +137,7 @@ export const listLeadSources: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
     const data = await LeadSourceService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -198,7 +198,7 @@ export const listPipelines: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
     const data = await PipelineService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -259,7 +259,7 @@ export const listSalesTeams: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listSalesTeamsQuerySchema, req.query);
     const data = await SalesTeamService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -321,7 +321,7 @@ export const listTerritories: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listTerritoriesQuerySchema, req.query);
     const data = await TerritoryService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -383,7 +383,7 @@ export const listSalesTargets: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listSalesTargetsQuerySchema, req.query);
     const data = await SalesTargetService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -445,7 +445,7 @@ export const listLeads: RequestHandler = async (req, res, next) => {
     const query = validateInput(listLeadsQuerySchema, req.query);
     const perms = await permissions(authReq);
     const data = await LeadService.list(actor(authReq), perms, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -576,7 +576,7 @@ export const listActivities: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listActivitiesQuerySchema, req.query);
     const data = await LeadActivityService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -638,7 +638,7 @@ export const listCallLogs: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listCallLogsQuerySchema, req.query);
     const data = await CallLogService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -699,7 +699,7 @@ export const listFollowUps: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listFollowUpsQuerySchema, req.query);
     const data = await FollowUpService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -760,7 +760,7 @@ export const listDeals: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listDealsQuerySchema, req.query);
     const data = await DealService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;

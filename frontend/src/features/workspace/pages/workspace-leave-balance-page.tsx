@@ -1,16 +1,22 @@
-import { LeaveExitNav, LeaveExitPageHeader } from '@/features/leave-exit/components/leave-exit-nav';
+import { WorkspaceLeaveNav } from '@/features/workspace/components/workspace-leave-nav';
+import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { useLeaveBalances } from '@/features/leave-exit/hooks/use-leave-exit';
 import { Loading } from '@/shared/components/loading';
+import { useAuthStore } from '@/shared/stores/app.store';
 
-export function LeaveBalancesPage() {
-  const { data, isLoading } = useLeaveBalances();
+export function WorkspaceLeaveBalancePage() {
+  const employeeId = useAuthStore((s) => s.user?.employeeId ?? s.employee?.id);
+  const { data, isLoading } = useLeaveBalances(employeeId);
 
-  if (isLoading) return <Loading message="Loading leave balances..." />;
+  if (isLoading) return <Loading message="Loading your leave balance..." />;
 
   return (
     <div className="space-y-6">
-      <LeaveExitPageHeader title="All Leave Balances" description="Company-wide opening, earned, used, pending, and available balances." />
-      <LeaveExitNav />
+      <WorkspacePageHeader
+        title="My Leave Balance"
+        description="Opening, earned, used, pending, and available balances for your account."
+      />
+      <WorkspaceLeaveNav />
 
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">

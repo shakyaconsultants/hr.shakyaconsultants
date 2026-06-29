@@ -11,9 +11,12 @@ export async function connectMongoDB(): Promise<void> {
 
   const env = getEnv();
   mongoose.set('strictQuery', true);
+  mongoose.set('bufferCommands', false);
 
   await mongoose.connect(env.MONGODB_URI, {
     dbName: env.MONGODB_DB_NAME,
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
   });
 
   isConnected = true;

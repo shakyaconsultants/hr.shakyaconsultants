@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const WORKSPACE_PREFIX = '/api/v1/workspace';
 
@@ -154,13 +155,14 @@ export async function fetchHierarchy(): Promise<OrgChart> {
 }
 
 export async function fetchMyProjects(params: ListParams = {}): Promise<{ items: MyProjectItem[]; total: number }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<MyProjectItem[]> & { pagination?: PaginationMeta }>(`${WORKSPACE_PREFIX}/projects`, { params });
-  return { items: data.data, total: data.pagination?.total ?? data.data.length };
+  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/projects`, { params });
+  const normalized = normalizePaginatedItems<MyProjectItem>(data.data);
+  return { items: normalized.items, total: normalized.pagination.total };
 }
 
 export async function fetchMyTasks(params: ListParams & { status?: string; projectId?: string } = {}): Promise<PaginatedResult<TaskRecord>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<TaskRecord[]> & { pagination?: PaginationMeta }>(`${WORKSPACE_PREFIX}/tasks`, { params });
-  return { items: data.data, pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 } };
+  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/tasks`, { params });
+  return normalizePaginatedItems<TaskRecord>(data.data);
 }
 
 export async function fetchMyTasksKanban(projectId?: string): Promise<{ columns: Record<string, TaskRecord[]>; total: number }> {
@@ -179,8 +181,9 @@ export async function quickUpdateTask(id: string, payload: { status?: string; pr
 }
 
 export async function fetchDocuments(params: ListParams = {}): Promise<{ items: Record<string, unknown>[]; total: number }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<Record<string, unknown>[]>>(`${WORKSPACE_PREFIX}/documents`, { params });
-  return { items: data.data, total: data.data.length };
+  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/documents`, { params });
+  const normalized = normalizePaginatedItems<Record<string, unknown>>(data.data);
+  return { items: normalized.items, total: normalized.pagination.total };
 }
 
 export async function downloadDocument(id: string): Promise<{ fileUrl: string; fileName: string }> {
@@ -189,8 +192,9 @@ export async function downloadDocument(id: string): Promise<{ fileUrl: string; f
 }
 
 export async function fetchAnnouncements(params: ListParams = {}): Promise<{ items: AnnouncementRecord[]; total: number }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<AnnouncementRecord[]>>(`${WORKSPACE_PREFIX}/announcements`, { params });
-  return { items: data.data, total: data.data.length };
+  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/announcements`, { params });
+  const normalized = normalizePaginatedItems<AnnouncementRecord>(data.data);
+  return { items: normalized.items, total: normalized.pagination.total };
 }
 
 export async function acknowledgeAnnouncement(id: string): Promise<Record<string, unknown>> {
@@ -199,8 +203,14 @@ export async function acknowledgeAnnouncement(id: string): Promise<Record<string
 }
 
 export async function fetchNotifications(params: ListParams & { isRead?: boolean; isArchived?: boolean } = {}): Promise<PaginatedResult<NotificationRecord> & { grouped?: Record<string, NotificationRecord[]> }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<NotificationRecord[]> & { grouped?: Record<string, NotificationRecord[]>; pagination?: PaginationMeta }>(`${WORKSPACE_PREFIX}/notifications`, { params });
-  return { items: data.data, grouped: data.grouped, pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 } };
+  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/notifications`, { params });
+  const normalized = normalizePaginatedItems<NotificationRecord>(data.data);
+  const grouped = data.data?.grouped ?? {};
+  return {
+    items: normalized.items,
+    pagination: normalized.pagination,
+    grouped,
+  };
 }
 
 export async function markNotificationRead(id: string): Promise<NotificationRecord> {

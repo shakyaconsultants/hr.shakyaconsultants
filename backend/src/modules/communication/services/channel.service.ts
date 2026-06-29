@@ -103,20 +103,21 @@ export const ChannelService = {
   },
 
   async create(context: CommunicationActorContext, permissions: string[], input: CreateChannelInput) {
-    if (!context.employeeId) {
+    if (!context.employeeId && !context.isSuperAdmin) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
-    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
-    const participantIds = [...new Set([context.employeeId, ...input.participantIds])];
+    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
+    const authorEmployeeId = context.employeeId ?? context.userId;
+    const participantIds = [...new Set([authorEmployeeId, ...input.participantIds])];
 
     if (!canBroadcast) {
       if (input.channelSubtype === CHANNEL_SUBTYPE.DEPARTMENT) {
         throw new ForbiddenError('Only admins can create department channels', ERROR_CODES.AUTH_FORBIDDEN);
       }
       if (input.channelSubtype === CHANNEL_SUBTYPE.TEAM) {
-        const directReports = await getDirectReportIds(context.companyId, context.employeeId);
-        const allowed = new Set([context.employeeId, ...directReports]);
+        const directReports = await getDirectReportIds(context.companyId, authorEmployeeId);
+        const allowed = new Set([authorEmployeeId, ...directReports]);
         const invalid = participantIds.filter((id) => !allowed.has(id));
         if (invalid.length > 0) {
           throw new ForbiddenError('Team channels may only include your direct reports', ERROR_CODES.AUTH_FORBIDDEN);
@@ -124,7 +125,7 @@ export const ChannelService = {
       }
       if (input.channelSubtype === CHANNEL_SUBTYPE.PROJECT && input.relatedEntityId) {
         const membership = await ProjectMemberRepository.findOne(
-          { projectId: input.relatedEntityId, employeeId: context.employeeId },
+          { projectId: input.relatedEntityId, employeeId: authorEmployeeId },
           { companyId: context.companyId },
         );
         if (!membership) {
@@ -142,12 +143,12 @@ export const ChannelService = {
         type: CONVERSATION_TYPE.CHANNEL,
         channelSubtype: input.channelSubtype,
         participantIds,
-        adminIds: [context.employeeId],
+        adminIds: [authorEmployeeId],
         relatedEntityId: input.relatedEntityId,
         isReadOnly: input.isReadOnly ?? input.channelSubtype === CHANNEL_SUBTYPE.READ_ONLY,
         isPrivate: input.isPrivate ?? input.channelSubtype === CHANNEL_SUBTYPE.PRIVATE,
         pinnedMessageIds: [],
-        createdByParticipantId: context.employeeId,
+        createdByParticipantId: authorEmployeeId,
         createdBy: context.userId,
         updatedBy: context.userId,
       },
@@ -174,7 +175,7 @@ export const ChannelService = {
       throw new NotFoundError('Channel not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
+    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
     if (!canBroadcast) {
       if (!context.employeeId || !isChannelAdmin(existing, context.employeeId)) {
         throw new ForbiddenError('Channel admin access required', ERROR_CODES.AUTH_FORBIDDEN);
@@ -204,7 +205,7 @@ export const ChannelService = {
       throw new NotFoundError('Channel not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
+    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
     if (!canBroadcast) {
       if (!context.employeeId || !isChannelAdmin(existing, context.employeeId)) {
         throw new ForbiddenError('Channel admin access required', ERROR_CODES.AUTH_FORBIDDEN);

@@ -16,12 +16,13 @@ interface DirectConversationQuery {
 
 export const DirectMessageService = {
   async list(context: CommunicationActorContext, query: DirectConversationQuery) {
-    if (!context.employeeId) {
+    const actorEmployeeId = context.employeeId ?? (context.isSuperAdmin ? context.userId : undefined);
+    if (!actorEmployeeId) {
       return { items: [], total: 0, page: query.page ?? 1, pageSize: query.pageSize ?? 20 };
     }
 
     return ConversationRepository.paginate(
-      { type: CONVERSATION_TYPE.DIRECT, participantIds: context.employeeId },
+      { type: CONVERSATION_TYPE.DIRECT, participantIds: actorEmployeeId },
       {
         page: query.page,
         pageSize: query.pageSize,
@@ -33,11 +34,12 @@ export const DirectMessageService = {
   },
 
   async findOrCreate(context: CommunicationActorContext, targetEmployeeId: string) {
-    if (!context.employeeId) {
+    const actorEmployeeId = context.employeeId ?? (context.isSuperAdmin ? context.userId : undefined);
+    if (!actorEmployeeId) {
       throw new NotFoundError('Employee profile required', ERROR_CODES.NOT_FOUND);
     }
 
-    if (context.employeeId === targetEmployeeId) {
+    if (actorEmployeeId === targetEmployeeId) {
       throw new NotFoundError('Cannot start conversation with yourself', ERROR_CODES.NOT_FOUND);
     }
 
@@ -49,7 +51,7 @@ export const DirectMessageService = {
     const existing = await ConversationRepository.findOne(
       {
         type: CONVERSATION_TYPE.DIRECT,
-        participantIds: { $all: [context.employeeId, targetEmployeeId], $size: 2 },
+        participantIds: { $all: [actorEmployeeId, targetEmployeeId], $size: 2 },
       },
       { companyId: context.companyId },
     );
@@ -63,12 +65,12 @@ export const DirectMessageService = {
         id: generateUuid(),
         companyId: context.companyId,
         type: CONVERSATION_TYPE.DIRECT,
-        participantIds: [context.employeeId, targetEmployeeId],
+        participantIds: [actorEmployeeId, targetEmployeeId],
         adminIds: [],
         isReadOnly: false,
         isPrivate: true,
         pinnedMessageIds: [],
-        createdByParticipantId: context.employeeId,
+        createdByParticipantId: actorEmployeeId,
         createdBy: context.userId,
         updatedBy: context.userId,
       },

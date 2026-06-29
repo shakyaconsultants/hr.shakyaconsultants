@@ -13,6 +13,7 @@ import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { runActionMutation } from '@/shared/feedback/run-form-mutation';
 
 const BRANDING_KEYS = [
   { key: 'branding.logo_url', label: 'Logo URL', type: 'string' },
@@ -36,6 +37,7 @@ export function BrandingConfigPage({ embedded = false }: BrandingConfigPageProps
   const [form, setForm] = useState<Record<string, string>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -48,24 +50,34 @@ export function BrandingConfigPage({ embedded = false }: BrandingConfigPageProps
   }, [settings]);
 
   async function handleSave() {
-    for (const field of BRANDING_KEYS) {
-      const existing = settings?.find((s) => s.key === field.key);
-      const value = form[field.key] ?? '';
-      if (existing) {
-        await updateMutation.mutateAsync({ key: field.key, value });
-      } else if (value) {
-        await createMutation.mutateAsync({
-          key: field.key,
-          value,
-          valueType: field.type,
-          group: 'branding',
-          description: field.label,
-        });
-      }
+    setIsSaving(true);
+    const success = await runActionMutation({
+      successMessage: 'Branding settings saved successfully.',
+      mutation: async () => {
+        for (const field of BRANDING_KEYS) {
+          const existing = settings?.find((s) => s.key === field.key);
+          const value = form[field.key] ?? '';
+          if (existing) {
+            await updateMutation.mutateAsync({ key: field.key, value });
+          } else if (value) {
+            await createMutation.mutateAsync({
+              key: field.key,
+              value,
+              valueType: field.type,
+              group: 'branding',
+              description: field.label,
+            });
+          }
+        }
+      },
+    });
+
+    setIsSaving(false);
+    if (success) {
+      setConfirmOpen(false);
+      setDirty(false);
+      await refetch();
     }
-    setConfirmOpen(false);
-    setDirty(false);
-    await refetch();
   }
 
   const primaryColor = form['branding.primary_color'] || '#2563eb';
@@ -146,7 +158,7 @@ export function BrandingConfigPage({ embedded = false }: BrandingConfigPageProps
       <ConfirmSaveDialog
         open={confirmOpen}
         changedCount={BRANDING_KEYS.length}
-        isLoading={updateMutation.isPending || createMutation.isPending}
+        isLoading={isSaving}
         onConfirm={() => void handleSave()}
         onCancel={() => setConfirmOpen(false)}
       />

@@ -35,24 +35,27 @@ export function PortalGuard() {
     return <Navigate to={homeRoute} replace />;
   }
 
+  const superAdmin = isSuperAdmin();
+
   const wrongPortalLanding =
     (portal === PORTAL.ENTERPRISE && (location.pathname === ROUTES.WORKSPACE || location.pathname === ROUTES.MANAGER)) ||
     (portal === PORTAL.MANAGER && (location.pathname === ROUTES.WORKSPACE || location.pathname === ROUTES.ENTERPRISE)) ||
     (portal === PORTAL.WORKSPACE &&
       (location.pathname === ROUTES.ENTERPRISE || location.pathname === ROUTES.MANAGER));
 
-  if (wrongPortalLanding) {
+  if (!superAdmin && wrongPortalLanding) {
     return <Navigate to={homeRoute} replace />;
   }
 
   if (
+    !superAdmin &&
     PORTAL_HOME_PATHS.includes(location.pathname as (typeof PORTAL_HOME_PATHS)[number]) &&
     location.pathname !== homeRoute
   ) {
     return <Navigate to={homeRoute} replace />;
   }
 
-  if (!isPathAllowedForPortal(location.pathname, portal, hasPermission, hasAnyPermission)) {
+  if (!superAdmin && !isPathAllowedForPortal(location.pathname, portal, hasPermission, hasAnyPermission)) {
     return <Navigate to={ROUTES.FORBIDDEN} replace state={{ from: location.pathname }} />;
   }
 

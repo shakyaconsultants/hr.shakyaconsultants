@@ -1,6 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
-import { normalizeKanbanPayload } from '@/shared/utils/api-normalize.util';
+import { normalizeKanbanPayload, normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const RECRUITMENT_PREFIX = '/api/v1/recruitment';
 
@@ -120,14 +120,11 @@ export async function fetchRecruitmentDashboard(): Promise<RecruitmentDashboard>
 }
 
 export async function fetchCandidates(params: ListCandidatesParams = {}): Promise<PaginatedResult<CandidateRecord>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<CandidateRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     `${RECRUITMENT_PREFIX}/candidates`,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<CandidateRecord>(data.data);
 }
 
 export async function fetchCandidate(id: string): Promise<CandidateRecord> {

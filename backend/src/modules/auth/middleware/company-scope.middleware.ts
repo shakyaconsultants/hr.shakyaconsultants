@@ -6,6 +6,8 @@ import {
 import { AuthorizationError, AuthenticationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 
+import { isSuperAdminRequest } from '@modules/auth/utils/super-admin-auth.util.js';
+
 function extractCompanyId(req: AuthenticatedRequest): string | undefined {
   const paramCompanyId = req.params.companyId;
   if (typeof paramCompanyId === 'string' && paramCompanyId.length > 0) {
@@ -27,14 +29,20 @@ function extractCompanyId(req: AuthenticatedRequest): string | undefined {
 }
 
 export function companyScopeMiddleware(): RequestHandler {
-  return (req, _res: Response, next: NextFunction) => {
+  return async (req, _res: Response, next: NextFunction) => {
     try {
       if (!isAuthenticatedRequest(req)) {
         throw new AuthenticationError('Authentication required', ERROR_CODES.AUTH_UNAUTHORIZED);
       }
 
+      const authReq = req as AuthenticatedRequest;
+      if (await isSuperAdminRequest(authReq)) {
+        next();
+        return;
+      }
+
       const targetCompanyId = extractCompanyId(req);
-      if (targetCompanyId && targetCompanyId !== req.user.companyId) {
+      if (targetCompanyId && targetCompanyId !== authReq.user.companyId) {
         throw new AuthorizationError('Cross-company access denied');
       }
 

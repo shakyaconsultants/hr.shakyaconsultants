@@ -1,29 +1,20 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config/app.config';
-import { PORTAL } from '@/config/portals';
-import { useResolvedPortal } from '@/app/hooks/use-resolved-portal';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { cn } from '@/shared/utils/cn';
 
-const ADMIN_NAV = [{ label: 'Workflows', path: ROUTES.APPROVAL_WORKFLOWS, permission: 'workflow.read' }] as const;
-
-const HR_NAV = [
-  { label: 'Inbox', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read' },
-  { label: 'History', path: ROUTES.APPROVAL_HISTORY, permission: 'approval.read' },
+const NAV_ITEMS = [
+  { label: 'Apply Leave', path: ROUTES.WORKSPACE_LEAVE_APPLY, permission: 'leave.create' },
+  { label: 'My Requests', path: ROUTES.WORKSPACE_LEAVE_REQUESTS, permission: 'leave.read' },
+  { label: 'My Leave Balance', path: ROUTES.WORKSPACE_LEAVE_BALANCE, permission: 'leave.read' },
+  { label: 'Resignation', path: ROUTES.WORKSPACE_RESIGNATION, permission: 'resignation.read' },
 ] as const;
 
-export function ApprovalNav() {
+export function WorkspaceLeaveNav() {
   const location = useLocation();
-  const portal = useResolvedPortal();
   const hasPermission = useAuthStore((s) => s.hasPermission);
 
-  const items = portal === PORTAL.ENTERPRISE ? ADMIN_NAV : portal === PORTAL.MANAGER ? HR_NAV : [];
-
-  const visibleItems = items.filter((item) => hasPermission(item.permission));
-
-  if (visibleItems.length === 0) {
-    return null;
-  }
+  const visibleItems = NAV_ITEMS.filter((item) => hasPermission(item.permission));
 
   return (
     <nav className="flex flex-wrap gap-1 border-b pb-px">
@@ -45,14 +36,5 @@ export function ApprovalNav() {
         );
       })}
     </nav>
-  );
-}
-
-export function ApprovalPageHeader({ title, description }: { title: string; description?: string }) {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold">{title}</h1>
-      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-    </div>
   );
 }

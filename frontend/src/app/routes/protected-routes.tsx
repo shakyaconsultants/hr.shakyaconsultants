@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { ROUTES } from '@/config/app.config';
 import { lazyRoute } from '@/app/routes/lazy-route';
+import { LegacyEmployeeLeaveRedirect } from '@/app/routes/legacy-employee-route-redirect';
 import { PortalIndexRedirect } from '@/app/routes/portal-index-redirect';
 import type { RouteObject } from 'react-router-dom';
 
@@ -19,6 +20,10 @@ export const protectedAppRoutes: RouteObject[] = [
   { path: ROUTES.WORKSPACE_ACTIVITY.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-activity-page'), 'WorkspaceActivityPage') },
   { path: ROUTES.WORKSPACE_SEARCH.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-search-page'), 'WorkspaceSearchPage') },
   { path: ROUTES.WORKSPACE_MESSAGES.slice(1), ...lazyRoute(() => import('@/features/communication/pages/communication-workspace-page'), 'CommunicationWorkspacePage') },
+  { path: ROUTES.WORKSPACE_LEAVE_APPLY.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-apply-leave-page'), 'WorkspaceApplyLeavePage') },
+  { path: ROUTES.WORKSPACE_LEAVE_REQUESTS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-leave-requests-page'), 'WorkspaceLeaveRequestsPage') },
+  { path: ROUTES.WORKSPACE_LEAVE_BALANCE.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-leave-balance-page'), 'WorkspaceLeaveBalancePage') },
+  { path: ROUTES.WORKSPACE_RESIGNATION.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-resignation-page'), 'WorkspaceResignationPage') },
   { path: ROUTES.ORGANIZATION.slice(1), ...lazyRoute(() => import('@/features/organization/pages/organization-dashboard-page'), 'OrganizationDashboardPage') },
   { path: `${ROUTES.ORGANIZATION.slice(1)}/setup`, ...lazyRoute(() => import('@/features/admin/pages/company-setup-wizard-page'), 'CompanySetupWizardPage') },
   { path: `${ROUTES.ORGANIZATION.slice(1)}/chart`, ...lazyRoute(() => import('@/features/admin/pages/organization-chart-page'), 'OrganizationChartPage') },
@@ -54,12 +59,12 @@ export const protectedAppRoutes: RouteObject[] = [
   { path: ROUTES.PROJECTS_CREATE.slice(1), ...lazyRoute(() => import('@/features/project/pages/project-create-wizard-page'), 'ProjectCreateWizardPage') },
   { path: `${ROUTES.PROJECTS.slice(1)}/:id`, ...lazyRoute(() => import('@/features/project/pages/project-detail-page'), 'ProjectDetailPage') },
   { path: ROUTES.LEAVE_EXIT.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-exit-dashboard-page'), 'LeaveExitDashboardPage') },
-  { path: ROUTES.LEAVE_APPLY.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/apply-leave-page'), 'ApplyLeavePage') },
+  { path: ROUTES.LEAVE_APPLY.slice(1), element: <LegacyEmployeeLeaveRedirect target={ROUTES.WORKSPACE_LEAVE_APPLY} /> },
   { path: ROUTES.LEAVE_REQUESTS.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-requests-page'), 'LeaveRequestsPage') },
   { path: ROUTES.LEAVE_CALENDAR.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-calendar-page'), 'LeaveCalendarPage') },
   { path: ROUTES.LEAVE_BALANCES.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-balances-page'), 'LeaveBalancesPage') },
   { path: ROUTES.LEAVE_POLICIES.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-policies-page'), 'LeavePoliciesPage') },
-  { path: ROUTES.RESIGNATION.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/resignation-page'), 'ResignationPage') },
+  { path: ROUTES.RESIGNATION.slice(1), element: <LegacyEmployeeLeaveRedirect target={ROUTES.WORKSPACE_RESIGNATION} /> },
   { path: ROUTES.EXIT.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/exit-progress-page'), 'ExitProgressPage') },
   { path: ROUTES.APPROVAL_INBOX.slice(1), ...lazyRoute(() => import('@/features/approval/pages/approval-inbox-page'), 'ApprovalInboxPage') },
   { path: ROUTES.APPROVAL_HISTORY.slice(1), ...lazyRoute(() => import('@/features/approval/pages/approval-history-page'), 'ApprovalHistoryPage') },

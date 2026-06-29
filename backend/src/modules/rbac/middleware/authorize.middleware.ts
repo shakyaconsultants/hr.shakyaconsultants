@@ -4,11 +4,12 @@ import {
   isAuthenticatedRequest,
   type AuthenticatedRequest,
 } from '@modules/auth/interfaces/auth-request.interface.js';
+import { isSuperAdminRequest } from '@modules/auth/utils/super-admin-auth.util.js';
 import { AuthorizationError, AuthenticationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 
 async function loadPermissions(req: AuthenticatedRequest): Promise<string[]> {
-  if (req.auth?.permissions) {
+  if (Array.isArray(req.auth?.permissions)) {
     return req.auth.permissions;
   }
 
@@ -39,6 +40,10 @@ export function authorizeOwnerOrPermission(
     try {
       assertAuthenticated(req as AuthenticatedRequest);
       const authReq = req as AuthenticatedRequest;
+      if (await isSuperAdminRequest(authReq)) {
+        next();
+        return;
+      }
       const ownerId = resolveOwnerId(authReq);
 
       if (ownerId && authReq.user.employeeId === ownerId) {

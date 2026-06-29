@@ -7,6 +7,7 @@ import { BootstrapProfiler } from '@/shared/auth/bootstrap-profiler';
 import type { BootstrapResult } from '@/shared/auth/session-restore.types';
 import { markSessionHint } from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 
 /** Client-side navigation build from session shell — no network. */
 export function buildNavigationFromSession(): void {
@@ -41,6 +42,11 @@ export async function runAuthBootstrap(): Promise<BootstrapResult> {
   const profiler = new BootstrapProfiler();
   authDiag.log('bootstrap_started');
   profiler.mark('bootstrap_start');
+
+  if (useAuthStore.getState().authStatus === AUTH_STATUS.AUTHENTICATED) {
+    profiler.mark('bootstrap_complete');
+    return { success: true, report: profiler.report() };
+  }
 
   profiler.mark('session_restore_start');
   const outcome = await restoreSession();

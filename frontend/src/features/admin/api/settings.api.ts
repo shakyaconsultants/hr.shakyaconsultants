@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const SETTINGS_PREFIX = '/api/v1/settings';
 
@@ -22,14 +23,11 @@ export interface SettingListParams {
 }
 
 export async function fetchSettings(params: SettingListParams = {}): Promise<PaginatedResult<AppSetting>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<AppSetting[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     SETTINGS_PREFIX,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 50, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<AppSetting>(data.data, 50);
 }
 
 export async function fetchSettingsByGroup(group: string): Promise<AppSetting[]> {

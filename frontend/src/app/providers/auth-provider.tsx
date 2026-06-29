@@ -21,14 +21,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const setAuthStatus = useAuthStore((s) => s.setAuthStatus);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
-  const cancelledRef = useRef(false);
+  const bootstrappedRef = useRef(false);
 
   const runBootstrap = useCallback(async () => {
+    if (useAuthStore.getState().authStatus === AUTH_STATUS.AUTHENTICATED) {
+      return;
+    }
     setAuthStatus(AUTH_STATUS.LOADING);
     setBootstrapError(null);
 
     const result = await runAuthBootstrap();
-    if (cancelledRef.current) return;
 
     if (result.success) {
       setAuthStatus(AUTH_STATUS.AUTHENTICATED);
@@ -45,11 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearAuth, setAuthStatus]);
 
   useEffect(() => {
-    cancelledRef.current = false;
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
     void runBootstrap();
-    return () => {
-      cancelledRef.current = true;
-    };
   }, [runBootstrap]);
 
   const value = useMemo<AuthContextValue>(
@@ -57,12 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: async (payload) => {
         setAuthStatus(AUTH_STATUS.LOADING);
         setBootstrapError(null);
-        const result = await loginRequest(payload);
-        setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
+        try {
+          const result = await loginRequest(payload);
+          setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
 
-        const me = await fetchMe();
-        applyLoginSession(me);
-        setAuthStatus(AUTH_STATUS.AUTHENTICATED);
+          const me = await fetchMe();
+          applyLoginSession(me);
+          setAuthStatus(AUTH_STATUS.AUTHENTICATED);
+        } catch (error) {
+          setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
+          throw error;
+        }
       },
       logout: async () => {
         const refreshToken = getRefreshToken() ?? undefined;

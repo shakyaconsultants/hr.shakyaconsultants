@@ -10,6 +10,7 @@ import { SelectField } from '@/shared/components/select-field';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { runActionMutation } from '@/shared/feedback/run-form-mutation';
 
 export function PermissionMatrixPage() {
   const [searchParams] = useSearchParams();
@@ -66,7 +67,19 @@ export function PermissionMatrixPage() {
           </SelectField>
         </div>
         {selectedRoleId && hasPermission('rbac.role.update') ? (
-          <Button onClick={() => void assignMutation.mutateAsync({ roleId: selectedRoleId, permissionCodes: Array.from(selected) })} disabled={assignMutation.isPending}>
+          <Button
+            onClick={() =>
+              void runActionMutation({
+                successMessage: 'Permissions updated successfully.',
+                mutation: () =>
+                  assignMutation.mutateAsync({
+                    roleId: selectedRoleId,
+                    permissionCodes: Array.from(selected),
+                  }),
+              })
+            }
+            disabled={assignMutation.isPending}
+          >
             {assignMutation.isPending ? 'Saving...' : 'Save to Role'}
           </Button>
         ) : null}

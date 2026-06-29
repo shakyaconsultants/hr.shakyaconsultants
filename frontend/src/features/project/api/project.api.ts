@@ -1,6 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
-import { asRecord } from '@/shared/utils/api-normalize.util';
+import { asRecord, normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const PROJECT_PREFIX = '/api/v1/projects';
 
@@ -104,14 +104,11 @@ export async function fetchDeveloperDashboard(): Promise<Record<string, unknown>
 }
 
 export async function fetchProjects(params: ListProjectsParams = {}): Promise<PaginatedResult<ProjectRecord>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<ProjectRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     PROJECT_PREFIX,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<ProjectRecord>(data.data);
 }
 
 export async function fetchProject(id: string): Promise<ProjectRecord> {
@@ -218,14 +215,11 @@ export async function upsertProjectKnowledgeBase(
 }
 
 export async function fetchTasks(params: ListTasksParams = {}): Promise<PaginatedResult<TaskRecord>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<TaskRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     `${PROJECT_PREFIX}/tasks/list`,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<TaskRecord>(data.data);
 }
 
 export async function fetchProjectKanban(projectId: string): Promise<{ columns: Record<string, TaskRecord[]>; total: number }> {

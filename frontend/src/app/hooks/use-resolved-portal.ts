@@ -1,6 +1,10 @@
 import { useAuthStore } from '@/shared/stores/app.store';
 import { resolvePortal, getPortalHomeRoute, type PortalType } from '@/config/portals';
 
+export function useActivePortal(): PortalType {
+  return useResolvedPortal();
+}
+
 export function useResolvedPortal(): PortalType {
   const sessionPortal = useAuthStore((s) => s.portal);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);

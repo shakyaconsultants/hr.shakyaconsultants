@@ -4,11 +4,12 @@ import {
   isAuthenticatedRequest,
   type AuthenticatedRequest,
 } from '@modules/auth/interfaces/auth-request.interface.js';
+import { isSuperAdminRequest } from '@modules/auth/utils/super-admin-auth.util.js';
 import { AuthorizationError, AuthenticationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 
 async function loadPermissions(req: AuthenticatedRequest): Promise<string[]> {
-  if (req.auth?.permissions) {
+  if (Array.isArray(req.auth?.permissions)) {
     return req.auth.permissions;
   }
 
@@ -36,6 +37,10 @@ export function authorize(permission: string): RequestHandler {
     try {
       assertAuthenticated(req as AuthenticatedRequest);
       const authReq = req as AuthenticatedRequest;
+      if (await isSuperAdminRequest(authReq)) {
+        next();
+        return;
+      }
       const permissions = await loadPermissions(authReq);
 
       if (!permissions.includes(permission)) {
@@ -54,6 +59,10 @@ export function authorizeAny(...requiredPermissions: string[]): RequestHandler {
     try {
       assertAuthenticated(req as AuthenticatedRequest);
       const authReq = req as AuthenticatedRequest;
+      if (await isSuperAdminRequest(authReq)) {
+        next();
+        return;
+      }
       const permissions = await loadPermissions(authReq);
 
       const hasAny = requiredPermissions.some((permission) => permissions.includes(permission));
@@ -73,6 +82,10 @@ export function authorizeAll(...requiredPermissions: string[]): RequestHandler {
     try {
       assertAuthenticated(req as AuthenticatedRequest);
       const authReq = req as AuthenticatedRequest;
+      if (await isSuperAdminRequest(authReq)) {
+        next();
+        return;
+      }
       const permissions = await loadPermissions(authReq);
 
       const hasAll = requiredPermissions.every((permission) => permissions.includes(permission));

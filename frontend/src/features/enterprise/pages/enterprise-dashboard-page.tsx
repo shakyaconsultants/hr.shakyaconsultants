@@ -29,7 +29,7 @@ export function EnterpriseDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         icon={<Building2 className="h-6 w-6 text-primary" />}
-        title="Enterprise Dashboard"
+        title="Admin Dashboard"
         description={`How is the company performing? Executive overview for ${company?.name ?? 'your organization'}.`}
       />
 

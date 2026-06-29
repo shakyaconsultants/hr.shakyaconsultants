@@ -107,6 +107,9 @@ async function assertManagerAudienceScope(
   audience: string,
   targetIds: string[],
 ): Promise<void> {
+  if (context.isSuperAdmin) {
+    return;
+  }
   if (!context.employeeId) {
     throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
   }

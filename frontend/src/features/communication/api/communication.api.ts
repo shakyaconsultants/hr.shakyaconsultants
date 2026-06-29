@@ -283,19 +283,24 @@ async function unwrapList<T>(response: { data: ApiSuccessResponse<T[] | ListResp
 }
 
 async function unwrapPaginated<T>(response: {
-  data: ApiSuccessResponse<T[]> & { pagination?: PaginationMeta; grouped?: Record<string, T[]> };
+  data: ApiSuccessResponse<T[]> | ApiSuccessResponse<PaginatedResult<T>>;
 }): Promise<PaginatedResult<T> & { grouped?: Record<string, T[]> }> {
-  const { data } = response;
-  return {
-    items: data.data,
-    grouped: data.grouped,
-    pagination: data.pagination ?? {
-      page: 1,
-      pageSize: 20,
-      total: data.data.length,
-      totalPages: 1,
-    },
+  const data = response.data?.data as any;
+  if (data && 'items' in data && 'pagination' in data) {
+    return {
+      ...data,
+      grouped: (response.data as any)?.grouped ?? data.grouped,
+    };
+  }
+  const items = Array.isArray(data) ? data : (data?.items ?? []);
+  const pagination = (response.data as any)?.pagination ?? data?.pagination ?? {
+    page: 1,
+    pageSize: 20,
+    total: items.length,
+    totalPages: 1,
   };
+  const grouped = (response.data as any)?.grouped ?? data?.grouped;
+  return { items, pagination, grouped };
 }
 
 export async function fetchEnterpriseDashboard(params: DashboardQuery = {}): Promise<EnterpriseDashboard> {

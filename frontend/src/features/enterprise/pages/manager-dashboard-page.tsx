@@ -27,7 +27,7 @@ export function ManagerDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         icon={<Users className="h-6 w-6 text-primary" />}
-        title="Manager Dashboard"
+        title="HR Dashboard"
         description="How is your team performing? Operational overview for approvals, projects, and people."
       />
 

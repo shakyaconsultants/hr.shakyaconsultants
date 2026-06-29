@@ -10,8 +10,13 @@ import { StatCard } from '@/shared/components/stat-card';
 import { WidgetGrid } from '@/shared/components/widget-system/widget-frame';
 
 async function fetchLegacyHealth() {
-  const response = await fetch(`${APP_CONFIG.apiBaseUrl}/health`);
-  return response.json() as Promise<{ status?: string; services?: Record<string, { status?: string }> }>;
+  try {
+    const origin = new URL(APP_CONFIG.apiBaseUrl).origin;
+    const response = await fetch(`${origin}/health`);
+    return await response.json() as { status?: string; services?: Record<string, { status?: string }> };
+  } catch {
+    return { status: 'unknown', services: {} };
+  }
 }
 
 function statusColor(status?: string): string {

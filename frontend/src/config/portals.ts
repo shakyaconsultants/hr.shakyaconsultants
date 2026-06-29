@@ -55,10 +55,25 @@ export function getPortalHomeRoute(portal: PortalType): string {
 export function getPortalLabel(portal: PortalType): string {
   switch (portal) {
     case PORTAL.ENTERPRISE:
-      return 'Enterprise';
+      return 'Admin';
     case PORTAL.MANAGER:
-      return 'Manager';
+      return 'HR';
     default:
-      return 'Workspace';
+      return 'Employee Self-Service';
   }
+}
+
+/** Admin portal — company administration (maps to PORTAL.ENTERPRISE). */
+export function isAdminPortal(portal: PortalType): boolean {
+  return portal === PORTAL.ENTERPRISE;
+}
+
+/** HR / team-lead portal — operational management (maps to PORTAL.MANAGER). */
+export function isHrPortal(portal: PortalType): boolean {
+  return portal === PORTAL.MANAGER;
+}
+
+/** Employee self-service portal (maps to PORTAL.WORKSPACE). */
+export function isEmployeePortal(portal: PortalType): boolean {
+  return portal === PORTAL.WORKSPACE;
 }

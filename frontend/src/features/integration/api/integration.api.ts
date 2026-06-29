@@ -273,13 +273,15 @@ async function unwrap<T>(response: { data: ApiSuccessResponse<T> }): Promise<T> 
 }
 
 async function unwrapPaginated<T>(response: {
-  data: ApiSuccessResponse<T[]> & { pagination?: PaginationMeta };
+  data: ApiSuccessResponse<T[]> | ApiSuccessResponse<PaginatedResult<T>>;
 }): Promise<PaginatedResult<T>> {
-  const { data } = response;
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
+  const data = response.data?.data as any;
+  if (data && 'items' in data && 'pagination' in data) {
+    return data as PaginatedResult<T>;
+  }
+  const items = Array.isArray(data) ? data : (data?.items ?? []);
+  const pagination = (response.data as any)?.pagination ?? data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
+  return { items, pagination };
 }
 
 export async function fetchIntegrationDashboard(): Promise<IntegrationDashboard> {

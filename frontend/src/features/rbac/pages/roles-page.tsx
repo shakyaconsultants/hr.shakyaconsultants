@@ -144,7 +144,13 @@ export function RolesPage() {
 
       <FormDialog
         open={showCreate}
-        onOpenChange={setShowCreate}
+        onOpenChange={(open) => {
+          setShowCreate(open);
+          if (!open) {
+            setCreateError(null);
+            setNewRoleName('');
+          }
+        }}
         title="Create Role"
         description="Add a new enterprise role without leaving the list."
         submitLabel="Create"
@@ -172,12 +178,25 @@ export function RolesPage() {
       <Dialog
         open={Boolean(cloneTarget)}
         onOpenChange={(open) => {
-          if (!open) setCloneTarget(null);
+          if (!open) {
+            setCloneTarget(null);
+            setCloneError(null);
+            setCloneName('');
+          }
         }}
         title={cloneTarget ? `Clone ${cloneTarget.name}` : 'Clone role'}
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setCloneTarget(null)}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCloneTarget(null);
+                setCloneError(null);
+                setCloneName('');
+              }}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={() => {
                 if (!cloneTarget || cloneMutation.isPending) {

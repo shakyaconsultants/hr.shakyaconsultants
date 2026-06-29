@@ -39,7 +39,7 @@ export const MessageService = {
       throw new NotFoundError('Conversation not found', ERROR_CODES.NOT_FOUND);
     }
 
-    if (context.employeeId && !conversation.participantIds.includes(context.employeeId)) {
+    if (!context.isSuperAdmin && context.employeeId && !conversation.participantIds.includes(context.employeeId)) {
       throw new ForbiddenError('Not a conversation participant', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -56,7 +56,7 @@ export const MessageService = {
   },
 
   async send(context: CommunicationActorContext, conversationId: string, input: SendMessageInput) {
-    if (!context.employeeId) {
+    if (!context.employeeId && !context.isSuperAdmin) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -65,11 +65,13 @@ export const MessageService = {
       throw new NotFoundError('Conversation not found', ERROR_CODES.NOT_FOUND);
     }
 
-    if (!conversation.participantIds.includes(context.employeeId)) {
+    const senderId = context.employeeId ?? context.userId;
+
+    if (!context.isSuperAdmin && !conversation.participantIds.includes(senderId)) {
       throw new ForbiddenError('Not a conversation participant', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
-    if (conversation.isReadOnly) {
+    if (conversation.isReadOnly && !context.isSuperAdmin) {
       throw new ForbiddenError('Channel is read-only', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -78,7 +80,7 @@ export const MessageService = {
         id: generateUuid(),
         companyId: context.companyId,
         conversationId,
-        senderId: context.employeeId,
+        senderId,
         content: input.content,
         isEdited: false,
         replyToMessageId: input.replyToMessageId,
@@ -160,7 +162,7 @@ export const MessageService = {
   },
 
   async update(context: CommunicationActorContext, messageId: string, input: UpdateMessageInput) {
-    if (!context.employeeId) {
+    if (!context.employeeId && !context.isSuperAdmin) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -169,7 +171,9 @@ export const MessageService = {
       throw new NotFoundError('Message not found', ERROR_CODES.NOT_FOUND);
     }
 
-    if (message.senderId !== context.employeeId) {
+    const senderId = context.employeeId ?? context.userId;
+
+    if (!context.isSuperAdmin && message.senderId !== senderId) {
       throw new ForbiddenError('Only the sender can edit this message', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -183,7 +187,7 @@ export const MessageService = {
   },
 
   async delete(context: CommunicationActorContext, messageId: string) {
-    if (!context.employeeId) {
+    if (!context.employeeId && !context.isSuperAdmin) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -192,7 +196,9 @@ export const MessageService = {
       throw new NotFoundError('Message not found', ERROR_CODES.NOT_FOUND);
     }
 
-    if (message.senderId !== context.employeeId) {
+    const senderId = context.employeeId ?? context.userId;
+
+    if (!context.isSuperAdmin && message.senderId !== senderId) {
       throw new ForbiddenError('Only the sender can delete this message', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -218,7 +224,7 @@ export const MessageService = {
   },
 
   async markRead(context: CommunicationActorContext, messageId: string) {
-    if (!context.employeeId) {
+    if (!context.employeeId && !context.isSuperAdmin) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -227,8 +233,10 @@ export const MessageService = {
       throw new NotFoundError('Message not found', ERROR_CODES.NOT_FOUND);
     }
 
+    const recipientId = context.employeeId ?? context.userId;
+
     const existing = await MessageReceiptRepository.findOne(
-      { messageId, recipientId: context.employeeId },
+      { messageId, recipientId },
       { companyId: context.companyId },
     );
 
@@ -247,7 +255,7 @@ export const MessageService = {
         id: generateUuid(),
         companyId: context.companyId,
         messageId,
-        recipientId: context.employeeId,
+        recipientId,
         readAt: now,
         status: MESSAGE_DELIVERY_STATUS.READ,
         createdBy: context.userId,
@@ -260,7 +268,7 @@ export const MessageService = {
   },
 
   async star(context: CommunicationActorContext, messageId: string, starred = true) {
-    if (!context.employeeId) {
+    if (!context.employeeId && !context.isSuperAdmin) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -269,8 +277,10 @@ export const MessageService = {
       throw new NotFoundError('Message not found', ERROR_CODES.NOT_FOUND);
     }
 
+    const targetUserId = context.employeeId ?? context.userId;
+
     const existing = await MessageUserStateRepository.findOne(
-      { messageId, userId: context.employeeId },
+      { messageId, userId: targetUserId },
       { companyId: context.companyId },
     );
 
@@ -288,7 +298,7 @@ export const MessageService = {
         id: generateUuid(),
         companyId: context.companyId,
         messageId,
-        userId: context.employeeId,
+        userId: targetUserId,
         isStarred: starred,
         isPinned: false,
         createdBy: context.userId,

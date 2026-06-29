@@ -4,6 +4,7 @@ export interface ApprovalActorContext {
   companyId: string;
   userId: string;
   employeeId?: string;
+  isSuperAdmin?: boolean;
   ip?: string;
   userAgent?: string;
 }
@@ -21,7 +22,8 @@ export function buildApprovalActor(req: AuthenticatedRequest): ApprovalActorCont
   return {
     companyId: req.user.companyId,
     userId: req.user.userId,
-    employeeId: req.user.employeeId,
+    employeeId: req.user.employeeId ?? (req.auth?.isSuperAdmin ? req.user.userId : undefined),
+    isSuperAdmin: req.auth?.isSuperAdmin,
     ip: req.ip,
     userAgent: req.get('user-agent') ?? undefined,
   };

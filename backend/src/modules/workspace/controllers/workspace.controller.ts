@@ -126,7 +126,15 @@ export const listMyProjects: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
     const data = await WorkspaceMyProjectsService.list(actor(authReq), query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, {
+      items: data.items,
+      pagination: {
+        page: data.page ?? 1,
+        pageSize: data.pageSize ?? 20,
+        total: data.total,
+        totalPages: Math.max(1, Math.ceil(data.total / (data.pageSize ?? 20))),
+      },
+    });
   } catch (error) {
     next(error);
     return;
@@ -153,7 +161,7 @@ export const listMyTasks: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(myTasksQuerySchema, req.query);
     const data = await WorkspaceMyTasksService.list(actor(authReq), query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -214,7 +222,15 @@ export const listDocuments: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
     const data = await WorkspaceDocumentsService.list(actor(authReq), query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, {
+      items: data.items,
+      pagination: {
+        page: data.page ?? 1,
+        pageSize: data.pageSize ?? 20,
+        total: data.total,
+        totalPages: Math.max(1, Math.ceil(data.total / (data.pageSize ?? 20))),
+      },
+    });
   } catch (error) {
     next(error);
     return;
@@ -250,7 +266,15 @@ export const listAnnouncements: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
     const data = await WorkspaceAnnouncementsService.list(actor(authReq), query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, {
+      items: data.items,
+      pagination: {
+        page: data.page ?? 1,
+        pageSize: data.pageSize ?? 20,
+        total: data.total,
+        totalPages: Math.max(1, Math.ceil(data.total / (data.pageSize ?? 20))),
+      },
+    });
   } catch (error) {
     next(error);
     return;
@@ -286,7 +310,10 @@ export const listNotifications: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(notificationQuerySchema, req.query);
     const data = await WorkspaceNotificationsService.list(actor(authReq), query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, {
+      items: data.items,
+      pagination: data.pagination,
+    });
   } catch (error) {
     next(error);
     return;
@@ -333,7 +360,15 @@ export const listActivity: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
     const data = await WorkspaceTimelineService.list(actor(authReq), query);
-    return ResponseService.success(res, authReq, data);
+    return ResponseService.paginated(res, authReq, {
+      items: data.items,
+      pagination: {
+        page: data.page ?? 1,
+        pageSize: data.pageSize ?? 20,
+        total: data.total,
+        totalPages: Math.max(1, Math.ceil(data.total / (data.pageSize ?? 20))),
+      },
+    });
   } catch (error) {
     next(error);
     return;

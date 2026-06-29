@@ -51,6 +51,15 @@ export interface WidgetConfigInput {
 
 export function buildWorkspaceActor(req: AuthenticatedRequest): WorkspaceActorContext {
   if (!req.user.employeeId) {
+    if (req.auth?.isSuperAdmin) {
+      return {
+        companyId: req.user.companyId,
+        userId: req.user.userId,
+        employeeId: req.user.userId,
+        ip: req.ip,
+        userAgent: req.get('user-agent') ?? undefined,
+      };
+    }
     throw new ValidationError('Employee profile must be linked to access workspace', undefined, { code: ERROR_CODES.AUTH_FORBIDDEN });
   }
   return {
