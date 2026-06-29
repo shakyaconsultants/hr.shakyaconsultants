@@ -63,14 +63,11 @@ export async function fetchPermissionMatrix(): Promise<MatrixData> {
 }
 
 export async function fetchPermissions(params: Record<string, string | number | undefined> = {}): Promise<PaginatedResult<PermissionRecord>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<PermissionRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     `${RBAC_PREFIX}/permissions`,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 100, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<PermissionRecord>(data.data, 100);
 }
 
 export async function runSimulator(input: {
