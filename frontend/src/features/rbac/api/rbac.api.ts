@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const RBAC_PREFIX = '/api/v1/rbac';
 
@@ -37,14 +38,11 @@ export interface SimulatorResult {
 }
 
 export async function fetchRoles(params: Record<string, string | number | undefined> = {}): Promise<PaginatedResult<RoleRecord>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<RoleRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<any>(
     `${RBAC_PREFIX}/roles`,
     { params },
   );
-  return {
-    items: data.data,
-    pagination: data.pagination ?? { page: 1, pageSize: 20, total: data.data.length, totalPages: 1 },
-  };
+  return normalizePaginatedItems<RoleRecord>(data.data);
 }
 
 export async function fetchRole(id: string): Promise<{ role: RoleRecord; permissions: string[] }> {

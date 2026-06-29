@@ -1,5 +1,5 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
 import { asRecord, normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 const PROJECT_PREFIX = '/api/v1/projects';
