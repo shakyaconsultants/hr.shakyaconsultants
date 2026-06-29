@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   acknowledgeAnnouncement,
   archiveNotification,
@@ -55,8 +56,10 @@ export function useWidgetData(slug: string, enabled = true) {
 
 export function useUpdateWidgetConfig() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: updateWidgetConfig,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.layout }),
   });
 }
@@ -67,8 +70,10 @@ export function useWorkspaceProfile() {
 
 export function useUpdateProfile() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: updateProfile,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.profile }),
   });
 }
@@ -91,8 +96,9 @@ export function useMyTasksKanban(projectId?: string) {
 
 export function useBulkUpdateTasks() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ taskIds, status }: { taskIds: string[]; status: string }) => bulkUpdateTaskStatus(taskIds, status),
+    successMessage: 'Updated successfully',
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['workspace', 'tasks'] });
       qc.invalidateQueries({ queryKey: ['workspace', 'widget'] });
@@ -102,8 +108,9 @@ export function useBulkUpdateTasks() {
 
 export function useQuickUpdateTask() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: { status?: string; progressPercent?: number } }) => quickUpdateTask(id, payload),
+    successMessage: 'Updated successfully',
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['workspace', 'tasks'] });
       qc.invalidateQueries({ queryKey: ['workspace', 'widget'] });
@@ -116,7 +123,10 @@ export function useMyDocuments(params: ListParams = {}) {
 }
 
 export function useDownloadDocument() {
-  return useMutation({ mutationFn: downloadDocument });
+  return useAppMutation({
+    mutationFn: downloadDocument,
+    successMessage: 'Downloaded successfully',
+  });
 }
 
 export function useAnnouncements(params: ListParams = {}) {
@@ -125,8 +135,9 @@ export function useAnnouncements(params: ListParams = {}) {
 
 export function useAcknowledgeAnnouncement() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: acknowledgeAnnouncement,
+    successMessage: 'Acknowledged successfully',
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workspace', 'announcements'] }),
   });
 }
@@ -137,24 +148,27 @@ export function useNotifications(params: ListParams & { isRead?: boolean; isArch
 
 export function useMarkNotificationRead() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: markNotificationRead,
+    successMessage: 'Marked as read',
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workspace', 'notifications'] }),
   });
 }
 
 export function useMarkAllNotificationsRead() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: markAllNotificationsRead,
+    successMessage: 'Marked as read',
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workspace', 'notifications'] }),
   });
 }
 
 export function useArchiveNotification() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: archiveNotification,
+    successMessage: 'Archived successfully',
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workspace', 'notifications'] }),
   });
 }

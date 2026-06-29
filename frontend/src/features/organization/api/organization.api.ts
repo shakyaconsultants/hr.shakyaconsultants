@@ -1,7 +1,9 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginationMeta } from '@/shared/types/api.types';
 import type { MasterEntityKey } from '@/features/organization/constants/entity-catalog';
+import { clampMasterDataListParams } from '@/features/organization/constants/master-data.constants';
 import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import { assertValidEntityId } from '@/shared/utils/entity-id.util';
 
 const ORG_PREFIX = '/api/v1/organization';
 
@@ -33,12 +35,13 @@ export async function listEntities(
   entityKey: MasterEntityKey,
   params: ListQueryParams = {},
 ): Promise<{ items: MasterDataRecord[]; pagination: PaginationMeta }> {
+  const safeParams = clampMasterDataListParams(params);
   const { data } = await apiClient.get<ApiSuccessResponse<MasterDataRecord[] | { items?: MasterDataRecord[] }> & { pagination?: PaginationMeta }>(
     `${ORG_PREFIX}/entities/${entityKey}`,
-    { params },
+    { params: safeParams },
   );
 
-  const normalized = normalizePaginatedItems(data.data, params.pageSize ?? 20);
+  const normalized = normalizePaginatedItems(data.data, safeParams.pageSize ?? 20);
 
   return {
     items: normalized.items,
@@ -47,6 +50,7 @@ export async function listEntities(
 }
 
 export async function getEntity(entityKey: MasterEntityKey, id: string): Promise<MasterDataRecord> {
+  assertValidEntityId(id, 'Entity id');
   const { data } = await apiClient.get<ApiSuccessResponse<MasterDataRecord>>(
     `${ORG_PREFIX}/entities/${entityKey}/${id}`,
   );
@@ -69,6 +73,7 @@ export async function updateEntity(
   id: string,
   payload: Record<string, unknown>,
 ): Promise<MasterDataRecord> {
+  assertValidEntityId(id, 'Entity id');
   const { data } = await apiClient.patch<ApiSuccessResponse<MasterDataRecord>>(
     `${ORG_PREFIX}/entities/${entityKey}/${id}`,
     { data: payload },
@@ -77,10 +82,12 @@ export async function updateEntity(
 }
 
 export async function deleteEntity(entityKey: MasterEntityKey, id: string): Promise<void> {
+  assertValidEntityId(id, 'Entity id');
   await apiClient.delete(`${ORG_PREFIX}/entities/${entityKey}/${id}`);
 }
 
 export async function restoreEntity(entityKey: MasterEntityKey, id: string): Promise<MasterDataRecord> {
+  assertValidEntityId(id, 'Entity id');
   const { data } = await apiClient.post<ApiSuccessResponse<MasterDataRecord>>(
     `${ORG_PREFIX}/entities/${entityKey}/${id}/restore`,
   );

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useAssignCompensation, useEmployeeCompensation, useSalaryStructures } from '@/features/payroll/hooks/use-payroll';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
@@ -41,14 +42,20 @@ export function CompensationAssignmentForm({ employeeId, onSuccess }: Compensati
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    if (!salaryStructureId || !effectiveFrom) return;
-    try {
-      await assignCompensation.mutateAsync({ employeeId, salaryStructureId, baseSalary, effectiveFrom });
-      onSuccess?.();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to assign compensation');
+    if (assignCompensation.isPending) {
+      return;
     }
+    if (!salaryStructureId || !effectiveFrom) {
+      setError('Salary structure and effective date are required.');
+      return;
+    }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Compensation assigned successfully.',
+      mutation: () => assignCompensation.mutateAsync({ employeeId, salaryStructureId, baseSalary, effectiveFrom }),
+      onSuccess: () => onSuccess?.(),
+    });
   };
 
   const onStructureChange = (structureId: string) => {

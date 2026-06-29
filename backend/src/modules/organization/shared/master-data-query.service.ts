@@ -14,6 +14,7 @@ import { resolveEntityConfig } from '@modules/organization/constants/entity-regi
 import type { MasterDataEntityKey } from '@modules/organization/constants/organization.constants.js';
 import { MASTER_DATA_ENTITY } from '@modules/organization/constants/organization.constants.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
+import { documentToRecord } from '@shared/utils/document.util.js';
 
 export interface MasterDataListQuery {
   page?: number;
@@ -140,7 +141,7 @@ export const MasterDataQueryService = {
           { departmentId: item.id },
           { companyId },
         );
-        return { ...item, employeeCount: count };
+        return { ...documentToRecord(item), employeeCount: count } as BaseDocument & { employeeCount: number };
       }),
     );
     return enriched;

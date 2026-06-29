@@ -18,6 +18,7 @@ import { Loading } from '@/shared/components/loading';
 import { FormDialog } from '@/shared/components/form-dialog';
 import { Dialog } from '@/shared/components/ui/dialog';
 import { PageDataBoundary } from '@/shared/components/page-data-boundary';
+import { runActionMutation, runDeleteMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { ROUTES } from '@/config/app.config';
 import type { RoleRecord } from '@/features/rbac/api/rbac.api';
 import { useAuthStore } from '@/shared/stores/app.store';
@@ -29,6 +30,8 @@ export function RolesPage() {
   const [newRoleName, setNewRoleName] = useState('');
   const [cloneTarget, setCloneTarget] = useState<RoleRecord | null>(null);
   const [cloneName, setCloneName] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [cloneError, setCloneError] = useState<string | null>(null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const { data, isLoading, isError } = useRoles({ search: search || undefined, pageSize: 50 });
   const createMutation = useCreateRole();
@@ -63,13 +66,50 @@ export function RolesPage() {
             </Button>
           ) : null}
           {row.isArchived && hasPermission('rbac.role.update') ? (
-            <Button variant="ghost" size="sm" onClick={() => void restoreMutation.mutateAsync(row.id)}>Restore</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={restoreMutation.isPending}
+              onClick={() =>
+                void runActionMutation({
+                  successMessage: `Role "${row.name}" restored successfully.`,
+                  mutation: () => restoreMutation.mutateAsync(row.id),
+                })
+              }
+            >
+              Restore
+            </Button>
           ) : null}
           {!row.isSystem && hasPermission('rbac.role.update') && !row.isArchived ? (
-            <Button variant="ghost" size="sm" onClick={() => void archiveMutation.mutateAsync(row.id)}>Archive</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={archiveMutation.isPending}
+              onClick={() =>
+                void runActionMutation({
+                  successMessage: `Role "${row.name}" archived successfully.`,
+                  mutation: () => archiveMutation.mutateAsync(row.id),
+                })
+              }
+            >
+              Archive
+            </Button>
           ) : null}
           {!row.isSystem && hasPermission('rbac.role.delete') ? (
-            <Button variant="ghost" size="sm" onClick={() => void deleteMutation.mutateAsync(row.id)}>Delete</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={deleteMutation.isPending}
+              onClick={() =>
+                void runDeleteMutation({
+                  entityLabel: 'Role',
+                  successMessage: `Role "${row.name}" deleted successfully.`,
+                  mutation: () => deleteMutation.mutateAsync(row.id),
+                })
+              }
+            >
+              Delete
+            </Button>
           ) : null}
         </div>
       ),
@@ -111,12 +151,22 @@ export function RolesPage() {
         isSubmitting={createMutation.isPending}
         submitDisabled={!newRoleName.trim()}
         onSubmit={async () => {
-          await createMutation.mutateAsync({ name: newRoleName });
-          setShowCreate(false);
-          setNewRoleName('');
+          if (createMutation.isPending) {
+            return;
+          }
+          await runFormMutation({
+            setError: setCreateError,
+            successMessage: `Role "${newRoleName.trim()}" created successfully.`,
+            mutation: () => createMutation.mutateAsync({ name: newRoleName }),
+            onSuccess: () => {
+              setShowCreate(false);
+              setNewRoleName('');
+            },
+          });
         }}
       >
         <Input value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="Role name" />
+        {createError ? <p className="text-sm text-destructive">{createError}</p> : null}
       </FormDialog>
 
       <Dialog
@@ -129,11 +179,18 @@ export function RolesPage() {
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setCloneTarget(null)}>Cancel</Button>
             <Button
-              onClick={() =>
-                cloneTarget &&
-                void cloneMutation.mutateAsync({ id: cloneTarget.id, name: cloneName.trim() }).then(() => setCloneTarget(null))
-              }
-              disabled={!cloneName.trim()}
+              onClick={() => {
+                if (!cloneTarget || cloneMutation.isPending) {
+                  return;
+                }
+                void runFormMutation({
+                  setError: setCloneError,
+                  successMessage: `Role "${cloneName.trim()}" cloned successfully.`,
+                  mutation: () => cloneMutation.mutateAsync({ id: cloneTarget.id, name: cloneName.trim() }),
+                  onSuccess: () => setCloneTarget(null),
+                });
+              }}
+              disabled={!cloneName.trim() || cloneMutation.isPending}
             >
               Clone
             </Button>
@@ -141,6 +198,7 @@ export function RolesPage() {
         }
       >
         <Input value={cloneName} onChange={(e) => setCloneName(e.target.value)} />
+        {cloneError ? <p className="text-sm text-destructive">{cloneError}</p> : null}
       </Dialog>
     </div>
   );

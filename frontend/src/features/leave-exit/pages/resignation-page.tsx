@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { LeaveExitNav, LeaveExitPageHeader, StatusBadge } from '@/features/leave-exit/components/leave-exit-nav';
 import { useResignations, useSubmitResignation, useWithdrawResignation } from '@/features/leave-exit/hooks/use-leave-exit';
+import { runActionMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { DatePicker } from '@/shared/components/date-picker';
 import { DurationInput } from '@/shared/components/duration-input';
 import { Loading } from '@/shared/components/loading';
@@ -20,12 +21,15 @@ export function ResignationPage() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      await submit.mutateAsync({ employeeId, reason, noticePeriodDays, expectedLastWorkingDay });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to submit resignation');
+    if (submit.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Resignation submitted successfully.',
+      mutation: () => submit.mutateAsync({ employeeId, reason, noticePeriodDays, expectedLastWorkingDay }),
+    });
   };
 
   if (isLoading) return <Loading message="Loading resignations..." />;
@@ -81,7 +85,17 @@ export function ResignationPage() {
                   <td className="p-3"><StatusBadge status={item.status} /></td>
                   <td className="p-3 text-right">
                     {['pending', 'draft', 'in_progress'].includes(item.status) ? (
-                      <Button size="sm" variant="outline" disabled={withdraw.isPending} onClick={() => void withdraw.mutateAsync(item.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={withdraw.isPending}
+                        onClick={() =>
+                          void runActionMutation({
+                            successMessage: 'Resignation withdrawn successfully.',
+                            mutation: () => withdraw.mutateAsync(item.id),
+                          })
+                        }
+                      >
                         Withdraw
                       </Button>
                     ) : '—'}

@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   approvePayrollRun,
   assignCompensation,
@@ -70,8 +71,10 @@ export function usePayrollPolicy() {
 
 export function useUpdatePayrollPolicy() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: updatePayrollPolicy,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'policy'] }),
   });
 }
@@ -85,25 +88,31 @@ export function useSalaryStructures(params: ListParams = {}) {
 
 export function useCreateSalaryStructure() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateSalaryStructurePayload) => createSalaryStructure(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'structures'] }),
   });
 }
 
 export function useUpdateSalaryStructure() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateSalaryStructurePayload> }) =>
       updateSalaryStructure(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'structures'] }),
   });
 }
 
 export function useDeleteSalaryStructure() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => deleteSalaryStructure(id),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'structures'] }),
   });
 }
@@ -147,32 +156,37 @@ export function usePayrollRun(id: string) {
 
 export function useCreatePayrollRun() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreatePayrollRunPayload) => createPayrollRun(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'runs'] }),
   });
 }
 
 export function useProcessPayrollRun() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => processPayrollRun(id),
+    successMessage: 'Processed successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll'] }),
   });
 }
 
 export function useApprovePayrollRun() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => approvePayrollRun(id),
+    successMessage: 'Approved successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll'] }),
   });
 }
 
 export function useLockPayrollRun() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => lockPayrollRun(id),
+    successMessage: 'Locked successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll'] }),
   });
 }
@@ -194,8 +208,9 @@ export function usePayrollExceptions(params: ListParams & { payrollId?: string }
 
 export function useBulkApprovePayrollRuns() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (ids: string[]) => bulkApprovePayrollRuns(ids),
+    successMessage: 'Approved successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'runs'] }),
   });
 }
@@ -217,8 +232,10 @@ export function useEmployeeCompensation(employeeId: string) {
 
 export function useAssignCompensation() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateCompensationPayload) => assignCompensation(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'compensation'] }),
   });
 }
@@ -232,8 +249,10 @@ export function useSalaryRevisions(params: ListParams = {}) {
 
 export function useCreateSalaryRevision() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateRevisionPayload) => createSalaryRevision(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['payroll', 'revisions'] });
       void queryClient.invalidateQueries({ queryKey: ['payroll', 'compensation'] });
@@ -263,8 +282,9 @@ export function useMySalary() {
 }
 
 export function useDownloadPayslip() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => downloadPayslip(id),
+    successMessage: 'Downloaded successfully',
   });
 }
 
@@ -277,7 +297,8 @@ export function usePayrollReport(params: ReportParams) {
 }
 
 export function useExportPayrollReport() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: (params: ReportParams) => exportPayrollReport(params),
+    successMessage: 'Export started successfully',
   });
 }

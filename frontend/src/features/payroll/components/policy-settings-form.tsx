@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import type { PayrollPolicy } from '@/features/payroll/api/payroll.api';
 import { usePayrollPolicy, useUpdatePayrollPolicy } from '@/features/payroll/hooks/use-payroll';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 
@@ -9,7 +10,6 @@ export function PolicySettingsForm() {
   const updatePolicy = useUpdatePayrollPolicy();
 
   const [form, setForm] = useState<Partial<PayrollPolicy>>({});
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,14 +24,15 @@ export function PolicySettingsForm() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    setSaved(false);
-    try {
-      await updatePolicy.mutateAsync(form);
-      setSaved(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update policy');
+    if (updatePolicy.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Payroll policy saved successfully.',
+      mutation: () => updatePolicy.mutateAsync(form),
+    });
   };
 
   return (
@@ -97,7 +98,6 @@ export function PolicySettingsForm() {
       </label>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {saved ? <p className="text-sm text-emerald-600">Policy saved successfully.</p> : null}
 
       <Button type="submit" disabled={updatePolicy.isPending}>
         {updatePolicy.isPending ? 'Saving...' : 'Save Policy'}

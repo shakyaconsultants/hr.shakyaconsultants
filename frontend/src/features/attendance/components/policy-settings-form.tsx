@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import type { AttendancePolicy } from '@/features/attendance/api/attendance.api';
 import { useAttendancePolicy, useUpdateAttendancePolicy } from '@/features/attendance/hooks/use-attendance';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { DurationInput } from '@/shared/components/duration-input';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
@@ -20,7 +21,6 @@ export function PolicySettingsForm() {
   const updatePolicy = useUpdateAttendancePolicy();
 
   const [form, setForm] = useState<Partial<AttendancePolicy>>({});
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,14 +35,15 @@ export function PolicySettingsForm() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    setSaved(false);
-    try {
-      await updatePolicy.mutateAsync(form);
-      setSaved(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update policy');
+    if (updatePolicy.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Attendance policy saved successfully.',
+      mutation: () => updatePolicy.mutateAsync(form),
+    });
   };
 
   const toggleWeeklyOff = (day: number) => {
@@ -107,7 +108,6 @@ export function PolicySettingsForm() {
       </fieldset>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {saved ? <p className="text-sm text-emerald-600">Policy saved successfully.</p> : null}
 
       <Button type="submit" disabled={updatePolicy.isPending}>
         {updatePolicy.isPending ? 'Saving...' : 'Save Policy'}

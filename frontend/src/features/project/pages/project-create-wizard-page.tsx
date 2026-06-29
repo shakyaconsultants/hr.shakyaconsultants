@@ -26,6 +26,7 @@ import { Button } from '@/shared/components/ui/button';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Input } from '@/shared/components/ui/input';
 import { ROUTES } from '@/config/app.config';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { cn } from '@/shared/utils/cn';
 
 function mergeDraft(local: ProjectWizardDraft, remote: Record<string, unknown> | undefined): ProjectWizardDraft {
@@ -101,7 +102,7 @@ export function ProjectCreateWizardPage() {
   const { data: branches } = useMasterDataList('branch', { pageSize: 100 });
   const { data: departments } = useMasterDataList('department', { pageSize: 100 });
   const { data: categories } = useMasterDataList('project-category', { pageSize: 100 });
-  const { data: technologies } = useMasterDataList('technology', { pageSize: 200 });
+  const { data: technologies } = useMasterDataList('technology', { pageSize: 100 });
 
   const step = PROJECT_WIZARD_STEPS[draft.currentStepIndex];
   const employeeOptions = employees?.items ?? [];
@@ -136,15 +137,21 @@ export function ProjectCreateWizardPage() {
   }, [employeeOptions]);
 
   async function persistDraft(nextIndex = draft.currentStepIndex) {
+    if (saveDraftMutation.isPending) {
+      return;
+    }
     const currentStep = PROJECT_WIZARD_STEPS[nextIndex]?.id ?? step.id;
     setSaving(true);
     setError(null);
-    try {
-      await saveDraftMutation.mutateAsync({ currentStep, payload: draft as unknown as Record<string, unknown> });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save draft');
-    } finally {
-      setSaving(false);
+    const saved = await runFormMutation({
+      setError,
+      successMessage: 'Draft saved.',
+      mutation: () =>
+        saveDraftMutation.mutateAsync({ currentStep, payload: draft as unknown as Record<string, unknown> }),
+    });
+    setSaving(false);
+    if (!saved) {
+      return;
     }
   }
 
@@ -163,16 +170,23 @@ export function ProjectCreateWizardPage() {
       setError('Name, code, and project manager are required.');
       return;
     }
+    if (finalizeMutation.isPending) {
+      return;
+    }
     setSaving(true);
     setError(null);
-    try {
-      const project = await finalizeMutation.mutateAsync(buildFinalizePayload(draft));
-      clearLocalWizardDraft();
-      navigate(ROUTES.projectDetail(project.id));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create project');
-    } finally {
-      setSaving(false);
+    const created = await runFormMutation({
+      setError,
+      successMessage: 'Project created successfully.',
+      mutation: () => finalizeMutation.mutateAsync(buildFinalizePayload(draft)),
+      onSuccess: (project) => {
+        clearLocalWizardDraft();
+        navigate(ROUTES.projectDetail(project.id));
+      },
+    });
+    setSaving(false);
+    if (!created) {
+      return;
     }
   }
 

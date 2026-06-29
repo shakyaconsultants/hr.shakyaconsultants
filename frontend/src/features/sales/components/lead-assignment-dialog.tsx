@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAssignLead } from '@/features/sales/hooks/use-sales';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { EmployeeSearchSelect } from '@/shared/components/employee-search-select';
 import { AsyncSearchSelect } from '@/shared/components/async-search-select';
 import { FormDialog } from '@/shared/components/form-dialog';
@@ -33,21 +34,27 @@ export function LeadAssignmentDialog({
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
+    if (assignLead.isPending) {
+      return;
+    }
     if (!assignedToId.trim()) {
       setError('Select an assignee before submitting.');
       return;
     }
-    setError(null);
-    try {
-      await assignLead.mutateAsync({
-        id: leadId,
-        payload: { assignedToId: assignedToId.trim(), reason: reason || undefined, assignmentType },
-      });
-      onSuccess?.();
-      onClose();
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Failed to assign lead');
-    }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Lead assigned successfully.',
+      mutation: () =>
+        assignLead.mutateAsync({
+          id: leadId,
+          payload: { assignedToId: assignedToId.trim(), reason: reason || undefined, assignmentType },
+        }),
+      onSuccess: () => {
+        onSuccess?.();
+        onClose();
+      },
+    });
   }
 
   return (

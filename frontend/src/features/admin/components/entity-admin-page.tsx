@@ -32,7 +32,9 @@ import { StatusFilterSelect } from '@/shared/components/status-filter-select';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 import { useAuthStore } from '@/shared/stores/app.store';
-import type { ApiErrorResponse } from '@/shared/types/api.types';
+import { runActionMutation, runDeleteMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 
 export interface EntityAdminPageProps {
   entityKey: MasterEntityKey;
@@ -55,6 +57,7 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
   const [editingRecord, setEditingRecord] = useState<MasterDataRecord | null>(null);
   const [formValue, setFormValue] = useState<Record<string, unknown>>({ status: 'active' });
   const [deleteTarget, setDeleteTarget] = useState<MasterDataRecord | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const queryParams = useMemo(
@@ -108,20 +111,31 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
   }
 
   async function handleSave() {
-    setFormError(null);
-    const payload = formValueToPayload(formValue, fields);
-    try {
-      if (editorMode === 'create') {
-        await createMutation.mutateAsync(payload);
-      } else if (editorMode === 'edit' && editingRecord) {
-        await updateMutation.mutateAsync({ id: editingRecord.id, payload });
-      }
-      setEditorMode(null);
-      setEditingRecord(null);
-    } catch (mutationError) {
-      const apiError = mutationError as ApiErrorResponse;
-      setFormError(apiError.error?.message ?? 'Failed to save record');
+    if (createMutation.isPending || updateMutation.isPending) {
+      return;
     }
+
+    const payload = formValueToPayload(formValue, fields);
+    const label = meta?.label ?? 'Record';
+
+    await runFormMutation({
+      setError: setFormError,
+      successMessage:
+        editorMode === 'create' ? `${label} created successfully.` : `${label} updated successfully.`,
+      mutation: async () => {
+        if (editorMode === 'create') {
+          return createMutation.mutateAsync(payload);
+        }
+        if (editorMode === 'edit' && editingRecord && isValidEntityId(editingRecord.id)) {
+          return updateMutation.mutateAsync({ id: editingRecord.id, payload });
+        }
+        throw new Error('Cannot save: record id is missing or invalid.');
+      },
+      onSuccess: () => {
+        setEditorMode(null);
+        setEditingRecord(null);
+      },
+    });
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -152,8 +166,16 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
   }
 
   async function handleBulkDelete() {
+    const label = meta?.label ?? 'Record';
     for (const id of selectedIds) {
-      await deleteMutation.mutateAsync(id);
+      const ok = await runDeleteMutation({
+        entityLabel: label,
+        successMessage: `${label} archived successfully.`,
+        mutation: () => deleteMutation.mutateAsync(id),
+      });
+      if (!ok) {
+        return;
+      }
     }
     setSelectedIds(new Set());
   }
@@ -201,12 +223,30 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
             </Button>
           ) : null}
           {showArchived && canUpdate ? (
-            <Button variant="ghost" size="sm" onClick={() => void restoreMutation.mutateAsync(row.id)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={restoreMutation.isPending}
+              onClick={() =>
+                void runActionMutation({
+                  successMessage: `${meta.label} restored successfully.`,
+                  mutation: () => restoreMutation.mutateAsync(row.id),
+                })
+              }
+            >
               <RotateCcw className="h-4 w-4" />
             </Button>
           ) : null}
           {canDelete && !showArchived ? (
-            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(row)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!isValidEntityId(row.id)}
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteTarget(row);
+              }}
+            >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           ) : null}
@@ -215,7 +255,7 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
     },
   ];
 
-  const listError = isError ? ((error as unknown as ApiErrorResponse)?.error?.message ?? 'Failed to load data') : null;
+  const listError = isError ? parseMutationError(error).message : null;
 
   return (
     <div className="space-y-6">
@@ -332,16 +372,27 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={`Archive ${meta.label}`}
-        description={`Archive "${deleteTarget?.name}"? You can restore it later from archived view.`}
+        description={`Archive "${deleteTarget?.name}"? Dependent records may block this action.`}
         confirmLabel="Archive"
         isLoading={deleteMutation.isPending}
+        errorMessage={deleteError}
         onConfirm={async () => {
-          if (deleteTarget) {
-            await deleteMutation.mutateAsync(deleteTarget.id);
-            setDeleteTarget(null);
+          if (!deleteTarget || !isValidEntityId(deleteTarget.id)) {
+            setDeleteError('Cannot archive: record id is missing or invalid.');
+            return;
           }
+          await runDeleteMutation({
+            setError: setDeleteError,
+            entityLabel: meta.label,
+            successMessage: `${meta.label} archived successfully.`,
+            mutation: () => deleteMutation.mutateAsync(deleteTarget.id),
+            onSuccess: () => setDeleteTarget(null),
+          });
         }}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
       />
     </div>
   );

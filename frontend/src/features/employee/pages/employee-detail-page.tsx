@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Upload } from 'lucide-react';
 import { useEmployeeDashboard, useUploadDocument } from '@/features/employee/hooks/use-employees';
+import { runActionMutation } from '@/shared/feedback/run-form-mutation';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
@@ -26,10 +27,13 @@ export function EmployeeDetailPage() {
 
   async function handlePhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) {
+    if (!file || uploadMutation.isPending) {
       return;
     }
-    await uploadMutation.mutateAsync({ employeeId: id, file, documentType: 'profile_photo' });
+    await runActionMutation({
+      successMessage: 'Profile photo uploaded successfully.',
+      mutation: () => uploadMutation.mutateAsync({ employeeId: id, file, documentType: 'profile_photo' }),
+    });
   }
 
   return (

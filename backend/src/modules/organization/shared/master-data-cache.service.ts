@@ -25,6 +25,10 @@ export const MasterDataCacheService = {
     await CacheService.del(`${prefix}active-list`);
   },
 
+  async invalidateRecord(companyId: string, entityType: string, id: string): Promise<void> {
+    await this.del(this.buildKey(companyId, entityType, id));
+  },
+
   async getJson<T>(key: string): Promise<T | null> {
     const raw = await this.get(key);
     if (!raw) {

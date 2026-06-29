@@ -6,6 +6,7 @@ import {
   useSalaryStructures,
   useUpdateSalaryStructure,
 } from '@/features/payroll/hooks/use-payroll';
+import { runDeleteMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
 
@@ -52,18 +53,22 @@ export function SalaryStructureForm() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      const payload = { name, code, baseSalary, currency, components };
-      if (editingId) {
-        await updateStructure.mutateAsync({ id: editingId, payload });
-      } else {
-        await createStructure.mutateAsync(payload);
-      }
-      resetForm();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save structure');
+    if (createStructure.isPending || updateStructure.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: editingId ? 'Salary structure updated successfully.' : 'Salary structure created successfully.',
+      mutation: async () => {
+        const payload = { name, code, baseSalary, currency, components };
+        if (editingId) {
+          return updateStructure.mutateAsync({ id: editingId, payload });
+        }
+        return createStructure.mutateAsync(payload);
+      },
+      onSuccess: () => resetForm(),
+    });
   };
 
   const addComponent = () => setComponents([...components, { ...EMPTY_COMPONENT }]);
@@ -152,7 +157,13 @@ export function SalaryStructureForm() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => void deleteStructure.mutateAsync(row.id)}
+                  onClick={() =>
+                    void runDeleteMutation({
+                      entityLabel: 'Salary Structure',
+                      successMessage: 'Salary structure deleted successfully.',
+                      mutation: () => deleteStructure.mutateAsync(row.id),
+                    })
+                  }
                   disabled={deleteStructure.isPending}
                 >
                   Delete

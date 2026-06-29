@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Award, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import {
   useCreateEntity,
   useDeleteEntity,
+  useMasterDataList,
   useRestoreEntity,
   useUpdateEntity,
 } from '@/features/organization/hooks/use-master-data';
-import { listDesignations, type DesignationRecord } from '@/features/organization/designations/designation.api';
+import { type DesignationRecord } from '@/features/organization/designations/designation.api';
 import {
   DesignationForm,
   designationFormToPayload,
@@ -28,18 +28,10 @@ import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 import { exportEntities } from '@/features/organization/api/organization.api';
-import type { ApiErrorResponse } from '@/shared/types/api.types';
-
-function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === 'active'
-      ? 'bg-emerald-100 text-emerald-800'
-      : status === 'inactive'
-        ? 'bg-amber-100 text-amber-800'
-        : 'bg-muted text-muted-foreground';
-
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${tone}`}>{status}</span>;
-}
+import { runActionMutation, runDeleteMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
+import { EntityStatusBadge } from '@/shared/components/entity-status-badge';
 
 export function DesignationListPage() {
   const [page, setPage] = useState(1);
@@ -57,6 +49,7 @@ export function DesignationListPage() {
     applicableJobRoleIds: [],
   });
   const [deleteTarget, setDeleteTarget] = useState<DesignationRecord | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const queryParams = useMemo(
@@ -75,10 +68,7 @@ export function DesignationListPage() {
     [page, search, statusFilter, departmentFilter, salaryGradeFilter, hierarchyFilter, showArchived],
   );
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['organization', 'designation', 'list', queryParams],
-    queryFn: () => listDesignations(queryParams),
-  });
+  const { data, isLoading, isError, error } = useMasterDataList('designation', queryParams);
 
   const createMutation = useCreateEntity('designation');
   const updateMutation = useUpdateEntity('designation');
@@ -100,21 +90,33 @@ export function DesignationListPage() {
   }
 
   async function handleSave() {
-    setFormError(null);
-    const payload = designationFormToPayload(formValue);
-    try {
-      if (editorMode === 'create') {
-        await createMutation.mutateAsync(payload);
-      } else if (editorMode === 'edit' && editingRecord) {
-        await updateMutation.mutateAsync({ id: editingRecord.id, payload });
-      }
-      setEditorMode(null);
-      setEditingRecord(null);
-      await refetch();
-    } catch (mutationError) {
-      const apiError = mutationError as ApiErrorResponse;
-      setFormError(apiError.error?.message ?? 'Failed to save designation');
+    if (createMutation.isPending || updateMutation.isPending) {
+      return;
     }
+
+    const payload = designationFormToPayload(formValue);
+    const name = formValue.name.trim();
+
+    await runFormMutation({
+      setError: setFormError,
+      successMessage:
+        editorMode === 'create'
+          ? `Designation "${name}" created successfully.`
+          : `Designation "${name}" updated successfully.`,
+      mutation: async () => {
+        if (editorMode === 'create') {
+          return createMutation.mutateAsync(payload);
+        }
+        if (editorMode === 'edit' && editingRecord && isValidEntityId(editingRecord.id)) {
+          return updateMutation.mutateAsync({ id: editingRecord.id, payload });
+        }
+        throw new Error('Cannot save: designation id is missing or invalid.');
+      },
+      onSuccess: () => {
+        setEditorMode(null);
+        setEditingRecord(null);
+      },
+    });
   }
 
   async function handleExport() {
@@ -172,7 +174,7 @@ export function DesignationListPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (row: DesignationRecord) => <StatusBadge status={row.status} />,
+      render: (row: DesignationRecord) => <EntityStatusBadge status={row.status} />,
     },
     {
       key: 'actions',
@@ -183,11 +185,31 @@ export function DesignationListPage() {
             <Pencil className="h-4 w-4" />
           </Button>
           {showArchived ? (
-            <Button variant="ghost" size="sm" onClick={() => void restoreMutation.mutateAsync(row.id).then(() => refetch())}>
-              <RotateCcw className="h-4 w-4" />
-            </Button>
+            isValidEntityId(row.id) ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={restoreMutation.isPending}
+                onClick={() =>
+                  void runActionMutation({
+                    successMessage: `Designation "${row.name}" restored successfully.`,
+                    mutation: () => restoreMutation.mutateAsync(row.id),
+                  })
+                }
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            ) : null
           ) : (
-            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(row)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!isValidEntityId(row.id)}
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteTarget(row);
+              }}
+            >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           )}
@@ -196,7 +218,7 @@ export function DesignationListPage() {
     },
   ];
 
-  const listError = isError ? ((error as unknown as ApiErrorResponse)?.error?.message ?? 'Failed to load designations') : null;
+  const listError = isError ? parseMutationError(error).message : null;
 
   const hierarchyFilterOptions = useMemo(
     () => [
@@ -355,14 +377,24 @@ export function DesignationListPage() {
         description={`Archive "${deleteTarget?.name}"? This is blocked while employees are assigned.`}
         confirmLabel="Archive"
         isLoading={deleteMutation.isPending}
+        errorMessage={deleteError}
         onConfirm={async () => {
-          if (deleteTarget) {
-            await deleteMutation.mutateAsync(deleteTarget.id);
-            setDeleteTarget(null);
-            await refetch();
+          if (!deleteTarget || !isValidEntityId(deleteTarget.id)) {
+            setDeleteError('Cannot archive: designation id is missing or invalid.');
+            return;
           }
+          await runDeleteMutation({
+            setError: setDeleteError,
+            entityLabel: 'Designation',
+            successMessage: `Designation "${deleteTarget.name}" archived successfully.`,
+            mutation: () => deleteMutation.mutateAsync(deleteTarget.id),
+            onSuccess: () => setDeleteTarget(null),
+          });
         }}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
       />
     </div>
   );

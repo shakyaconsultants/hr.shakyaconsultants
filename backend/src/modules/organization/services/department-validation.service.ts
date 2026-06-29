@@ -10,6 +10,9 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 const MAX_HIERARCHY_DEPTH = 50;
 
 function normalizeOptionalId(value: unknown): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
   if (typeof value !== 'string' || value.trim() === '') {
     return undefined;
   }

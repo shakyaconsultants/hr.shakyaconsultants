@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   acknowledgeAnnouncement,
   archiveCommunicationNotification,
@@ -83,8 +84,10 @@ export function useCommunicationPolicies() {
 
 export function useUpdateCommunicationPolicies() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: updateCommunicationPolicies,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'policies'] }),
   });
 }
@@ -98,8 +101,10 @@ export function useCommunicationSettings() {
 
 export function useUpdateCommunicationSettings() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: updateCommunicationSettings,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'settings'] }),
   });
 }
@@ -121,33 +126,40 @@ export function useAnnouncement(id: string) {
 
 export function useCreateAnnouncement() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateAnnouncementPayload) => createAnnouncement(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'announcements'] }),
   });
 }
 
 export function useUpdateAnnouncement() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateAnnouncementPayload }) =>
       updateAnnouncement(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'announcements'] }),
   });
 }
 
 export function useDeleteAnnouncement() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => deleteAnnouncement(id),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'announcements'] }),
   });
 }
 
 export function usePublishAnnouncement() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => publishAnnouncement(id),
+    successMessage: 'Published successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'announcements'] }),
   });
 }
@@ -169,8 +181,9 @@ export function useAnnouncementHistory(params: AnnouncementListParams = {}) {
 
 export function useAcknowledgeAnnouncement() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => acknowledgeAnnouncement(id),
+    successMessage: 'Acknowledged successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'announcements'] }),
   });
 }
@@ -192,24 +205,30 @@ export function useChannel(id: string) {
 
 export function useCreateChannel() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateChannelPayload) => createChannel(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'channels'] }),
   });
 }
 
 export function useUpdateChannel() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateChannelPayload }) => updateChannel(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'channels'] }),
   });
 }
 
 export function useDeleteChannel() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => deleteChannel(id),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'channels'] }),
   });
 }
@@ -231,8 +250,10 @@ export function useDirectConversations(params: ListParams = {}) {
 
 export function useCreateDirectConversation() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (targetEmployeeId: string) => createDirectConversation(targetEmployeeId),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'conversations'] }),
   });
 }
@@ -247,9 +268,11 @@ export function useMessages(conversationId: string, params: ListParams = {}) {
 
 export function useSendMessage() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ conversationId, payload }: { conversationId: string; payload: SendMessagePayload }) =>
       sendMessage(conversationId, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['communication', 'messages', variables.conversationId] });
       void queryClient.invalidateQueries({ queryKey: ['communication', 'conversations'] });
@@ -259,41 +282,48 @@ export function useSendMessage() {
 
 export function useUpdateMessage() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, content }: { id: string; content: string }) => updateMessage(id, content),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'messages'] }),
   });
 }
 
 export function useDeleteMessage() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => deleteMessage(id),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'messages'] }),
   });
 }
 
 export function useForwardMessage() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, targetConversationId }: { id: string; targetConversationId: string }) =>
       forwardMessage(id, targetConversationId),
+    successMessage: 'Forwarded successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'messages'] }),
   });
 }
 
 export function useStarMessage() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => starMessage(id),
+    successMessage: 'Updated successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'messages'] }),
   });
 }
 
 export function useMarkMessageRead() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => markMessageRead(id),
+    successMessage: 'Marked as read',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'messages'] }),
   });
 }
@@ -307,24 +337,27 @@ export function useCommunicationNotifications(params: NotificationListParams = {
 
 export function useMarkCommunicationNotificationRead() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => markCommunicationNotificationRead(id),
+    successMessage: 'Marked as read',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'notifications'] }),
   });
 }
 
 export function useMarkAllCommunicationNotificationsRead() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: markAllCommunicationNotificationsRead,
+    successMessage: 'Marked as read',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'notifications'] }),
   });
 }
 
 export function useArchiveCommunicationNotification() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => archiveCommunicationNotification(id),
+    successMessage: 'Archived successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['communication', 'notifications'] }),
   });
 }
@@ -352,7 +385,8 @@ export function useCommunicationReport(params: ReportParams) {
 }
 
 export function useExportCommunicationReport() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: (params: ReportParams) => exportCommunicationReport(params),
+    successMessage: 'Export started successfully',
   });
 }

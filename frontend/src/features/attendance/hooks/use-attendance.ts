@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   createCorrection,
   createShiftAssignment,
@@ -62,8 +63,10 @@ export function useAttendancePolicy() {
 
 export function useUpdateAttendancePolicy() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: updateAttendancePolicy,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['attendance', 'policy'] }),
   });
 }
@@ -77,33 +80,40 @@ export function useShiftAssignments(params: { employeeId?: string; page?: number
 
 export function useCreateShiftAssignment() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateShiftAssignmentPayload) => createShiftAssignment(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['attendance', 'shift-assignments'] }),
   });
 }
 
 export function useUpdateShiftAssignment() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateShiftAssignmentPayload> }) =>
       updateShiftAssignment(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['attendance', 'shift-assignments'] }),
   });
 }
 
 export function useDeleteShiftAssignment() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => deleteShiftAssignment(id),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['attendance', 'shift-assignments'] }),
   });
 }
 
 export function usePunch() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: PunchPayload) => punch(payload),
+    successMessage: 'Punched successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['attendance'] });
     },
@@ -149,8 +159,10 @@ export function useCorrections(params: { page?: number; pageSize?: number; statu
 
 export function useCreateCorrection() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateCorrectionPayload) => createCorrection(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['attendance'] });
       void queryClient.invalidateQueries({ queryKey: ['approval'] });
@@ -160,8 +172,9 @@ export function useCreateCorrection() {
 
 export function useSubmitCorrection() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => submitCorrection(id),
+    successMessage: 'Submitted successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['attendance'] });
       void queryClient.invalidateQueries({ queryKey: ['approval'] });
@@ -192,23 +205,26 @@ export function useAttendanceReport(params: ReportParams) {
 }
 
 export function useExportAttendanceReport() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: (params: ReportParams) => exportAttendanceReport(params),
+    successMessage: 'Export started successfully',
   });
 }
 
 export function useProcessMonthlyAttendance() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: MonthlyProcessingPayload) => processMonthlyAttendance(payload),
+    successMessage: 'Processed successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['attendance'] }),
   });
 }
 
 export function useOverrideAttendanceRecord() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: OverrideRecordPayload) => overrideAttendanceRecord(payload),
+    successMessage: 'Saved successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['attendance'] }),
   });
 }

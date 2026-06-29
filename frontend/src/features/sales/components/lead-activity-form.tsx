@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useCreateActivity, useCreateCallLog, useCreateFollowUp } from '@/features/sales/hooks/use-sales';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { DateTimePicker, dateTimePickerValueToIso } from '@/shared/components/datetime-picker';
 import { DurationInput } from '@/shared/components/duration-input';
 import { Button } from '@/shared/components/ui/button';
@@ -38,27 +39,50 @@ export function LeadActivityForm({ leadId, onSuccess }: LeadActivityFormProps) {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      if (activeTab === 'note') {
-        await createActivity.mutateAsync({ leadId, type: 'note', description, title: title || undefined });
-      } else if (activeTab === 'meeting') {
-        await createActivity.mutateAsync({ leadId, type: 'meeting', description, title: title || undefined });
-      } else if (activeTab === 'call') {
-        await createCallLog.mutateAsync({ leadId, direction, durationSeconds, notes: description, outcome: outcome || undefined });
-        await createActivity.mutateAsync({ leadId, type: 'call', description: description || `Call (${direction})`, title: outcome || 'Call logged' });
-      } else if (activeTab === 'follow_up') {
-        if (!scheduledAt) {
-          setError('Scheduled date is required');
-          return;
-        }
-        await createFollowUp.mutateAsync({ leadId, scheduledAt: dateTimePickerValueToIso(scheduledAt), notes: description });
-      }
-      resetForm();
-      onSuccess?.();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to log activity');
+    if (isPending) {
+      return;
     }
+
+    if (activeTab === 'follow_up' && !scheduledAt) {
+      setError('Scheduled date is required');
+      return;
+    }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Activity logged successfully.',
+      mutation: async () => {
+        if (activeTab === 'note') {
+          await createActivity.mutateAsync({ leadId, type: 'note', description, title: title || undefined });
+        } else if (activeTab === 'meeting') {
+          await createActivity.mutateAsync({ leadId, type: 'meeting', description, title: title || undefined });
+        } else if (activeTab === 'call') {
+          await createCallLog.mutateAsync({
+            leadId,
+            direction,
+            durationSeconds,
+            notes: description,
+            outcome: outcome || undefined,
+          });
+          await createActivity.mutateAsync({
+            leadId,
+            type: 'call',
+            description: description || `Call (${direction})`,
+            title: outcome || 'Call logged',
+          });
+        } else if (activeTab === 'follow_up') {
+          await createFollowUp.mutateAsync({
+            leadId,
+            scheduledAt: dateTimePickerValueToIso(scheduledAt),
+            notes: description,
+          });
+        }
+      },
+      onSuccess: () => {
+        resetForm();
+        onSuccess?.();
+      },
+    });
   };
 
   const tabs: { id: ActivityTab; label: string }[] = [

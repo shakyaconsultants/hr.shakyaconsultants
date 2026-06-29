@@ -5,16 +5,17 @@ import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
 import { SelectField } from '@/shared/components/select-field';
 import { Input } from '@/shared/components/ui/input';
 import type { DepartmentRecord } from '@/features/organization/departments/department.api';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 
 export interface DepartmentFormValue {
   name: string;
-  code?: string;
-  description?: string;
-  branchId?: string;
-  parentDepartmentId?: string;
-  headEmployeeId?: string;
-  email?: string;
-  internalNotes?: string;
+  code: string;
+  description: string;
+  branchId: string;
+  parentDepartmentId: string;
+  headEmployeeId: string;
+  email: string;
+  internalNotes: string;
   status: string;
 }
 
@@ -29,31 +30,62 @@ const STATUS_OPTIONS = [
   { value: 'inactive', label: 'Inactive' },
 ];
 
+export function createEmptyDepartmentFormValue(): DepartmentFormValue {
+  return {
+    name: '',
+    code: '',
+    description: '',
+    branchId: '',
+    parentDepartmentId: '',
+    headEmployeeId: '',
+    email: '',
+    internalNotes: '',
+    status: 'active',
+  };
+}
+
+function optionalId(value: unknown): string {
+  return isValidEntityId(value) ? value : '';
+}
+
 export function recordToDepartmentForm(record: DepartmentRecord | null): DepartmentFormValue {
   if (!record) {
-    return { name: '', status: 'active' };
+    return createEmptyDepartmentFormValue();
   }
 
   return {
-    name: record.name,
-    code: record.code,
-    description: typeof record.description === 'string' ? record.description : undefined,
-    branchId: record.branchId,
-    parentDepartmentId: record.parentDepartmentId,
-    headEmployeeId: record.headEmployeeId,
-    email: record.email,
-    internalNotes: typeof record.internalNotes === 'string' ? record.internalNotes : undefined,
+    name: record.name ?? '',
+    code: record.code ?? '',
+    description: typeof record.description === 'string' ? record.description : '',
+    branchId: optionalId(record.branchId),
+    parentDepartmentId: optionalId(record.parentDepartmentId),
+    headEmployeeId: optionalId(record.headEmployeeId),
+    email: record.email ?? '',
+    internalNotes: typeof record.internalNotes === 'string' ? record.internalNotes : '',
     status: record.status ?? 'active',
   };
 }
 
-export function departmentFormToPayload(value: DepartmentFormValue): Record<string, unknown> {
+export function departmentFormToPayload(
+  value: DepartmentFormValue,
+  options?: { isUpdate?: boolean },
+): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     name: value.name.trim(),
     status: value.status,
   };
 
-  if (value.description?.trim()) {
+  if (options?.isUpdate) {
+    payload.description = value.description.trim() || null;
+    payload.branchId = value.branchId || null;
+    payload.parentDepartmentId = value.parentDepartmentId || null;
+    payload.headEmployeeId = value.headEmployeeId || null;
+    payload.email = value.email.trim() || null;
+    payload.internalNotes = value.internalNotes.trim() || null;
+    return payload;
+  }
+
+  if (value.description.trim()) {
     payload.description = value.description.trim();
   }
   if (value.branchId) {
@@ -65,10 +97,10 @@ export function departmentFormToPayload(value: DepartmentFormValue): Record<stri
   if (value.headEmployeeId) {
     payload.headEmployeeId = value.headEmployeeId;
   }
-  if (value.email?.trim()) {
+  if (value.email.trim()) {
     payload.email = value.email.trim();
   }
-  if (value.internalNotes?.trim()) {
+  if (value.internalNotes.trim()) {
     payload.internalNotes = value.internalNotes.trim();
   }
 
@@ -104,7 +136,7 @@ export function DepartmentForm({ value, onChange, excludeDepartmentId }: Departm
         <SelectField label="Description">
           <textarea
             className="min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={value.description ?? ''}
+            value={value.description}
             rows={2}
             onChange={(event) => updateField('description', event.target.value)}
           />
@@ -115,9 +147,10 @@ export function DepartmentForm({ value, onChange, excludeDepartmentId }: Departm
         <SelectField label="Branch">
           <MasterDataSelect
             entityKey="branch"
-            value={value.branchId ?? ''}
+            value={value.branchId}
             placeholder="Select branch…"
-            onChange={(next) => updateField('branchId', next || undefined)}
+            emptyLabel="No active branches found"
+            onChange={(next) => updateField('branchId', next)}
           />
         </SelectField>
 
@@ -127,17 +160,18 @@ export function DepartmentForm({ value, onChange, excludeDepartmentId }: Departm
         >
           <MasterDataSelect
             entityKey="department"
-            value={value.parentDepartmentId ?? ''}
+            value={value.parentDepartmentId}
             placeholder="Root department"
-            onChange={(next) => updateField('parentDepartmentId', next || undefined)}
+            excludeIds={isValidEntityId(excludeDepartmentId) ? [excludeDepartmentId] : undefined}
+            onChange={(next) => updateField('parentDepartmentId', next)}
           />
         </SelectField>
 
         <SelectField label="Department Head">
           <EmployeeSearchSelect
-            value={value.headEmployeeId ?? ''}
+            value={value.headEmployeeId}
             placeholder="Select department head…"
-            onChange={(next) => updateField('headEmployeeId', next || undefined)}
+            onChange={(next) => updateField('headEmployeeId', next)}
           />
         </SelectField>
       </FormSection>
@@ -146,7 +180,7 @@ export function DepartmentForm({ value, onChange, excludeDepartmentId }: Departm
         <SelectField label="Department Email">
           <Input
             type="email"
-            value={value.email ?? ''}
+            value={value.email}
             placeholder="department@company.com"
             onChange={(event) => updateField('email', event.target.value)}
           />
@@ -157,7 +191,7 @@ export function DepartmentForm({ value, onChange, excludeDepartmentId }: Departm
         <SelectField label="Internal Notes">
           <textarea
             className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={value.internalNotes ?? ''}
+            value={value.internalNotes}
             rows={3}
             placeholder="Visible to administrators only"
             onChange={(event) => updateField('internalNotes', event.target.value)}

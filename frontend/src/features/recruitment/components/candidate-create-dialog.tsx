@@ -5,6 +5,7 @@ import { FormDialog } from '@/shared/components/form-dialog';
 import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
 import { SelectField } from '@/shared/components/select-field';
 import { Input } from '@/shared/components/ui/input';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { ROUTES } from '@/config/app.config';
 
 export interface CandidateCreateDialogProps {
@@ -29,20 +30,26 @@ export function CandidateCreateDialog({ open, onOpenChange }: CandidateCreateDia
   }
 
   async function handleSubmit() {
-    setError(null);
-    try {
-      const candidate = await createMutation.mutateAsync({
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        phone: form.phone || undefined,
-        source: form.source || undefined,
-      });
-      onOpenChange(false);
-      navigate(ROUTES.recruitmentCandidateDetail(candidate.id));
-    } catch {
-      setError('Failed to create candidate. Check for duplicate email or phone.');
+    if (createMutation.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Candidate created successfully.',
+      mutation: () =>
+        createMutation.mutateAsync({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone || undefined,
+          source: form.source || undefined,
+        }),
+      onSuccess: (candidate) => {
+        onOpenChange(false);
+        navigate(ROUTES.recruitmentCandidateDetail(candidate.id));
+      },
+    });
   }
 
   return (

@@ -7,6 +7,7 @@ import {
   OfficeLocationRepository,
 } from '@domain/organization/organization.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
+import { ProjectRepository } from '@domain/project/project.schemas.js';
 import { resolveEntityConfig } from '@modules/organization/constants/entity-registry.constants.js';
 import type { MasterDataEntityKey } from '@modules/organization/constants/organization.constants.js';
 import { MASTER_DATA_ENTITY } from '@modules/organization/constants/organization.constants.js';
@@ -14,8 +15,12 @@ import { ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 
 interface DependencyCheck {
-  repository: { exists: (filter: DomainQueryFilter, options?: { companyId?: string }) => Promise<boolean> };
+  repository: {
+    exists: (filter: DomainQueryFilter, options?: { companyId?: string }) => Promise<boolean>;
+    count: (filter: DomainQueryFilter, options?: { companyId?: string }) => Promise<number>;
+  };
   filter: (entityId: string) => DomainQueryFilter;
+  label: string;
   message: string;
 }
 
@@ -24,11 +29,13 @@ const DELETE_DEPENDENCY_MAP: Partial<Record<MasterDataEntityKey, DependencyCheck
     {
       repository: DepartmentRepository,
       filter: (id) => ({ branchId: id }),
+      label: 'Departments',
       message: 'Branch is referenced by one or more departments',
     },
     {
       repository: OfficeLocationRepository,
       filter: (id) => ({ branchId: id }),
+      label: 'Office Locations',
       message: 'Branch is referenced by one or more office locations',
     },
   ],
@@ -36,33 +43,51 @@ const DELETE_DEPENDENCY_MAP: Partial<Record<MasterDataEntityKey, DependencyCheck
     {
       repository: DepartmentRepository,
       filter: (id) => ({ parentDepartmentId: id }),
+      label: 'Child Departments',
       message: 'Department has child departments',
-    },
-    {
-      repository: JobRoleRepository,
-      filter: (id) => ({ departmentId: id }),
-      message: 'Department is referenced by one or more job roles',
     },
     {
       repository: EmployeeRepository,
       filter: (id) => ({ departmentId: id }),
+      label: 'Employees',
       message: 'Department has assigned employees',
+    },
+    {
+      repository: JobRoleRepository,
+      filter: (id) => ({ departmentId: id }),
+      label: 'Job Roles',
+      message: 'Department is referenced by one or more job roles',
+    },
+    {
+      repository: DesignationRepository,
+      filter: (id) => ({ departmentId: id }),
+      label: 'Designations',
+      message: 'Department is referenced by one or more designations',
+    },
+    {
+      repository: ProjectRepository,
+      filter: (id) => ({ departmentId: id }),
+      label: 'Projects',
+      message: 'Department is referenced by one or more projects',
     },
   ],
   [MASTER_DATA_ENTITY.DESIGNATION]: [
     {
       repository: EmployeeRepository,
       filter: (id) => ({ designationId: id }),
+      label: 'Employees',
       message: 'Designation has assigned employees',
     },
     {
       repository: DesignationRepository,
       filter: (id) => ({ promotionDesignationId: id }),
+      label: 'Promotion Paths',
       message: 'Designation is used as a promotion path',
     },
     {
       repository: JobRoleRepository,
       filter: (id) => ({ designationId: id }),
+      label: 'Job Roles',
       message: 'Designation is referenced by one or more job roles',
     },
   ],
@@ -70,6 +95,7 @@ const DELETE_DEPENDENCY_MAP: Partial<Record<MasterDataEntityKey, DependencyCheck
     {
       repository: JobRoleRepository,
       filter: (id) => ({ requiredSkillIds: { $in: [id] } }),
+      label: 'Job Roles',
       message: 'Skill is required by one or more job roles',
     },
   ],
@@ -82,17 +108,31 @@ export const DependencyValidatorService = {
     companyId: string,
   ): Promise<void> {
     const checks = DELETE_DEPENDENCY_MAP[entityKey] ?? [];
+    const blockers: Array<{ label: string; count: number; message: string }> = [];
 
     for (const check of checks) {
-      const referenced = await check.repository.exists(check.filter(entityId), { companyId });
-      if (referenced) {
-        throw new ConflictError(check.message, ERROR_CODES.CONFLICT, {
-          entityKey,
-          entityId,
-          reason: 'DEPENDENCY',
-        });
+      const count = await check.repository.count(check.filter(entityId), { companyId });
+      if (count > 0) {
+        blockers.push({ label: check.label, count, message: check.message });
       }
     }
+
+    if (blockers.length === 0) {
+      return;
+    }
+
+    const summary = blockers.map((blocker) => `${blocker.count} ${blocker.label}`).join(', ');
+
+    throw new ConflictError(
+      `Cannot delete: ${summary} assigned. Move or archive them first.`,
+      ERROR_CODES.CONFLICT,
+      {
+        entityKey,
+        entityId,
+        reason: 'DEPENDENCY',
+        dependencies: blockers,
+      },
+    );
   },
 
   async assertNoDuplicateNameOrCode(
@@ -125,11 +165,15 @@ export const DependencyValidatorService = {
       const doc = duplicate as unknown as Record<string, unknown>;
       const duplicateName = typeof doc.name === 'string' ? doc.name : '';
       const field = duplicateName.toLowerCase() === fields.name?.toLowerCase() ? 'name' : 'code';
-      throw new ConflictError(`Duplicate ${field} already exists`, ERROR_CODES.CONFLICT, {
-        entityKey,
-        field,
-        value: field === 'name' ? fields.name : fields.code,
-      });
+      throw new ConflictError(
+        field === 'name' ? `${fields.name} already exists.` : `Code ${fields.code} already exists.`,
+        ERROR_CODES.CONFLICT,
+        {
+          entityKey,
+          field,
+          value: field === 'name' ? fields.name : fields.code,
+        },
+      );
     }
   },
 

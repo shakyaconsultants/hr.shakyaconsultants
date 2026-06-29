@@ -15,6 +15,7 @@ import type { MasterDataListQuery } from '@modules/organization/shared/master-da
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { buildExactFilter, mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
 import type { DomainQueryFilter } from '@infrastructure/database/types/domain-query.types.js';
+import { documentToRecord } from '@shared/utils/document.util.js';
 
 export interface DepartmentListEnrichment {
   branchName?: string;
@@ -142,12 +143,12 @@ async function enrichDepartmentRecords(
     items.map(async (item) => {
       const employeeCount = await EmployeeRepository.count({ departmentId: item.id }, { companyId });
       return {
-        ...item,
+        ...documentToRecord(item),
         branchName: item.branchId ? branchMap.get(item.branchId) : undefined,
         headEmployeeName: item.headEmployeeId ? headMap.get(item.headEmployeeId) : undefined,
         parentDepartmentName: item.parentDepartmentId ? parentMap.get(item.parentDepartmentId) : undefined,
         employeeCount,
-      };
+      } as DepartmentDocument & DepartmentListEnrichment;
     }),
   );
 }
@@ -247,7 +248,7 @@ export const DepartmentService = {
     );
 
     return {
-      ...department,
+      ...documentToRecord(department),
       branchName: branch?.name,
       parentDepartmentName: parent?.name,
       headEmployeeName: head ? `${head.firstName} ${head.lastName}`.trim() : undefined,
@@ -295,6 +296,6 @@ export const DepartmentService = {
         createdAt: entry.createdAt,
         changes: entry.changes,
       })),
-    };
+    } as unknown as DepartmentDetailResponse;
   },
 };

@@ -13,6 +13,7 @@ import type { PaginatedResult } from '@shared/types/api.types.js';
 import type { MasterDataListQuery } from '@modules/organization/shared/master-data-query.service.js';
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { buildExactFilter, mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
+import { documentToRecord } from '@shared/utils/document.util.js';
 import type { DomainQueryFilter } from '@infrastructure/database/types/domain-query.types.js';
 import {
   buildDesignationFullTitle,
@@ -114,7 +115,7 @@ async function enrichDesignationRecords(
         }));
 
       return {
-        ...item,
+        ...documentToRecord(item),
         departmentName: item.departmentId ? departmentMap.get(item.departmentId) : undefined,
         salaryGradeName: item.salaryGradeId ? salaryGradeMap.get(item.salaryGradeId) : undefined,
         applicableJobRoleNames: applicableJobRoles.map((role) => role.name),
@@ -122,7 +123,7 @@ async function enrichDesignationRecords(
         employeeCount,
         hierarchyLevelLabel:
           item.hierarchyLevel !== undefined ? getHierarchyLevelLabel(item.hierarchyLevel) : undefined,
-      };
+      } as DesignationDocument & DesignationListEnrichment;
     }),
   );
 }
@@ -185,7 +186,7 @@ export const DesignationService = {
     const jobRoleLookup = new Map(jobRoles.map((role) => [role.id, role]));
 
     return {
-      ...designation,
+      ...documentToRecord(designation),
       departmentName: department?.name,
       salaryGradeName: salaryGrade?.name,
       hierarchyLevelLabel:
@@ -226,6 +227,6 @@ export const DesignationService = {
         createdAt: entry.createdAt,
         changes: entry.changes,
       })),
-    };
+    } as unknown as DesignationDetailResponse;
   },
 };

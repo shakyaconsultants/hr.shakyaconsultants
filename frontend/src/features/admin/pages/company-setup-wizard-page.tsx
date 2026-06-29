@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   COMPANY_SETUP_STEPS,
   clearWizardDraft,
@@ -12,7 +13,9 @@ import {
 import { getEntityFields } from '@/features/admin/constants/entity-fields';
 import { EntityForm, formValueToPayload } from '@/features/admin/components/entity-form';
 import { createEntity, getCompany, updateCompany } from '@/features/organization/api/organization.api';
-import type { MasterEntityKey } from '@/features/organization/constants/entity-catalog';
+import { invalidateAllMasterDataQueries } from '@/features/organization/hooks/use-master-data';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
+import { getEntityMeta } from '@/features/organization/constants/entity-catalog';
 import { PageHeader } from '@/shared/components/page-header';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
@@ -27,6 +30,7 @@ const EMPTY_DRAFT: WizardDraftState = {
 
 export function CompanySetupWizardPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [draft, setDraft] = useState<WizardDraftState>(() => loadWizardDraft() ?? EMPTY_DRAFT);
   const [entityForm, setEntityForm] = useState<Record<string, unknown>>({ status: 'active' });
@@ -68,39 +72,60 @@ export function CompanySetupWizardPage() {
   }, [draft.entities, step?.entityKey]);
 
   async function saveCompanyStep() {
-    setSaving(true);
-    setError(null);
-    try {
-      await updateCompany(draft.company);
-      setDraft((prev) => ({ ...prev, currentStepIndex: prev.currentStepIndex + 1 }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save company');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function addEntityRecord() {
-    if (!step?.entityKey) {
+    if (saving) {
       return;
     }
     setSaving(true);
     setError(null);
-    try {
-      const payload = formValueToPayload(entityForm, getEntityFields(step.entityKey));
-      const created = await createEntity(step.entityKey, payload);
-      setDraft((prev) => ({
-        ...prev,
-        entities: {
-          ...prev.entities,
-          [step.entityKey as MasterEntityKey]: [...(prev.entities[step.entityKey as MasterEntityKey] ?? []), created],
-        },
-      }));
-      setEntityForm({ status: 'active' });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create record');
-    } finally {
-      setSaving(false);
+
+    const saved = await runFormMutation({
+      setError,
+      successMessage: 'Company details saved.',
+      mutation: () => updateCompany(draft.company),
+      onSuccess: () => {
+        invalidateAllMasterDataQueries(queryClient);
+        setDraft((prev) => ({ ...prev, currentStepIndex: prev.currentStepIndex + 1 }));
+      },
+    });
+
+    setSaving(false);
+    if (!saved) {
+      return;
+    }
+  }
+
+  async function addEntityRecord() {
+    const entityKey = step?.entityKey;
+    if (!entityKey || saving) {
+      return;
+    }
+    setSaving(true);
+    setError(null);
+
+    const meta = getEntityMeta(entityKey);
+    const saved = await runFormMutation({
+      setError,
+      successMessage: `${meta?.label ?? 'Record'} created successfully.`,
+      mutation: async () => {
+        const payload = formValueToPayload(entityForm, getEntityFields(entityKey));
+        return createEntity(entityKey, payload);
+      },
+      onSuccess: (created) => {
+        invalidateAllMasterDataQueries(queryClient);
+        setDraft((prev) => ({
+          ...prev,
+          entities: {
+            ...prev.entities,
+            [entityKey]: [...(prev.entities[entityKey] ?? []), created],
+          },
+        }));
+        setEntityForm({ status: 'active' });
+      },
+    });
+
+    setSaving(false);
+    if (!saved) {
+      return;
     }
   }
 

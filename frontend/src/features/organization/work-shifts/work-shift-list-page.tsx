@@ -27,7 +27,9 @@ import { StatusFilterSelect } from '@/shared/components/status-filter-select';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 import { formatTimeDisplay } from '@/shared/utils/datetime';
-import type { ApiErrorResponse } from '@/shared/types/api.types';
+import { runActionMutation, runDeleteMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 
 export function WorkShiftListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,6 +41,7 @@ export function WorkShiftListPage() {
   const [editingRecord, setEditingRecord] = useState<MasterDataRecord | null>(null);
   const [formValue, setFormValue] = useState<WorkShiftFormValue>(defaultWorkShiftFormValue());
   const [deleteTarget, setDeleteTarget] = useState<MasterDataRecord | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const queryParams = useMemo(
@@ -82,20 +85,33 @@ export function WorkShiftListPage() {
   }
 
   async function handleSave() {
-    setFormError(null);
-    const payload = workShiftFormToPayload(formValue);
-    try {
-      if (editorMode === 'create') {
-        await createMutation.mutateAsync(payload);
-      } else if (editorMode === 'edit' && editingRecord) {
-        await updateMutation.mutateAsync({ id: editingRecord.id, payload });
-      }
-      setEditorMode(null);
-      setEditingRecord(null);
-    } catch (mutationError) {
-      const apiError = mutationError as ApiErrorResponse;
-      setFormError(apiError.error?.message ?? 'Failed to save work shift');
+    if (createMutation.isPending || updateMutation.isPending) {
+      return;
     }
+
+    const payload = workShiftFormToPayload(formValue);
+    const name = formValue.name.trim();
+
+    await runFormMutation({
+      setError: setFormError,
+      successMessage:
+        editorMode === 'create'
+          ? `Work shift "${name}" created successfully.`
+          : `Work shift "${name}" updated successfully.`,
+      mutation: async () => {
+        if (editorMode === 'create') {
+          return createMutation.mutateAsync(payload);
+        }
+        if (editorMode === 'edit' && editingRecord && isValidEntityId(editingRecord.id)) {
+          return updateMutation.mutateAsync({ id: editingRecord.id, payload });
+        }
+        throw new Error('Cannot save: work shift id is missing or invalid.');
+      },
+      onSuccess: () => {
+        setEditorMode(null);
+        setEditingRecord(null);
+      },
+    });
   }
 
   async function handleExport() {
@@ -136,11 +152,31 @@ export function WorkShiftListPage() {
             <Pencil className="h-4 w-4" />
           </Button>
           {showArchived ? (
-            <Button variant="ghost" size="sm" onClick={() => void restoreMutation.mutateAsync(row.id)}>
-              <RotateCcw className="h-4 w-4" />
-            </Button>
+            isValidEntityId(row.id) ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={restoreMutation.isPending}
+                onClick={() =>
+                  void runActionMutation({
+                    successMessage: `Work shift "${row.name}" restored successfully.`,
+                    mutation: () => restoreMutation.mutateAsync(row.id),
+                  })
+                }
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            ) : null
           ) : (
-            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(row)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!isValidEntityId(row.id)}
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteTarget(row);
+              }}
+            >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           )}
@@ -149,7 +185,7 @@ export function WorkShiftListPage() {
     },
   ];
 
-  const listError = isError ? ((error as unknown as ApiErrorResponse)?.error?.message ?? 'Failed to load work shifts') : null;
+  const listError = isError ? parseMutationError(error).message : null;
 
   return (
     <div className="space-y-6">
@@ -257,13 +293,24 @@ export function WorkShiftListPage() {
         description={`Archive "${deleteTarget?.name}"? Assigned employees may block this action.`}
         confirmLabel="Archive"
         isLoading={deleteMutation.isPending}
+        errorMessage={deleteError}
         onConfirm={async () => {
-          if (deleteTarget) {
-            await deleteMutation.mutateAsync(deleteTarget.id);
-            setDeleteTarget(null);
+          if (!deleteTarget || !isValidEntityId(deleteTarget.id)) {
+            setDeleteError('Cannot archive: work shift id is missing or invalid.');
+            return;
           }
+          await runDeleteMutation({
+            setError: setDeleteError,
+            entityLabel: 'Work Shift',
+            successMessage: `Work shift "${deleteTarget.name}" archived successfully.`,
+            mutation: () => deleteMutation.mutateAsync(deleteTarget.id),
+            onSuccess: () => setDeleteTarget(null),
+          });
         }}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
       />
     </div>
   );

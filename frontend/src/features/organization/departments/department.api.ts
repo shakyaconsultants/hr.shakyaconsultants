@@ -1,6 +1,8 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginationMeta } from '@/shared/types/api.types';
 import type { ListQueryParams, MasterDataRecord } from '@/features/organization/api/organization.api';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import { assertValidEntityId } from '@/shared/utils/entity-id.util';
 
 export interface DepartmentRecord extends MasterDataRecord {
   branchId?: string;
@@ -54,6 +56,7 @@ export async function fetchDepartmentStats(): Promise<DepartmentStats> {
 }
 
 export async function fetchDepartmentDetail(id: string): Promise<DepartmentDetail> {
+  assertValidEntityId(id, 'Department id');
   const { data } = await apiClient.get<ApiSuccessResponse<DepartmentDetail>>(
     `/api/v1/organization/departments/${id}/detail`,
   );
@@ -64,16 +67,13 @@ export async function listDepartments(
   params: DepartmentListParams = {},
 ): Promise<{ items: DepartmentRecord[]; pagination: PaginationMeta }> {
   const { data } = await apiClient.get<
-    ApiSuccessResponse<DepartmentRecord[]> & { pagination?: PaginationMeta }
+    ApiSuccessResponse<DepartmentRecord[] | { items?: DepartmentRecord[] }> & { pagination?: PaginationMeta }
   >('/api/v1/organization/entities/department', { params });
 
+  const normalized = normalizePaginatedItems(data.data, params.pageSize ?? 20);
+
   return {
-    items: data.data,
-    pagination: data.pagination ?? {
-      page: params.page ?? 1,
-      pageSize: params.pageSize ?? 20,
-      total: data.data.length,
-      totalPages: 1,
-    },
+    items: normalized.items,
+    pagination: data.pagination ?? normalized.pagination,
   };
 }

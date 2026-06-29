@@ -70,12 +70,12 @@ export function designationFormToPayload(value: DesignationFormValue): Record<st
 export function DesignationForm({ value, onChange, excludeDesignationId }: DesignationFormProps) {
   const { data: designationOptions, isLoading: isLoadingDesignations } = useMasterDataList('designation', {
     page: 1,
-    pageSize: 200,
+    pageSize: 100,
     status: 'active',
   });
   const { data: jobRoleData, isLoading: isLoadingJobRoles } = useMasterDataList('job-role', {
     page: 1,
-    pageSize: 200,
+    pageSize: 100,
     status: 'active',
   });
 

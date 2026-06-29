@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   archiveRole,
   assignPermissions,
@@ -47,8 +48,10 @@ export function usePermissions(search?: string) {
 
 export function useCloneRole() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => cloneRole(id, name),
+    successMessage: false,
+    errorToast: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] });
     },
@@ -56,13 +59,13 @@ export function useCloneRole() {
 }
 
 export function useSimulator() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: runSimulator,
   });
 }
 
 export function useCompareRoles() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ roleIdA, roleIdB }: { roleIdA: string; roleIdB: string }) => compareRoles(roleIdA, roleIdB),
   });
 }
@@ -76,49 +79,61 @@ export function useRoleTemplates() {
 
 export function useCreateRole() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createRole,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
   });
 }
 
 export function useUpdateRole() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateRole>[1] }) => updateRole(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['rbac'] }),
   });
 }
 
 export function useAssignPermissions() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ roleId, permissionCodes }: { roleId: string; permissionCodes: string[] }) =>
       assignPermissions(roleId, permissionCodes),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['rbac'] }),
   });
 }
 
 export function useArchiveRole() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: archiveRole,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
   });
 }
 
 export function useRestoreRole() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: restoreRole,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
   });
 }
 
 export function useDeleteRole() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: deleteRole,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
   });
 }

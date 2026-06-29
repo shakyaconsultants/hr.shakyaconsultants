@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   archiveProject,
   assignProjectMember,
@@ -52,16 +53,19 @@ export function useProjectWizardDraft() {
 
 export function useSaveProjectWizardDraft() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: saveWizardDraft,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects', 'wizard', 'draft'] }),
   });
 }
 
 export function useFinalizeProjectWizard() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: finalizeProjectWizard,
+    successMessage: 'Project created successfully',
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['projects', 'wizard', 'draft'] });
@@ -71,8 +75,10 @@ export function useFinalizeProjectWizard() {
 
 export function useDeleteProjectWizardDraft() {
   const qc = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: deleteWizardDraft,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects', 'wizard', 'draft'] }),
   });
 }
@@ -158,48 +164,60 @@ function invalidateProjectQueries(queryClient: ReturnType<typeof useQueryClient>
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createProject,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => invalidateProjectQueries(queryClient),
   });
 }
 
 export function useUpdateProject() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) => updateProject(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => invalidateProjectQueries(queryClient, variables.id),
   });
 }
 
 export function useArchiveProject() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: archiveProject,
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, id) => invalidateProjectQueries(queryClient, id),
   });
 }
 
 export function useRestoreProject() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: restoreProject,
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, id) => invalidateProjectQueries(queryClient, id),
   });
 }
 
 export function useDeleteProject() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: deleteProject,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => invalidateProjectQueries(queryClient),
   });
 }
 
 export function useAssignProjectMember() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: assignProjectMember,
+    successMessage: false,
+    errorToast: false,
     onSuccess: (_data, variables) => {
       const projectId = String(variables.projectId ?? '');
       invalidateProjectQueries(queryClient, projectId);
@@ -210,8 +228,10 @@ export function useAssignProjectMember() {
 
 export function useRemoveProjectMember() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ memberId }: { memberId: string; projectId: string }) => removeProjectMember(memberId),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       invalidateProjectQueries(queryClient, variables.projectId);
       void queryClient.invalidateQueries({ queryKey: ['project', variables.projectId, 'members'] });
@@ -221,8 +241,10 @@ export function useRemoveProjectMember() {
 
 export function useCreateProjectModule() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createProjectModule,
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['project', String(variables.projectId), 'modules'] });
     },
@@ -231,8 +253,10 @@ export function useCreateProjectModule() {
 
 export function useDeleteProjectModule() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ moduleId }: { moduleId: string; projectId: string }) => deleteProjectModule(moduleId),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['project', variables.projectId, 'modules'] });
     },
@@ -241,8 +265,10 @@ export function useDeleteProjectModule() {
 
 export function useCreateProjectMilestone() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createProjectMilestone,
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['project', String(variables.projectId), 'milestones'] });
     },
@@ -251,8 +277,10 @@ export function useCreateProjectMilestone() {
 
 export function useDeleteProjectMilestone() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ milestoneId }: { milestoneId: string; projectId: string }) => deleteProjectMilestone(milestoneId),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['project', variables.projectId, 'milestones'] });
     },
@@ -261,8 +289,10 @@ export function useDeleteProjectMilestone() {
 
 export function useCreateProjectSprint() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createProjectSprint,
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['project', String(variables.projectId), 'sprints'] });
     },
@@ -271,9 +301,11 @@ export function useCreateProjectSprint() {
 
 export function useUpdateProjectSprint() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ sprintId, payload }: { sprintId: string; payload: Record<string, unknown>; projectId: string }) =>
       updateProjectSprint(sprintId, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['project', variables.projectId, 'sprints'] });
     },
@@ -282,9 +314,11 @@ export function useUpdateProjectSprint() {
 
 export function useUpsertProjectKnowledgeBase() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ projectId, payload }: { projectId: string; payload: ProjectKnowledgeBase }) =>
       upsertProjectKnowledgeBase(projectId, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['project', variables.projectId, 'knowledge-base'] });
     },
@@ -293,8 +327,10 @@ export function useUpsertProjectKnowledgeBase() {
 
 export function useCreateTask() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createTask,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks'] });
       void queryClient.invalidateQueries({ queryKey: ['project'] });
@@ -304,8 +340,10 @@ export function useCreateTask() {
 
 export function useUpdateTask() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) => updateTask(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['tasks'] });
       void queryClient.invalidateQueries({ queryKey: ['task', variables.id] });

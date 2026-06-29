@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   applyLeave,
   completeExitItem,
@@ -71,8 +72,10 @@ export function useExitProcess(id: string) {
 
 export function useApplyLeave() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: ApplyLeavePayload) => applyLeave(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['leave-exit'] });
       void queryClient.invalidateQueries({ queryKey: ['approval'] });
@@ -82,8 +85,9 @@ export function useApplyLeave() {
 
 export function useWithdrawLeave() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => withdrawLeave(id),
+    successMessage: 'Withdrawn successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['leave-exit'] });
       void queryClient.invalidateQueries({ queryKey: ['approval'] });
@@ -93,8 +97,10 @@ export function useWithdrawLeave() {
 
 export function useSubmitResignation() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: SubmitResignationPayload) => submitResignation(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['leave-exit'] });
       void queryClient.invalidateQueries({ queryKey: ['approval'] });
@@ -104,8 +110,9 @@ export function useSubmitResignation() {
 
 export function useWithdrawResignation() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (id: string) => withdrawResignation(id),
+    successMessage: 'Withdrawn successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['leave-exit'] });
     },
@@ -114,8 +121,9 @@ export function useWithdrawResignation() {
 
 export function useCompleteExitItem() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, notes }: { id: string; notes?: string }) => completeExitItem(id, notes),
+    successMessage: 'Completed successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['leave-exit'] });
     },

@@ -7,6 +7,7 @@ import { SelectField } from '@/shared/components/select-field';
 import { MasterDataSelect } from '@/shared/components/master-data-select';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Input } from '@/shared/components/ui/input';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { ROUTES } from '@/config/app.config';
 
 export interface EmployeeCreateDialogProps {
@@ -34,17 +35,23 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
   }
 
   async function handleSubmit() {
-    setError(null);
-    try {
-      const employee = await createMutation.mutateAsync({
-        ...form,
-        joinedAt: new Date(form.joinedAt),
-      });
-      onOpenChange(false);
-      navigate(ROUTES.employeeDetail(employee.id));
-    } catch {
-      setError('Failed to create employee. Check required fields and try again.');
+    if (createMutation.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Employee created successfully.',
+      mutation: () =>
+        createMutation.mutateAsync({
+          ...form,
+          joinedAt: new Date(form.joinedAt),
+        }),
+      onSuccess: (employee) => {
+        onOpenChange(false);
+        navigate(ROUTES.employeeDetail(employee.id));
+      },
+    });
   }
 
   return (

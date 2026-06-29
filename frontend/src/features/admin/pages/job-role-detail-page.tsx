@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Briefcase } from 'lucide-react';
 import { getEntity } from '@/features/organization/api/organization.api';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 import { PageHeader } from '@/shared/components/page-header';
 import { StatCard } from '@/shared/components/stat-card';
 import { Loading } from '@/shared/components/loading';
@@ -13,7 +14,7 @@ export function JobRoleDetailPage() {
   const { data: role, isLoading } = useQuery({
     queryKey: ['organization', 'job-role', id],
     queryFn: () => getEntity('job-role', id),
-    enabled: Boolean(id),
+    enabled: isValidEntityId(id),
   });
 
   if (isLoading) {

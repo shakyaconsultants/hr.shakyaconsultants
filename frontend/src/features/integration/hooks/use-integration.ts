@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import { ON_DEMAND_QUERY_OPTIONS, MASTER_DATA_QUERY_OPTIONS } from '@/shared/api/query-config';
 import {
   createApiKey,
@@ -81,41 +82,49 @@ export function useConnector(id: string) {
 
 export function useCreateConnector() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateConnectorPayload) => createConnector(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'connectors'] }),
   });
 }
 
 export function useUpdateConnector() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateConnectorPayload }) =>
       updateConnector(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'connectors'] }),
   });
 }
 
 export function useDeleteConnector() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: deleteConnector,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'connectors'] }),
   });
 }
 
 export function useTestConnector() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: testConnector,
+    successMessage: 'Test completed successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'connectors'] }),
   });
 }
 
 export function useToggleConnector() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => toggleConnector(id, enabled),
+    successMessage: 'Updated successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'connectors'] }),
   });
 }
@@ -137,40 +146,47 @@ export function useApiKey(id: string) {
 
 export function useCreateApiKey() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateApiKeyPayload) => createApiKey(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'api-keys'] }),
   });
 }
 
 export function useUpdateApiKey() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateApiKeyPayload }) => updateApiKey(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'api-keys'] }),
   });
 }
 
 export function useRevokeApiKey() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: revokeApiKey,
+    successMessage: 'Revoked successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'api-keys'] }),
   });
 }
 
 export function useRotateApiKey() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: rotateApiKey,
+    successMessage: 'Rotated successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'api-keys'] }),
   });
 }
 
 export function useRegenerateApiKey() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: regenerateApiKey,
+    successMessage: 'Regenerated successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'api-keys'] }),
   });
 }
@@ -200,24 +216,30 @@ export function useWebhook(id: string) {
 
 export function useCreateWebhook() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateWebhookPayload) => createWebhook(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'webhooks'] }),
   });
 }
 
 export function useUpdateWebhook() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateWebhookPayload }) => updateWebhook(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'webhooks'] }),
   });
 }
 
 export function useDeleteWebhook() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: deleteWebhook,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'webhooks'] }),
   });
 }
@@ -232,8 +254,9 @@ export function useWebhookDeliveries(webhookId: string, params: ListParams = {})
 
 export function useTestWebhook() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, event }: { id: string; event?: string }) => testWebhook(id, event),
+    successMessage: 'Test completed successfully',
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: [...INTEGRATION_QUERY_KEY, 'webhooks', variables.id, 'deliveries'],
@@ -244,9 +267,10 @@ export function useTestWebhook() {
 
 export function useRetryWebhookDelivery() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ webhookId, deliveryId }: { webhookId: string; deliveryId: string }) =>
       retryWebhookDelivery(webhookId, deliveryId),
+    successMessage: 'Retried successfully',
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: [...INTEGRATION_QUERY_KEY, 'webhooks', variables.webhookId, 'deliveries'],
@@ -264,15 +288,16 @@ export function useImportModules() {
 }
 
 export function usePreviewImport() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ module, file }: { module: string; file: File }) => previewImport(module, file),
   });
 }
 
 export function useExecuteImport() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ module, file }: { module: string; file: File }) => executeImport(module, file),
+    successMessage: 'Imported successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'import', 'history'] }),
   });
 }
@@ -295,8 +320,9 @@ export function useImportJob(id: string) {
 
 export function useCreateExportJob() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: CreateExportPayload) => createExportJob(payload),
+    successMessage: 'Export started successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'export', 'history'] }),
   });
 }
@@ -318,8 +344,9 @@ export function useExportJob(id: string) {
 }
 
 export function useDownloadExport() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: downloadExport,
+    successMessage: 'Downloaded successfully',
   });
 }
 
@@ -333,8 +360,9 @@ export function useSchedulerJobs() {
 
 export function useToggleSchedulerJob() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => toggleSchedulerJob(id, enabled),
+    successMessage: 'Updated successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'scheduler'] }),
   });
 }
@@ -370,16 +398,18 @@ export function useBackups(params: ListParams = {}) {
 
 export function useCreateBackup() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createBackup,
+    successMessage: 'Backup started successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'backups'] }),
   });
 }
 
 export function useVerifyBackup() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: verifyBackup,
+    successMessage: 'Verified successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: [...INTEGRATION_QUERY_KEY, 'backups'] }),
   });
 }

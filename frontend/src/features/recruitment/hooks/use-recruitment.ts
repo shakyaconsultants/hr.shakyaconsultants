@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   archiveCandidate,
   convertCandidate,
@@ -90,8 +91,10 @@ export function useOnboarding(candidateId: string) {
 
 export function useCreateCandidate() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createCandidate,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -100,8 +103,10 @@ export function useCreateCandidate() {
 
 export function useUpdateCandidate() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) => updateCandidate(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
       void queryClient.invalidateQueries({ queryKey: ['recruitment', 'candidate', variables.id] });
@@ -111,8 +116,10 @@ export function useUpdateCandidate() {
 
 export function useArchiveCandidate() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: archiveCandidate,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -121,8 +128,10 @@ export function useArchiveCandidate() {
 
 export function useRestoreCandidate() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: restoreCandidate,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -131,9 +140,10 @@ export function useRestoreCandidate() {
 
 export function useTransitionPipeline() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ candidateId, stage, reason }: { candidateId: string; stage: string; reason?: string }) =>
       transitionPipeline(candidateId, stage, reason),
+    successMessage: 'Updated successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -142,8 +152,10 @@ export function useTransitionPipeline() {
 
 export function useCreateInterview() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createInterview,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -152,8 +164,9 @@ export function useCreateInterview() {
 
 export function useConvertCandidate() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: convertCandidate,
+    successMessage: 'Converted successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
       void queryClient.invalidateQueries({ queryKey: ['employees'] });
@@ -163,9 +176,11 @@ export function useConvertCandidate() {
 
 export function useSaveOnboardingDraft() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ candidateId, payload }: { candidateId: string; payload: Record<string, unknown> }) =>
       saveOnboardingDraft(candidateId, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment', 'onboarding', variables.candidateId] });
     },
@@ -173,15 +188,18 @@ export function useSaveOnboardingDraft() {
 }
 
 export function useExportCandidates() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: exportCandidates,
+    successMessage: 'Export started successfully',
   });
 }
 
 export function useUploadResume() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ candidateId, file }: { candidateId: string; file: File }) => uploadResume(candidateId, file),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment', 'candidate', variables.candidateId] });
       void queryClient.invalidateQueries({ queryKey: ['recruitment', 'candidate', variables.candidateId, 'timeline'] });

@@ -26,6 +26,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { ConfirmDialog } from '@/shared/components/confirm-dialog';
 import { ROUTES } from '@/config/app.config';
+import { runActionMutation, runDeleteMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { useAuthStore } from '@/shared/stores/app.store';
 
 const PROJECT_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
@@ -88,6 +89,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
     architectureNotes: '',
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -123,33 +125,155 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
   }
 
   async function saveSettings() {
-    setError(null);
-    try {
-      await updateMutation.mutateAsync({
-        id: project.id,
-        payload: {
-          name: settingsForm.name,
-          code: settingsForm.code,
-          description: settingsForm.description || undefined,
-          status: settingsForm.status,
-          priority: settingsForm.priority,
-          clientName: settingsForm.clientName || undefined,
-          projectManagerId: settingsForm.projectManagerId,
-          startDate: settingsForm.startDate,
-          targetDate: settingsForm.targetDate || undefined,
-          repositoryUrl: settingsForm.repositoryUrl || undefined,
-          productionUrl: settingsForm.productionUrl || undefined,
-          stagingUrl: settingsForm.stagingUrl || undefined,
-        },
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update project');
+    if (updateMutation.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Project settings saved successfully.',
+      mutation: () =>
+        updateMutation.mutateAsync({
+          id: project.id,
+          payload: {
+            name: settingsForm.name,
+            code: settingsForm.code,
+            description: settingsForm.description || undefined,
+            status: settingsForm.status,
+            priority: settingsForm.priority,
+            clientName: settingsForm.clientName || undefined,
+            projectManagerId: settingsForm.projectManagerId,
+            startDate: settingsForm.startDate,
+            targetDate: settingsForm.targetDate || undefined,
+            repositoryUrl: settingsForm.repositoryUrl || undefined,
+            productionUrl: settingsForm.productionUrl || undefined,
+            stagingUrl: settingsForm.stagingUrl || undefined,
+          },
+        }),
+    });
   }
 
   async function handleDelete() {
-    await deleteMutation.mutateAsync(project.id);
-    navigate(ROUTES.PROJECTS_LIST);
+    await runDeleteMutation({
+      setError: setDeleteError,
+      entityLabel: 'Project',
+      successMessage: 'Project deleted successfully.',
+      mutation: () => deleteMutation.mutateAsync(project.id),
+      onSuccess: () => {
+        setConfirmDelete(false);
+        navigate(ROUTES.PROJECTS_LIST);
+      },
+    });
+  }
+
+  async function assignMember() {
+    if (!memberForm.employeeId || assignMemberMutation.isPending) {
+      return;
+    }
+    await runActionMutation({
+      successMessage: 'Team member assigned successfully.',
+      mutation: () => assignMemberMutation.mutateAsync({ projectId: project.id, ...memberForm }),
+      onSuccess: () => {
+        setMemberForm({ employeeId: '', role: 'developer' });
+        void refetchMembers();
+      },
+    });
+  }
+
+  async function removeMember(memberId: string) {
+    await runActionMutation({
+      successMessage: 'Team member removed successfully.',
+      mutation: () => removeMemberMutation.mutateAsync({ memberId, projectId: project.id }),
+      onSuccess: () => void refetchMembers(),
+    });
+  }
+
+  async function addModule() {
+    if (!moduleForm.name || createModuleMutation.isPending) {
+      return;
+    }
+    await runActionMutation({
+      successMessage: 'Module added successfully.',
+      mutation: () =>
+        createModuleMutation.mutateAsync({
+          projectId: project.id,
+          name: moduleForm.name,
+          description: moduleForm.description || undefined,
+        }),
+      onSuccess: () => {
+        setModuleForm({ name: '', description: '' });
+        void refetchModules();
+      },
+    });
+  }
+
+  async function removeModule(moduleId: string) {
+    await runDeleteMutation({
+      entityLabel: 'Module',
+      successMessage: 'Module deleted successfully.',
+      mutation: () => deleteModuleMutation.mutateAsync({ moduleId, projectId: project.id }),
+      onSuccess: () => void refetchModules(),
+    });
+  }
+
+  async function addMilestone() {
+    if (!milestoneForm.name || !milestoneForm.dueDate || createMilestoneMutation.isPending) {
+      return;
+    }
+    await runActionMutation({
+      successMessage: 'Milestone added successfully.',
+      mutation: () =>
+        createMilestoneMutation.mutateAsync({
+          projectId: project.id,
+          name: milestoneForm.name,
+          dueDate: milestoneForm.dueDate,
+        }),
+      onSuccess: () => {
+        setMilestoneForm({ name: '', dueDate: '' });
+        void refetchMilestones();
+      },
+    });
+  }
+
+  async function removeMilestone(milestoneId: string) {
+    await runDeleteMutation({
+      entityLabel: 'Milestone',
+      successMessage: 'Milestone deleted successfully.',
+      mutation: () => deleteMilestoneMutation.mutateAsync({ milestoneId, projectId: project.id }),
+      onSuccess: () => void refetchMilestones(),
+    });
+  }
+
+  async function addSprint() {
+    if (!sprintForm.name || !sprintForm.startDate || !sprintForm.endDate || createSprintMutation.isPending) {
+      return;
+    }
+    await runActionMutation({
+      successMessage: 'Sprint added successfully.',
+      mutation: () =>
+        createSprintMutation.mutateAsync({
+          projectId: project.id,
+          name: sprintForm.name,
+          startDate: sprintForm.startDate,
+          endDate: sprintForm.endDate,
+          goal: sprintForm.goal || undefined,
+        }),
+      onSuccess: () => {
+        setSprintForm({ name: '', startDate: '', endDate: '', goal: '' });
+        void refetchSprints();
+      },
+    });
+  }
+
+  async function saveKnowledgeBase() {
+    if (upsertKbMutation.isPending) {
+      return;
+    }
+    await runFormMutation({
+      setError,
+      successMessage: 'Repository and environment saved successfully.',
+      mutation: () => upsertKbMutation.mutateAsync({ projectId: project.id, payload: kbForm }),
+    });
   }
 
   return (
@@ -161,10 +285,34 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
         </div>
         <div className="flex flex-wrap gap-2">
           {canUpdate && !project.isArchived ? (
-            <Button variant="outline" size="sm" onClick={() => void archiveMutation.mutateAsync(project.id)}>Archive</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={archiveMutation.isPending}
+              onClick={() =>
+                void runActionMutation({
+                  successMessage: 'Project archived successfully.',
+                  mutation: () => archiveMutation.mutateAsync(project.id),
+                })
+              }
+            >
+              Archive
+            </Button>
           ) : null}
           {canUpdate && project.isArchived ? (
-            <Button variant="outline" size="sm" onClick={() => void restoreMutation.mutateAsync(project.id)}>Restore</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={restoreMutation.isPending}
+              onClick={() =>
+                void runActionMutation({
+                  successMessage: 'Project restored successfully.',
+                  mutation: () => restoreMutation.mutateAsync(project.id),
+                })
+              }
+            >
+              Restore
+            </Button>
           ) : null}
           {canDelete ? (
             <Button variant="outline" size="sm" className="text-destructive" onClick={() => setConfirmDelete(true)}>Delete</Button>
@@ -213,7 +361,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               <select className="h-10 rounded-md border px-3 text-sm" value={memberForm.role} onChange={(e) => setMemberForm((p) => ({ ...p, role: e.target.value }))}>
                 {MEMBER_ROLES.map((role) => <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>)}
               </select>
-              <Button size="sm" onClick={() => void assignMemberMutation.mutateAsync({ projectId: project.id, ...memberForm }).then(() => { setMemberForm({ employeeId: '', role: 'developer' }); void refetchMembers(); })} disabled={!memberForm.employeeId}>
+              <Button size="sm" onClick={() => void assignMember()} disabled={!memberForm.employeeId || assignMemberMutation.isPending}>
                 Assign Member
               </Button>
             </div>
@@ -221,7 +369,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               {members.map((member) => (
                 <li key={String(member.id)} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
                   <span>{String(member.employeeId)} · {String(member.role)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => void removeMemberMutation.mutateAsync({ memberId: String(member.id), projectId: project.id }).then(() => void refetchMembers())}>Remove</Button>
+                  <Button variant="ghost" size="sm" onClick={() => void removeMember(String(member.id))}>Remove</Button>
                 </li>
               ))}
             </ul>
@@ -232,7 +380,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             <div className="grid gap-2 md:grid-cols-3">
               <Input placeholder="Module name" value={moduleForm.name} onChange={(e) => setModuleForm((p) => ({ ...p, name: e.target.value }))} />
               <Input placeholder="Description" value={moduleForm.description} onChange={(e) => setModuleForm((p) => ({ ...p, description: e.target.value }))} />
-              <Button size="sm" onClick={() => void createModuleMutation.mutateAsync({ projectId: project.id, name: moduleForm.name, description: moduleForm.description || undefined }).then(() => { setModuleForm({ name: '', description: '' }); void refetchModules(); })} disabled={!moduleForm.name}>
+              <Button size="sm" onClick={() => void addModule()} disabled={!moduleForm.name || createModuleMutation.isPending}>
                 Add Module
               </Button>
             </div>
@@ -240,7 +388,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               {modules.map((module) => (
                 <li key={String(module.id)} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
                   <span>{String(module.name)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => void deleteModuleMutation.mutateAsync({ moduleId: String(module.id), projectId: project.id }).then(() => void refetchModules())}>Delete</Button>
+                  <Button variant="ghost" size="sm" onClick={() => void removeModule(String(module.id))}>Delete</Button>
                 </li>
               ))}
             </ul>
@@ -251,7 +399,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             <div className="grid gap-2 md:grid-cols-3">
               <Input placeholder="Milestone name" value={milestoneForm.name} onChange={(e) => setMilestoneForm((p) => ({ ...p, name: e.target.value }))} />
               <DatePicker value={milestoneForm.dueDate} onChange={(value) => setMilestoneForm((p) => ({ ...p, dueDate: value }))} />
-              <Button size="sm" onClick={() => void createMilestoneMutation.mutateAsync({ projectId: project.id, name: milestoneForm.name, dueDate: milestoneForm.dueDate }).then(() => { setMilestoneForm({ name: '', dueDate: '' }); void refetchMilestones(); })} disabled={!milestoneForm.name || !milestoneForm.dueDate}>
+              <Button size="sm" onClick={() => void addMilestone()} disabled={!milestoneForm.name || !milestoneForm.dueDate || createMilestoneMutation.isPending}>
                 Add Milestone
               </Button>
             </div>
@@ -259,7 +407,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               {milestones.map((milestone) => (
                 <li key={String(milestone.id)} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
                   <span>{String(milestone.name)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => void deleteMilestoneMutation.mutateAsync({ milestoneId: String(milestone.id), projectId: project.id }).then(() => void refetchMilestones())}>Delete</Button>
+                  <Button variant="ghost" size="sm" onClick={() => void removeMilestone(String(milestone.id))}>Delete</Button>
                 </li>
               ))}
             </ul>
@@ -273,7 +421,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               <DatePicker value={sprintForm.endDate} onChange={(value) => setSprintForm((p) => ({ ...p, endDate: value }))} min={sprintForm.startDate || undefined} />
               <Input placeholder="Goal" value={sprintForm.goal} onChange={(e) => setSprintForm((p) => ({ ...p, goal: e.target.value }))} />
             </div>
-            <Button size="sm" onClick={() => void createSprintMutation.mutateAsync({ projectId: project.id, name: sprintForm.name, startDate: sprintForm.startDate, endDate: sprintForm.endDate, goal: sprintForm.goal || undefined }).then(() => { setSprintForm({ name: '', startDate: '', endDate: '', goal: '' }); void refetchSprints(); })} disabled={!sprintForm.name || !sprintForm.startDate || !sprintForm.endDate}>
+            <Button size="sm" onClick={() => void addSprint()} disabled={!sprintForm.name || !sprintForm.startDate || !sprintForm.endDate || createSprintMutation.isPending}>
               Add Sprint
             </Button>
             <ul className="space-y-2">
@@ -292,7 +440,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             <textarea className="min-h-24 w-full rounded-md border px-3 py-2 font-mono text-sm" placeholder="Environment variables (KEY=value per line)" value={kbForm.envVariables} onChange={(e) => setKbForm((p) => ({ ...p, envVariables: e.target.value }))} />
             <textarea className="min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Deployment guide" value={kbForm.deploymentGuide} onChange={(e) => setKbForm((p) => ({ ...p, deploymentGuide: e.target.value }))} />
             <textarea className="min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Architecture notes" value={kbForm.architectureNotes} onChange={(e) => setKbForm((p) => ({ ...p, architectureNotes: e.target.value }))} />
-            <Button size="sm" onClick={() => void upsertKbMutation.mutateAsync({ projectId: project.id, payload: kbForm })} disabled={upsertKbMutation.isPending}>
+            <Button size="sm" onClick={() => void saveKnowledgeBase()} disabled={upsertKbMutation.isPending}>
               Save Repository & Environment
             </Button>
           </section>
@@ -305,8 +453,12 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
         description="This permanently removes the project and cannot be undone."
         confirmLabel="Delete"
         isLoading={deleteMutation.isPending}
+        errorMessage={deleteError}
         onConfirm={() => void handleDelete()}
-        onCancel={() => setConfirmDelete(false)}
+        onCancel={() => {
+          setConfirmDelete(false);
+          setDeleteError(null);
+        }}
       />
     </div>
   );

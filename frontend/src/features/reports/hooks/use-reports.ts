@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import { ON_DEMAND_QUERY_OPTIONS } from '@/shared/api/query-config';
 import {
   exportReport,
@@ -41,8 +42,9 @@ export function useReportDefinition(code: string) {
 
 export function useRunReport() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: RunReportPayload) => runReport(payload),
+    successMessage: 'Report started successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['reports', 'runs'] }),
   });
 }
@@ -65,8 +67,9 @@ export function useReportRun(id: string) {
 }
 
 export function useScheduleReport() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: ScheduleReportPayload) => scheduleReport(payload),
+    successMessage: 'Scheduled successfully',
   });
 }
 
@@ -97,8 +100,10 @@ export function useDashboardConfig(role?: string) {
 
 export function useSaveDashboardConfig() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (payload: DashboardConfig) => saveDashboardConfig(payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['reports', 'dashboard', 'config', variables.role] });
       void queryClient.invalidateQueries({ queryKey: ['reports', 'dashboard', variables.role] });
@@ -117,8 +122,9 @@ export function useDomainAnalytics(domain: string, params: ReportFilterParams = 
 }
 
 export function useExportReport() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: (params: ExportReportParams) => exportReport(params),
+    successMessage: 'Export started successfully',
   });
 }
 

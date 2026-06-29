@@ -1,6 +1,7 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginationMeta } from '@/shared/types/api.types';
 import type { ListQueryParams, MasterDataRecord } from '@/features/organization/api/organization.api';
+import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
 
 export interface DesignationRecord extends MasterDataRecord {
   description?: string;
@@ -46,14 +47,11 @@ export async function listDesignations(
     { params },
   );
 
+  const normalized = normalizePaginatedItems(data.data, params.pageSize ?? 20);
+
   return {
-    items: data.data,
-    pagination: data.pagination ?? {
-      page: params.page ?? 1,
-      pageSize: params.pageSize ?? 20,
-      total: data.data.length,
-      totalPages: 1,
-    },
+    items: normalized.items,
+    pagination: data.pagination ?? normalized.pagination,
   };
 }
 

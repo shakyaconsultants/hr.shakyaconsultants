@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import type { Pipeline, PipelineStage } from '@/features/sales/api/sales.api';
 import { useCreatePipeline, useUpdatePipeline } from '@/features/sales/hooks/use-sales';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { Button } from '@/shared/components/ui/button';
 
 interface PipelineStageEditorProps {
@@ -21,7 +22,6 @@ export function PipelineStageEditor({ pipeline, onSaved }: PipelineStageEditorPr
   const [isDefault, setIsDefault] = useState(false);
   const [stages, setStages] = useState<PipelineStage[]>([emptyStage(1), emptyStage(2), emptyStage(3)]);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (pipeline) {
@@ -46,8 +46,9 @@ export function PipelineStageEditor({ pipeline, onSaved }: PipelineStageEditorPr
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    setSaved(false);
+    if (isPending) {
+      return;
+    }
 
     const validStages = stages.filter((s) => s.name.trim());
     if (!name.trim() || validStages.length === 0) {
@@ -55,22 +56,26 @@ export function PipelineStageEditor({ pipeline, onSaved }: PipelineStageEditorPr
       return;
     }
 
-    try {
-      const payload = { name: name.trim(), description: description || undefined, isDefault, stages: validStages };
-      if (pipeline) {
-        await updatePipeline.mutateAsync({ id: pipeline.id, payload });
-      } else {
-        await createPipeline.mutateAsync(payload);
-        setName('');
-        setDescription('');
-        setIsDefault(false);
-        setStages([emptyStage(1), emptyStage(2), emptyStage(3)]);
-      }
-      setSaved(true);
-      onSaved?.();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save pipeline');
-    }
+    await runFormMutation({
+      setError,
+      successMessage: pipeline ? 'Pipeline updated successfully.' : 'Pipeline created successfully.',
+      mutation: async () => {
+        const payload = { name: name.trim(), description: description || undefined, isDefault, stages: validStages };
+        if (pipeline) {
+          return updatePipeline.mutateAsync({ id: pipeline.id, payload });
+        }
+        return createPipeline.mutateAsync(payload);
+      },
+      onSuccess: () => {
+        if (!pipeline) {
+          setName('');
+          setDescription('');
+          setIsDefault(false);
+          setStages([emptyStage(1), emptyStage(2), emptyStage(3)]);
+        }
+        onSaved?.();
+      },
+    });
   };
 
   const isPending = createPipeline.isPending || updatePipeline.isPending;
@@ -141,7 +146,6 @@ export function PipelineStageEditor({ pipeline, onSaved }: PipelineStageEditorPr
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {saved ? <p className="text-sm text-emerald-600">Pipeline saved successfully.</p> : null}
 
       <Button type="submit" disabled={isPending}>
         {isPending ? 'Saving...' : pipeline ? 'Update Pipeline' : 'Create Pipeline'}

@@ -14,10 +14,13 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   details: unknown[];
+  metadata?: Record<string, unknown>;
+  correlationId?: string;
 }
 
 export interface ApiErrorResponse {
   success: false;
+  statusCode?: number;
   error: ApiErrorBody;
   meta: ApiMeta;
 }

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useCreateCorrection } from '@/features/attendance/hooks/use-attendance';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { Button } from '@/shared/components/ui/button';
 
 const STATUS_OPTIONS = [
@@ -24,19 +25,25 @@ export function CorrectionRequestForm({ attendanceId, currentStatus, onSuccess }
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      await createCorrection.mutateAsync({
-        attendanceId,
-        adjustedStatus,
-        reason,
-        submit: true,
-      });
-      setReason('');
-      onSuccess?.();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to submit correction request');
+    if (createCorrection.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Correction request submitted for approval.',
+      mutation: () =>
+        createCorrection.mutateAsync({
+          attendanceId,
+          adjustedStatus,
+          reason,
+          submit: true,
+        }),
+      onSuccess: () => {
+        setReason('');
+        onSuccess?.();
+      },
+    });
   };
 
   return (

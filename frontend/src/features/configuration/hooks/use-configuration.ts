@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import { DEFAULT_FEATURE_FLAGS, type FeatureFlags } from '@/config/module-registry';
 import { ON_DEMAND_QUERY_OPTIONS, MASTER_DATA_QUERY_OPTIONS } from '@/shared/api/query-config';
 import { queryKeys } from '@/shared/api/query-keys';
@@ -71,8 +72,10 @@ export function useSettingHistory(params: { key: string; page?: number; pageSize
 
 export function useUpdateConfigurationSetting() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ key, value }: { key: string; value: unknown }) => updateSetting(key, value),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: ['settings'] });
@@ -83,24 +86,29 @@ export function useUpdateConfigurationSetting() {
 
 export function useCreateConfigurationSetting() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createSetting,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY }),
   });
 }
 
 export function useDeleteConfigurationSetting() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: deleteSetting,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY }),
   });
 }
 
 export function useSeedConfigurationDefaults() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: (section?: string) => seedConfigurationDefaults(section),
+    successMessage: 'Defaults seeded successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY }),
   });
 }
@@ -142,8 +150,10 @@ export function useConfigurationFeatureFlags() {
     ...MASTER_DATA_QUERY_OPTIONS,
   });
 
-  const mutation = useMutation({
+  const mutation = useAppMutation({
     mutationFn: (flags: Record<string, boolean>) => updateFeatureFlags(flags),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       setSessionFeatureFlags({ ...DEFAULT_FEATURE_FLAGS, ...variables } as FeatureFlags);
       void queryClient.invalidateQueries({ queryKey: [...CONFIG_QUERY_KEY, 'feature-flags'] });
@@ -178,8 +188,10 @@ export function useUpdateNavigationConfig() {
   const queryClient = useQueryClient();
   const setSessionNavigation = useAuthStore((s) => s.setSessionNavigation);
 
-  return useMutation({
+  return useAppMutation({
     mutationFn: (items: NavigationItemConfig[]) => updateNavigationConfig(items),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (data) => {
       setSessionNavigation(
         data.items.map((item) => ({
@@ -206,8 +218,9 @@ export function useAuditLogs(params: AuditListParams = {}) {
 }
 
 export function useExportAuditLogs() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: (params: Omit<AuditListParams, 'page' | 'pageSize'>) => exportAuditLogsCsv(params),
+    successMessage: 'Export started successfully',
   });
 }
 

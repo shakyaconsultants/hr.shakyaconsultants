@@ -4,9 +4,11 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import type { CompanyDocument } from '@domain/company/company.schema.js';
 import { MasterDataAuditService } from '@modules/organization/shared/master-data-audit.service.js';
 import type { MasterDataActorContext } from '@modules/organization/shared/master-data.service.js';
+import { serializeMasterDataRecord } from '@modules/organization/shared/master-data-read.util.js';
+import { documentToRecord } from '@shared/utils/document.util.js';
 
 function toRecord(document: CompanyDocument): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(document)) as Record<string, unknown>;
+  return documentToRecord(document);
 }
 
 export const CompanyService = {
@@ -15,7 +17,7 @@ export const CompanyService = {
     if (!company) {
       throw new NotFoundError('Company not found', ERROR_CODES.NOT_FOUND);
     }
-    return company;
+    return serializeMasterDataRecord(company);
   },
 
   async update(
@@ -48,6 +50,6 @@ export const CompanyService = {
       userAgent: context.userAgent,
     });
 
-    return updated;
+    return serializeMasterDataRecord(updated);
   },
 };

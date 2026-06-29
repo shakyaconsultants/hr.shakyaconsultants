@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useCreateSalaryRevision, useEmployeeCompensation } from '@/features/payroll/hooks/use-payroll';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
@@ -31,17 +32,22 @@ export function SalaryRevisionWizard({ employeeId, onSuccess }: SalaryRevisionWi
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      await createRevision.mutateAsync({ employeeId, newSalary, effectiveFrom, reason });
-      onSuccess?.();
-      setStep('review');
-      setNewSalary(0);
-      setEffectiveFrom('');
-      setReason('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create revision');
+    if (createRevision.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Salary revision created successfully.',
+      mutation: () => createRevision.mutateAsync({ employeeId, newSalary, effectiveFrom, reason }),
+      onSuccess: () => {
+        onSuccess?.();
+        setStep('review');
+        setNewSalary(0);
+        setEffectiveFrom('');
+        setReason('');
+      },
+    });
   };
 
   return (

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import type { ReportFilterParams } from '@/features/reports/api/reports.api';
 import { MASTER_ENTITIES } from '@/features/organization/constants/entity-catalog';
-import { listEntities } from '@/features/organization/api/organization.api';
+import { useMasterDataList } from '@/features/organization/hooks/use-master-data';
 import { useEmployees } from '@/features/employee/hooks/use-employees';
 import { useProjects } from '@/features/project/hooks/use-projects';
 import { DatePicker } from '@/shared/components/date-picker';
@@ -52,17 +51,17 @@ export function ReportFilters({
     setLocal(value);
   }, [value]);
 
-  const { data: branches } = useQuery({
-    queryKey: ['organization', 'branch', 'report-filters'],
-    queryFn: () => listEntities(MASTER_ENTITIES.BRANCH, { pageSize: 200, status: 'active' }),
-    enabled: showBranch,
-  });
+  const { data: branches } = useMasterDataList(
+    MASTER_ENTITIES.BRANCH,
+    { page: 1, pageSize: 100, status: 'active' },
+    showBranch,
+  );
 
-  const { data: departments } = useQuery({
-    queryKey: ['organization', 'department', 'report-filters'],
-    queryFn: () => listEntities(MASTER_ENTITIES.DEPARTMENT, { pageSize: 200, status: 'active' }),
-    enabled: showDepartment,
-  });
+  const { data: departments } = useMasterDataList(
+    MASTER_ENTITIES.DEPARTMENT,
+    { page: 1, pageSize: 100, status: 'active' },
+    showDepartment,
+  );
 
   const { data: employees } = useEmployees({ pageSize: 200, status: 'active' });
   const { data: projects } = useProjects({ pageSize: 200, status: 'active' });

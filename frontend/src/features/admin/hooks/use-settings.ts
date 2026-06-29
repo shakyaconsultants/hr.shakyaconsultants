@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   createSetting,
   deleteSetting,
@@ -34,8 +35,10 @@ export function useUpdateSetting() {
   const setSessionFeatureFlags = useAuthStore((s) => s.setSessionFeatureFlags);
   const sessionFlags = useAuthStore((s) => s.featureFlags);
 
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ key, value }: { key: string; value: unknown }) => updateSetting(key, value),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.settings.root });
       if (variables.key.startsWith('feature.')) {
@@ -52,16 +55,20 @@ export function useUpdateSetting() {
 
 export function useCreateSetting() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createSetting,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.settings.root }),
   });
 }
 
 export function useDeleteSetting() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: deleteSetting,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.settings.root }),
   });
 }

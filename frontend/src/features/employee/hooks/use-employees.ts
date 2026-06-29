@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   createEmployee,
   exportEmployees,
@@ -36,8 +37,10 @@ export function useEmployeeDashboard(id: string) {
 
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: createEmployee,
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['employees'] });
     },
@@ -46,8 +49,10 @@ export function useCreateEmployee() {
 
 export function useUpdateEmployee() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) => updateEmployee(id, payload),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['employees'] });
       void queryClient.invalidateQueries({ queryKey: ['employee', variables.id] });
@@ -65,16 +70,19 @@ export function useSearchEmployees(search: string) {
 }
 
 export function useExportEmployees() {
-  return useMutation({
+  return useAppMutation({
     mutationFn: exportEmployees,
+    successMessage: 'Export started successfully',
   });
 }
 
 export function useUploadDocument() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useAppMutation({
     mutationFn: ({ employeeId, file, documentType }: { employeeId: string; file: File; documentType: string }) =>
       uploadDocument(employeeId, file, documentType),
+    errorToast: false,
+    successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['employee', variables.employeeId, 'dashboard'] });
     },

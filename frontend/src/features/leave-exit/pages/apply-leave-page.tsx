@@ -2,6 +2,7 @@ import { FormEvent, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LeaveExitNav, LeaveExitPageHeader } from '@/features/leave-exit/components/leave-exit-nav';
 import { useApplyLeave, useLeavePolicies } from '@/features/leave-exit/hooks/use-leave-exit';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { DatePicker } from '@/shared/components/date-picker';
 import { compareDates } from '@/shared/utils/datetime';
 import { Loading } from '@/shared/components/loading';
@@ -33,22 +34,26 @@ export function ApplyLeavePage() {
       setError(dateRangeError);
       return;
     }
-    setError(null);
-    try {
-      await applyLeave.mutateAsync({
-        employeeId,
-        leavePolicyId,
-        startDate,
-        endDate,
-        durationType,
-        reason,
-        isEmergency,
-        submit: true,
-      });
-      navigate(ROUTES.LEAVE_REQUESTS);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to apply leave');
+    if (applyLeave.isPending) {
+      return;
     }
+
+    await runFormMutation({
+      setError,
+      successMessage: 'Leave request submitted for approval.',
+      mutation: () =>
+        applyLeave.mutateAsync({
+          employeeId,
+          leavePolicyId,
+          startDate,
+          endDate,
+          durationType,
+          reason,
+          isEmergency,
+          submit: true,
+        }),
+      onSuccess: () => navigate(ROUTES.LEAVE_REQUESTS),
+    });
   };
 
   if (isLoading) return <Loading message="Loading leave policies..." />;

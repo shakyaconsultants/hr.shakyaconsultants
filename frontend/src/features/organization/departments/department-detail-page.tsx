@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchDepartmentDetail } from '@/features/organization/departments/department.api';
+import { departmentQueryKeys } from '@/features/organization/departments/department-query-keys';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 import { PageHeader } from '@/shared/components/page-header';
 import { StatCard } from '@/shared/components/stat-card';
 import { Loading } from '@/shared/components/loading';
@@ -32,9 +34,9 @@ export function DepartmentDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('Overview');
 
   const { data: department, isLoading, isError } = useQuery({
-    queryKey: ['organization', 'department', id, 'detail'],
+    queryKey: departmentQueryKeys.detail(id),
     queryFn: () => fetchDepartmentDetail(id),
-    enabled: Boolean(id),
+    enabled: isValidEntityId(id),
   });
 
   if (isLoading) {
@@ -67,7 +69,7 @@ export function DepartmentDetailPage() {
         <StatCard label="Employees" value={department.stats.employees} />
         <StatCard label="Managers" value={department.stats.managers} />
         <StatCard label="Projects" value={department.stats.projects} />
-        <StatCard label="Open Positions" value={department.stats.openPositions} />
+        <StatCard label="Active Job Roles" value={department.stats.openPositions} />
       </div>
 
       <div className="flex flex-wrap gap-1 border-b">

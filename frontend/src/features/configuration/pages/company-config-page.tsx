@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
 import { getCompany, updateCompany } from '@/features/organization/api/organization.api';
@@ -9,6 +9,7 @@ import {
   useUpdateConfigurationSetting,
 } from '@/features/configuration/hooks/use-configuration';
 import { ConfirmSaveDialog } from '@/features/configuration/components/confirm-save-dialog';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { PageHeader } from '@/shared/components/page-header';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
@@ -20,7 +21,6 @@ interface CompanyConfigPageProps {
 }
 
 export function CompanyConfigPage({ embedded = false }: CompanyConfigPageProps) {
-  const queryClient = useQueryClient();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canManage = hasPermission('settings.manage') && hasPermission('company.update');
 
@@ -42,6 +42,8 @@ export function CompanyConfigPage({ embedded = false }: CompanyConfigPageProps) 
   });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!company && !settings) return;
@@ -58,40 +60,53 @@ export function CompanyConfigPage({ embedded = false }: CompanyConfigPageProps) 
     setDirty(false);
   }, [company, settings]);
 
-  const companyMutation = useMutation({
-    mutationFn: updateCompany,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['organization', 'company'] }),
-  });
-
   async function handleSave() {
-    await companyMutation.mutateAsync({
-      name: form.name,
-      code: form.code,
-      timezone: form.timezone,
-      currency: form.currency,
-      address: form.address,
-      gst: form.gst,
-      logoUrl: form.logoUrl,
+    if (isSaving) {
+      return;
+    }
+    setIsSaving(true);
+    setSaveError(null);
+
+    const saved = await runFormMutation({
+      setError: setSaveError,
+      successMessage: 'Company configuration saved successfully.',
+      mutation: async () => {
+        await updateCompany({
+          name: form.name,
+          code: form.code,
+          timezone: form.timezone,
+          currency: form.currency,
+          address: form.address,
+          gst: form.gst,
+          logoUrl: form.logoUrl,
+        });
+
+        const settingUpdates: Array<{ key: string; value: unknown }> = [
+          { key: 'company.name', value: form.name },
+          { key: 'company.timezone', value: form.timezone },
+          { key: 'company.currency', value: form.currency },
+          { key: 'company.address', value: form.address },
+          { key: 'company.gst', value: form.gst },
+          { key: 'company.logo_url', value: form.logoUrl },
+        ];
+
+        for (const item of settingUpdates) {
+          const existing = settings?.find((s) => s.key === item.key);
+          if (existing) {
+            await updateSetting.mutateAsync(item);
+          }
+        }
+      },
+      onSuccess: () => {
+        setConfirmOpen(false);
+        setDirty(false);
+      },
     });
 
-    const settingUpdates: Array<{ key: string; value: unknown }> = [
-      { key: 'company.name', value: form.name },
-      { key: 'company.timezone', value: form.timezone },
-      { key: 'company.currency', value: form.currency },
-      { key: 'company.address', value: form.address },
-      { key: 'company.gst', value: form.gst },
-      { key: 'company.logo_url', value: form.logoUrl },
-    ];
-
-    for (const item of settingUpdates) {
-      const existing = settings?.find((s) => s.key === item.key);
-      if (existing) {
-        await updateSetting.mutateAsync(item);
-      }
+    setIsSaving(false);
+    if (!saved) {
+      return;
     }
-
-    setConfirmOpen(false);
-    setDirty(false);
   }
 
   function updateField<K extends keyof typeof form>(key: K, value: string) {
@@ -100,7 +115,6 @@ export function CompanyConfigPage({ embedded = false }: CompanyConfigPageProps) 
   }
 
   const isLoading = companyLoading || settingsLoading;
-  const isSaving = companyMutation.isPending || updateSetting.isPending;
 
   return (
     <div className="space-y-6">
@@ -154,6 +168,7 @@ export function CompanyConfigPage({ embedded = false }: CompanyConfigPageProps) 
           <Field label="GST / Tax ID">
             <Input value={form.gst} disabled={!canManage} onChange={(e) => updateField('gst', e.target.value)} />
           </Field>
+          {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
           {canManage ? (
             <div className="flex justify-end pt-2">
               <Button type="submit" disabled={!dirty || isSaving}>

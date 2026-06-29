@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { GitBranch, Plus } from 'lucide-react';
 import { ApprovalNav } from '@/features/approval/components/approval-nav';
 import { useCreateWorkflow, useUpdateWorkflow, useWorkflows } from '@/features/approval/hooks/use-approval';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import type { ApprovalWorkflow } from '@/features/approval/api/approval.api';
 import { PageHeader } from '@/shared/components/page-header';
 import { Button } from '@/shared/components/ui/button';
@@ -21,6 +22,7 @@ export function ApprovalWorkflowsPage() {
   const updateMutation = useUpdateWorkflow();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const [editing, setEditing] = useState<ApprovalWorkflow | 'new' | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     slug: '',
@@ -62,12 +64,24 @@ export function ApprovalWorkflowsPage() {
   }
 
   async function saveWorkflow() {
-    if (editing === 'new') {
-      await createMutation.mutateAsync(form);
-    } else if (editing) {
-      await updateMutation.mutateAsync({ id: editing.id, payload: form });
+    if (createMutation.isPending || updateMutation.isPending) {
+      return;
     }
-    setEditing(null);
+
+    await runFormMutation({
+      setError: setFormError,
+      successMessage: editing === 'new' ? 'Workflow created successfully.' : 'Workflow updated successfully.',
+      mutation: async () => {
+        if (editing === 'new') {
+          return createMutation.mutateAsync(form);
+        }
+        if (editing) {
+          return updateMutation.mutateAsync({ id: editing.id, payload: form });
+        }
+        throw new Error('No workflow selected.');
+      },
+      onSuccess: () => setEditing(null),
+    });
   }
 
   if (isLoading) return <Loading message="Loading workflows..." />;
@@ -126,6 +140,7 @@ export function ApprovalWorkflowsPage() {
             ))}
             <Button variant="outline" size="sm" onClick={() => setForm((p) => ({ ...p, stages: [...p.stages, { order: p.stages.length + 1, name: `Stage ${p.stages.length + 1}`, slug: `stage_${p.stages.length + 1}`, approverType: 'manager', isRequired: true }] }))}>Add Stage</Button>
           </div>
+          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
         </div>
       </Sheet>
 
