@@ -133,7 +133,13 @@ authRoutes.post(AUTH_ROUTES.REFRESH, refreshRateLimitMiddleware, refresh);
  *       200:
  *         description: Logged out
  */
-authRoutes.post(AUTH_ROUTES.LOGOUT, authenticateMiddleware, logout);
+authRoutes.post(AUTH_ROUTES.LOGOUT, (req, res, next) => {
+  authenticateMiddleware(req, res, () => {}).then(() => {
+    logout(req, res, next);
+  }).catch(() => {
+    logout(req, res, next);
+  });
+});
 
 /**
  * @swagger

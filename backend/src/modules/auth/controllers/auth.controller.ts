@@ -70,9 +70,16 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
     req.cookies[AUTH_COOKIE_NAMES.REFRESH] as string | undefined,
   );
 
-  const result = await AuthService.logout(authReq.user, refreshToken, getRequestMeta(req));
-  clearAuthCookies(res);
-  ResponseService.success(res, req, result);
+  try {
+    if (authReq.user) {
+      await AuthService.logout(authReq.user, refreshToken, getRequestMeta(req));
+    }
+  } catch (error) {
+    // Ignore error since we are clearing cookies and logging out anyway
+  } finally {
+    clearAuthCookies(res);
+  }
+  ResponseService.success(res, req, { message: 'Logged out successfully' });
 });
 
 export const logoutAll = asyncHandler(async (req: Request, res: Response) => {
