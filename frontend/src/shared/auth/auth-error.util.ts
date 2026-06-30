@@ -7,6 +7,25 @@ export function classifyHttpFailure(error: unknown): {
   message: string;
   retryable: boolean;
 } {
+  if (error && typeof error === 'object') {
+    const err = error as any;
+    const status = err.status;
+    if (status !== undefined) {
+      if (status === 401) {
+        return { reason: 'unauthenticated', status, message: err.error?.message ?? 'Session expired or invalid', retryable: false };
+      }
+      if (status === 403) {
+        return { reason: 'forbidden', status, message: err.error?.message ?? 'Access denied', retryable: false };
+      }
+      if (status >= 500) {
+        return { reason: 'transient', status, message: `Server error (${status})`, retryable: true };
+      }
+      if (status === 408 || status === 429) {
+        return { reason: 'transient', status, message: `Temporary failure (${status})`, retryable: true };
+      }
+    }
+  }
+
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
 

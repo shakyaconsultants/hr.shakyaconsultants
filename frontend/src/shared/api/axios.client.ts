@@ -67,7 +67,11 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.data?.success === false) {
-      return Promise.reject(error.response.data);
+      const rejectedData = {
+        ...error.response.data,
+        status: error.response.status,
+      };
+      return Promise.reject(rejectedData);
     }
     return Promise.reject(error);
   },

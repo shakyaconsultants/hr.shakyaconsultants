@@ -4,7 +4,7 @@ import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.a
 import { applyLoginSession, runAuthBootstrap } from '@/shared/auth/auth-bootstrap';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
-import { getRefreshToken, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
+import { clearStoredTokens, getRefreshToken, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { BootstrapSplash } from '@/app/components/bootstrap-splash';
 
@@ -43,7 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     authDiag.log('session_cleared', { reason: result.reason ?? 'unknown', status: result.status });
+    clearStoredTokens();
     clearAuth();
+    void logoutRequest().catch(() => {});
   }, [clearAuth, setAuthStatus]);
 
   useEffect(() => {
