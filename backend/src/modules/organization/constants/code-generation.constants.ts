@@ -36,7 +36,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
   [MASTER_DATA_ENTITY.DEPARTMENT]: {
     prefixSettingKey: 'organization.department_code_prefix',
     defaultPrefix: 'DEPT',
-    slugFromName: true,
+    slugFromName: false,
     padLength: 3,
     includeYear: false,
     includeMonth: false,
@@ -44,7 +44,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
   [MASTER_DATA_ENTITY.DESIGNATION]: {
     prefixSettingKey: 'organization.designation_code_prefix',
     defaultPrefix: 'DESG',
-    slugFromName: true,
+    slugFromName: false,
     padLength: 3,
     includeYear: false,
     includeMonth: false,
@@ -52,7 +52,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
   [MASTER_DATA_ENTITY.JOB_ROLE]: {
     prefixSettingKey: 'organization.job_role_code_prefix',
     defaultPrefix: 'ROLE',
-    slugFromName: true,
+    slugFromName: false,
     padLength: 3,
     includeYear: false,
     includeMonth: false,
@@ -60,7 +60,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
   [MASTER_DATA_ENTITY.OFFICE_LOCATION]: {
     prefixSettingKey: 'organization.office_location_code_prefix',
     defaultPrefix: 'LOC',
-    slugFromName: true,
+    slugFromName: false,
     padLength: 3,
     includeYear: false,
     includeMonth: false,
@@ -100,7 +100,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
   [MASTER_DATA_ENTITY.PROJECT_CATEGORY]: {
     prefixSettingKey: 'organization.project_category_code_prefix',
     defaultPrefix: 'PCAT',
-    slugFromName: true,
+    slugFromName: false,
     padLength: 3,
     includeYear: false,
     includeMonth: false,
@@ -108,7 +108,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
   [MASTER_DATA_ENTITY.TECHNOLOGY]: {
     prefixSettingKey: 'organization.technology_code_prefix',
     defaultPrefix: 'TECH',
-    slugFromName: true,
+    slugFromName: false,
     padLength: 3,
     includeYear: false,
     includeMonth: false,
@@ -116,7 +116,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
   [MASTER_DATA_ENTITY.SKILL]: {
     prefixSettingKey: 'organization.skill_code_prefix',
     defaultPrefix: 'SKL',
-    slugFromName: true,
+    slugFromName: false,
     padLength: 3,
     includeYear: false,
     includeMonth: false,
