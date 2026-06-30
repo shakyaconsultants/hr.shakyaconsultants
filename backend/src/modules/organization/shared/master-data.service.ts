@@ -111,8 +111,21 @@ function buildDepartmentUpdateQuery(
   return { merged, unset };
 }
 
-function stripImmutableCode(payload: Record<string, unknown>): Record<string, unknown> {
+function stripSystemFields(payload: Record<string, unknown>): Record<string, unknown> {
   const next = { ...payload };
+  delete next.id;
+  delete next._id;
+  delete next.companyId;
+  delete next.createdAt;
+  delete next.updatedAt;
+  delete next.version;
+  delete next.createdBy;
+  delete next.updatedBy;
+  return next;
+}
+
+function stripImmutableCode(payload: Record<string, unknown>): Record<string, unknown> {
+  const next = stripSystemFields(payload);
   delete next.code;
   return next;
 }
