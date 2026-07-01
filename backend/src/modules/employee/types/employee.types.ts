@@ -1,3 +1,5 @@
+import type { EmployeeLifecycleProfileView } from '@modules/employee/services/employee-lifecycle.service.js';
+
 export interface EmployeeActorContext {
   companyId: string;
   userId: string;
@@ -24,6 +26,7 @@ export interface EmployeeListQuery {
 
 export interface EmployeeDashboardData {
   employee: Record<string, unknown>;
+  lifecycle: EmployeeLifecycleProfileView;
   emergencyContacts: Record<string, unknown>[];
   bankDetails: Record<string, unknown>[];
   documents: Record<string, unknown>[];

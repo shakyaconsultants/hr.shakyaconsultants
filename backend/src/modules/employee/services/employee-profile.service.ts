@@ -23,6 +23,8 @@ import { EmployeeValidationService } from '@modules/employee/services/employee-v
 import { EmployeeService } from '@modules/employee/services/employee.service.js';
 import type { EmployeeActorContext, EmployeeDashboardData } from '@modules/employee/types/employee.types.js';
 import type { BaseDocument } from '@infrastructure/database/types/base-document.types.js';
+import { enrichEmployeeRecords } from './employee-query.service.js';
+import { EmployeeLifecycleService } from '@modules/employee/services/employee-lifecycle.service.js';
 
 function toRecords(items: BaseDocument[]): Record<string, unknown>[] {
   return items.map((item) => EmployeeAuditService.toRecord(item));
@@ -58,8 +60,12 @@ export const EmployeeDashboardService = {
       ReportingHierarchyRepository.findMany({ employeeId, effectiveTo: null }, { companyId }),
     ]);
 
+    const [enriched] = await enrichEmployeeRecords(companyId, [employee]);
+    const lifecycle = await EmployeeLifecycleService.getProfileStatus(companyId, employeeId);
+
     return {
-      employee: EmployeeAuditService.toRecord(employee),
+      employee: EmployeeAuditService.toRecord(enriched),
+      lifecycle,
       emergencyContacts: toRecords(emergencyContacts),
       bankDetails: toRecords(bankDetails),
       documents: toRecords(documents),

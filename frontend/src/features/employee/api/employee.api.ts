@@ -21,8 +21,34 @@ export interface EmployeeRecord {
   joinedAt: string;
 }
 
+export interface EmployeeEmailDeliveryView {
+  deliveryStatus: 'never_sent' | 'sent' | 'failed';
+  lastSentAt: string | null;
+  sendCount: number;
+  lastError: string | null;
+}
+
+export interface EmployeeLifecycleProfile {
+  account: {
+    hasUserAccount: boolean;
+    userStatus: string | null;
+    isActivated: boolean;
+    email: EmployeeEmailDeliveryView;
+  };
+  onboarding: {
+    status: string;
+    progressPercent: number;
+    isComplete: boolean;
+    email: EmployeeEmailDeliveryView;
+  };
+  passwordReset: {
+    email: EmployeeEmailDeliveryView;
+  };
+}
+
 export interface EmployeeDashboard {
   employee: EmployeeRecord;
+  lifecycle: EmployeeLifecycleProfile;
   emergencyContacts: Record<string, unknown>[];
   bankDetails: Record<string, unknown>[];
   documents: Record<string, unknown>[];
@@ -96,5 +122,66 @@ export async function uploadDocument(employeeId: string, file: File, documentTyp
   const { data } = await apiClient.post(`${EMPLOYEE_PREFIX}/${employeeId}/documents`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return data.data;
+}
+
+export async function deleteEmployee(id: string): Promise<void> {
+  await apiClient.delete(`${EMPLOYEE_PREFIX}/${id}`);
+}
+
+export async function archiveEmployee(id: string): Promise<unknown> {
+  const { data } = await apiClient.post(`${EMPLOYEE_PREFIX}/${id}/archive`);
+  return data.data;
+}
+
+export async function restoreEmployee(id: string): Promise<unknown> {
+  const { data } = await apiClient.post(`${EMPLOYEE_PREFIX}/${id}/restore`);
+  return data.data;
+}
+
+export async function deactivateEmployee(id: string): Promise<unknown> {
+  const { data } = await apiClient.post(`${EMPLOYEE_PREFIX}/${id}/deactivate`);
+  return data.data;
+}
+
+export async function reactivateEmployee(id: string): Promise<unknown> {
+  const { data } = await apiClient.post(`${EMPLOYEE_PREFIX}/${id}/reactivate`);
+  return data.data;
+}
+
+export async function sendEmployeeActivationEmail(employeeId: string): Promise<{
+  message: string;
+  expiresAt: string;
+  lifecycle: EmployeeLifecycleProfile;
+}> {
+  const { data } = await apiClient.post<ApiSuccessResponse<{
+    message: string;
+    expiresAt: string;
+    lifecycle: EmployeeLifecycleProfile;
+  }>>(`${EMPLOYEE_PREFIX}/${employeeId}/activate-account`);
+  return data.data;
+}
+
+export async function sendEmployeeOnboardingEmail(employeeId: string): Promise<{
+  message: string;
+  expiresAt: string;
+  lifecycle: EmployeeLifecycleProfile;
+}> {
+  const { data } = await apiClient.post<ApiSuccessResponse<{
+    message: string;
+    expiresAt: string;
+    lifecycle: EmployeeLifecycleProfile;
+  }>>(`${EMPLOYEE_PREFIX}/${employeeId}/send-onboarding-email`);
+  return data.data;
+}
+
+export async function sendEmployeePasswordResetEmail(employeeId: string): Promise<{
+  message: string;
+  lifecycle: EmployeeLifecycleProfile;
+}> {
+  const { data } = await apiClient.post<ApiSuccessResponse<{
+    message: string;
+    lifecycle: EmployeeLifecycleProfile;
+  }>>(`${EMPLOYEE_PREFIX}/${employeeId}/send-password-reset`);
   return data.data;
 }

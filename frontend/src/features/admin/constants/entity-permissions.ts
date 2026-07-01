@@ -26,12 +26,7 @@ export const ENTITY_PERMISSIONS: Record<MasterEntityKey, EntityPermissionSet> = 
     update: 'designation.update',
     delete: 'designation.delete',
   },
-  'job-role': {
-    read: 'jobrole.read',
-    create: 'jobrole.create',
-    update: 'jobrole.update',
-    delete: 'jobrole.delete',
-  },
+
   'office-location': {
     read: 'office-location.read',
     create: 'office-location.create',

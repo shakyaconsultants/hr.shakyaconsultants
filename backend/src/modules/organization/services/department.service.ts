@@ -2,7 +2,6 @@ import type { DepartmentDocument } from '@domain/organization/organization.schem
 import {
   BranchRepository,
   DepartmentRepository,
-  JobRoleRepository,
 } from '@domain/organization/organization.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ProjectRepository } from '@domain/project/project.schemas.js';
@@ -182,11 +181,10 @@ export const DepartmentService = {
   },
 
   async getCompanyStats(companyId: string): Promise<DepartmentStats> {
-    const [employees, departments, projects, jobRoles] = await Promise.all([
+    const [employees, departments, projects] = await Promise.all([
       EmployeeRepository.count({ status: ENTITY_STATUS.ACTIVE }, { companyId }),
       DepartmentRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId }),
       ProjectRepository.count({ isArchived: { $ne: true } }, { companyId }),
-      JobRoleRepository.count({ status: ENTITY_STATUS.ACTIVE }, { companyId }),
     ]);
 
     const uniqueHeads = new Set(
@@ -199,7 +197,7 @@ export const DepartmentService = {
       employees,
       managers: uniqueHeads.size,
       projects,
-      openPositions: jobRoles,
+      openPositions: 0,
     };
   },
 
@@ -209,7 +207,7 @@ export const DepartmentService = {
       throw new NotFoundError('Department not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const [branch, parent, head, employees, jobRoles, projects, auditHistory] = await Promise.all([
+    const [branch, parent, head, employees, projects, auditHistory] = await Promise.all([
       department.branchId ? BranchRepository.findById(department.branchId, { companyId }) : Promise.resolve(null),
       department.parentDepartmentId
         ? DepartmentRepository.findById(department.parentDepartmentId, { companyId })
@@ -218,7 +216,6 @@ export const DepartmentService = {
         ? EmployeeRepository.findById(department.headEmployeeId, { companyId })
         : Promise.resolve(null),
       EmployeeRepository.findMany({ departmentId: id }, { companyId }),
-      JobRoleRepository.findMany({ departmentId: id }, { companyId }),
       ProjectRepository.findMany({ departmentId: id }, { companyId }),
       AuditLogRepository.paginate(
         { entityType: 'department', entityId: id },
@@ -258,7 +255,7 @@ export const DepartmentService = {
         employees: employees.length,
         managers: uniqueHeads.size,
         projects: projects.length,
-        openPositions: jobRoles.filter((role) => role.status === ENTITY_STATUS.ACTIVE).length,
+        openPositions: 0,
       },
       hierarchy: {
         ancestors,
@@ -277,12 +274,7 @@ export const DepartmentService = {
         email: employee.email,
         status: employee.status,
       })),
-      jobRoles: jobRoles.map((role) => ({
-        id: role.id,
-        name: role.name,
-        code: role.code,
-        status: role.status,
-      })),
+      jobRoles: [],
       projects: projects.map((project) => ({
         id: project.id,
         name: project.name,

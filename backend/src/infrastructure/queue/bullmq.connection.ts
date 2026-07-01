@@ -51,6 +51,9 @@ function createQueueInstance(name: QueueName): Queue {
       prefix: getQueuePrefix(),
       defaultJobOptions: getDefaultJobOptions(),
     });
+    queue.on('error', (err) => {
+      queueLogger.error(`BullMQ queue error on ${name}:`, { error: err.message });
+    });
     queues.set(key, queue);
   }
   return queue;
@@ -115,6 +118,10 @@ export function registerWorker(
     connection: getConnection(),
     prefix: getQueuePrefix(),
     concurrency,
+  });
+
+  worker.on('error', (err) => {
+    queueLogger.error(`BullMQ worker error on ${queueName}:`, { error: err.message });
   });
 
   worker.on('failed', (job, error) => {

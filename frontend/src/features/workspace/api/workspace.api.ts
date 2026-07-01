@@ -245,3 +245,21 @@ export async function workspaceSearch(q: string, types?: string[]): Promise<{ re
   const { data } = await apiClient.get<ApiSuccessResponse<{ results: SearchResult[]; total: number }>>(`${WORKSPACE_PREFIX}/search`, { params: { q, types: types?.join(',') } });
   return data.data;
 }
+
+export interface WorkspaceOnboardingStatus {
+  required: boolean;
+  status: string;
+  progressPercent: number;
+  completedSections: string[];
+  currentSection: string | null;
+}
+
+export async function fetchOnboardingStatus(): Promise<WorkspaceOnboardingStatus> {
+  const { data } = await apiClient.get<ApiSuccessResponse<WorkspaceOnboardingStatus>>(`${WORKSPACE_PREFIX}/onboarding/status`);
+  return data.data;
+}
+
+export async function requestOnboardingPortalLink(): Promise<{ portalUrl: string; expiresAt: string }> {
+  const { data } = await apiClient.post<ApiSuccessResponse<{ portalUrl: string; expiresAt: string }>>(`${WORKSPACE_PREFIX}/onboarding/portal-link`);
+  return data.data;
+}

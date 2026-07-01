@@ -1,7 +1,6 @@
 import {
   DepartmentRepository,
   DesignationRepository,
-  JobRoleRepository,
 } from '@domain/organization/organization.schemas.js';
 import { SalaryGradeRepository } from '@domain/master-data/master-data.schemas.js';
 import { AppSettingRepository } from '@domain/master-data/master-data.schemas.js';
@@ -21,12 +20,7 @@ async function isDepartmentRequired(companyId: string): Promise<boolean> {
   return setting?.value === true;
 }
 
-function normalizeJobRoleIds(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return [...new Set(value.filter((item): item is string => typeof item === 'string' && item.length > 0))];
-}
+
 
 export const DesignationValidationService = {
   async validateWrite(
@@ -53,34 +47,33 @@ export const DesignationValidationService = {
       next.hierarchyLevel = levelNumber;
     }
 
-    const departmentId = typeof next.departmentId === 'string' && next.departmentId.trim()
-      ? next.departmentId.trim()
-      : undefined;
+    let departmentIds: string[] = [];
+    if (Array.isArray(next.departmentIds)) {
+      departmentIds = next.departmentIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+    } else if (typeof next.departmentId === 'string' && next.departmentId.trim()) {
+      departmentIds = [next.departmentId.trim()];
+    }
+
+    next.departmentIds = departmentIds;
+    delete next.departmentId;
 
     if (await isDepartmentRequired(companyId)) {
-      if (!departmentId) {
+      if (departmentIds.length === 0) {
         throw new ConflictError('Department is required for designations', ERROR_CODES.CONFLICT);
       }
     }
 
-    if (departmentId) {
-      const department = await DepartmentRepository.findById(departmentId, { companyId });
-      if (!department || department.status !== ENTITY_STATUS.ACTIVE) {
-        throw new NotFoundError('Department must exist and be active', ERROR_CODES.NOT_FOUND);
+    if (departmentIds.length > 0) {
+      const departments = await DepartmentRepository.findMany(
+        { id: { $in: departmentIds }, status: ENTITY_STATUS.ACTIVE },
+        { companyId },
+      );
+      if (departments.length !== departmentIds.length) {
+        throw new NotFoundError('One or more departments must exist and be active', ERROR_CODES.NOT_FOUND);
       }
     }
 
-    next.applicableJobRoleIds = normalizeJobRoleIds(next.applicableJobRoleIds);
-    const jobRoleIds = next.applicableJobRoleIds as string[];
-    if (jobRoleIds.length > 0) {
-      const roles = await JobRoleRepository.findMany(
-        { id: { $in: jobRoleIds }, status: ENTITY_STATUS.ACTIVE },
-        { companyId },
-      );
-      if (roles.length !== jobRoleIds.length) {
-        throw new ConflictError('One or more applicable job roles are invalid or inactive', ERROR_CODES.CONFLICT);
-      }
-    }
+
 
     if (typeof next.salaryGradeId === 'string' && next.salaryGradeId.trim()) {
       const salaryGrade = await SalaryGradeRepository.findById(next.salaryGradeId, { companyId });
@@ -119,22 +112,12 @@ export const DesignationValidationService = {
   async assertUniqueName(
     companyId: string,
     name: string,
-    departmentId: string | undefined,
+    _departmentId: string | undefined,
     excludeId?: string,
   ): Promise<void> {
     const filter: Record<string, unknown> = {
       name: { $regex: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
     };
-
-    if (departmentId) {
-      filter.departmentId = departmentId;
-    } else {
-      filter.$or = [
-        { departmentId: { $exists: false } },
-        { departmentId: null },
-        { departmentId: '' },
-      ];
-    }
 
     if (excludeId) {
       filter.id = { $ne: excludeId };
@@ -142,7 +125,7 @@ export const DesignationValidationService = {
 
     const duplicate = await DesignationRepository.findOne(filter, { companyId });
     if (duplicate) {
-      throw new ConflictError('A designation with this name already exists for the department scope', ERROR_CODES.CONFLICT);
+      throw new ConflictError('A designation with this name already exists', ERROR_CODES.CONFLICT);
     }
   },
 };

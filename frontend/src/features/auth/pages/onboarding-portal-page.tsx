@@ -70,7 +70,8 @@ export function OnboardingPortalPage({ secureToken }: { secureToken: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Candidate onboarding</h2>
+        <h2 className="text-2xl font-bold">Employee onboarding</h2>
+        <p className="text-sm text-muted-foreground">Complete your profile details. This secure link expires in 48 hours.</p>
         <p className="text-sm text-muted-foreground">Complete each section and save your progress anytime.</p>
         <div className="mt-4 h-2 rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${String(progress)}%` }} />

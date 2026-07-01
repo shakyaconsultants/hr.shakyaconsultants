@@ -5,6 +5,7 @@ import {
 } from '@domain/leave-exit/leave-exit.schemas.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { LEAVE_BALANCE_LEDGER_TYPE } from '@modules/leave-exit/constants/leave-exit.constants.js';
 import { LeaveExitAuditService } from '@modules/leave-exit/services/leave-exit-audit.service.js';
@@ -17,7 +18,14 @@ function recalculateAvailable(opening: number, earned: number, used: number, pen
 export const LeaveBalanceService = {
   async getForEmployee(companyId: string, employeeId: string, year?: number) {
     const targetYear = year ?? new Date().getFullYear();
-    return LeaveBalanceRepository.findMany({ employeeId, year: targetYear }, { companyId });
+    const balances = await LeaveBalanceRepository.findMany({ employeeId, year: targetYear }, { companyId });
+    const policies = await LeavePolicyRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId });
+    const policyMap = new Map(policies.map((policy) => [policy.id, policy]));
+
+    return balances.map((balance) => ({
+      ...JSON.parse(JSON.stringify(balance)),
+      policy: policyMap.get(balance.leavePolicyId) ?? null,
+    }));
   },
 
   async ensureBalance(companyId: string, employeeId: string, leavePolicyId: string, year: number) {

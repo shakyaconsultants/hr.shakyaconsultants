@@ -11,7 +11,6 @@ export interface CandidateRecord {
   email: string;
   phone?: string;
   pipelineStage: string;
-  jobRoleId?: string;
   departmentId?: string;
   designationId?: string;
   recruiterId?: string;
@@ -97,7 +96,7 @@ export interface ListCandidatesParams {
   pageSize?: number;
   search?: string;
   pipelineStage?: string;
-  jobRoleId?: string;
+  designationId?: string;
   departmentId?: string;
   recruiterId?: string;
   includeArchived?: boolean;

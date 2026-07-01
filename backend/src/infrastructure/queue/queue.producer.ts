@@ -1,5 +1,6 @@
 import type { JobsOptions } from 'bullmq';
 import { getQueue, isQueuesEnabled } from '@infrastructure/queue/bullmq.connection.js';
+import { deliverEmailPayload } from '@infrastructure/queue/processors/email-queue.processor.js';
 import { QUEUE_NAMES, type QueueName } from '@shared/constants/queue.constants.js';
 import { getCorrelationId } from '@shared/context/request.context.js';
 import { queueLogger } from '@logging/winston.logger.js';
@@ -36,8 +37,18 @@ export const QueueProducer = {
     return job.id;
   },
 
-  addEmailJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
-    return this.addJob(QUEUE_NAMES.EMAIL, jobName, payload, options);
+  async addEmailJob(jobName: string, payload: Record<string, unknown>, _options?: JobsOptions): Promise<string> {
+    const correlationId = getCorrelationId() ?? 'system';
+    const data: QueueJobData = {
+      correlationId,
+      tenantId: typeof payload.tenantId === 'string' ? payload.tenantId : undefined,
+      userId: typeof payload.userId === 'string' ? payload.userId : undefined,
+      payload,
+    };
+
+    await deliverEmailPayload(data, jobName);
+    queueLogger.info('Email delivered', { jobName, correlationId, to: payload.to });
+    return 'delivered';
   },
 
   addNotificationJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {

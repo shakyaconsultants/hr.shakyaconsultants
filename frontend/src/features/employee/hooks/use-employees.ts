@@ -9,6 +9,15 @@ import {
   searchEmployees,
   updateEmployee,
   uploadDocument,
+  deleteEmployee,
+  archiveEmployee,
+  restoreEmployee,
+  deactivateEmployee,
+  reactivateEmployee,
+  sendEmployeeActivationEmail,
+  sendEmployeeOnboardingEmail,
+  sendEmployeePasswordResetEmail,
+  type EmployeeDashboard,
   type ListEmployeesParams,
 } from '@/features/employee/api/employee.api';
 
@@ -86,5 +95,103 @@ export function useUploadDocument() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['employee', variables.employeeId, 'dashboard'] });
     },
+  });
+}
+
+export function useDeleteEmployee() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: deleteEmployee,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
+  });
+}
+
+export function useArchiveEmployee() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: archiveEmployee,
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: ['employees'] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
+    },
+  });
+}
+
+export function useRestoreEmployee() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: restoreEmployee,
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: ['employees'] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
+    },
+  });
+}
+
+export function useDeactivateEmployee() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: deactivateEmployee,
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: ['employees'] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
+    },
+  });
+}
+
+export function useReactivateEmployee() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: reactivateEmployee,
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: ['employees'] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
+      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
+    },
+  });
+}
+
+function usePatchEmployeeDashboardLifecycle(employeeId: string) {
+  const queryClient = useQueryClient();
+  return (lifecycle: EmployeeDashboard['lifecycle']) => {
+    queryClient.setQueryData<EmployeeDashboard>(['employee', employeeId, 'dashboard'], (current) =>
+      current ? { ...current, lifecycle } : current,
+    );
+    void queryClient.invalidateQueries({ queryKey: ['employee', employeeId, 'dashboard'] });
+  };
+}
+
+export function useSendEmployeeActivationEmail(employeeId: string) {
+  const patchLifecycle = usePatchEmployeeDashboardLifecycle(employeeId);
+  return useAppMutation({
+    mutationFn: () => sendEmployeeActivationEmail(employeeId),
+    errorToast: false,
+    successMessage: false,
+    onSuccess: (result) => patchLifecycle(result.lifecycle),
+  });
+}
+
+export function useSendEmployeeOnboardingEmail(employeeId: string) {
+  const patchLifecycle = usePatchEmployeeDashboardLifecycle(employeeId);
+  return useAppMutation({
+    mutationFn: () => sendEmployeeOnboardingEmail(employeeId),
+    errorToast: false,
+    successMessage: false,
+    onSuccess: (result) => patchLifecycle(result.lifecycle),
+  });
+}
+
+export function useSendEmployeePasswordResetEmail(employeeId: string) {
+  const patchLifecycle = usePatchEmployeeDashboardLifecycle(employeeId);
+  return useAppMutation({
+    mutationFn: () => sendEmployeePasswordResetEmail(employeeId),
+    errorToast: false,
+    successMessage: false,
+    onSuccess: (result) => patchLifecycle(result.lifecycle),
   });
 }

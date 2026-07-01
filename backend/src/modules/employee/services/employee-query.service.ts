@@ -1,5 +1,6 @@
 import type { EmployeeDocument } from '@domain/employee/employee.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
+import { DepartmentRepository, DesignationRepository } from '@domain/organization/organization.schemas.js';
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { buildExactFilter, mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
 import type { DomainQueryFilter } from '@infrastructure/database/types/domain-query.types.js';
@@ -8,6 +9,37 @@ import type { EmployeeListQuery } from '@modules/employee/types/employee.types.j
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 
 const SEARCH_FIELDS = ['firstName', 'lastName', 'employeeNumber', 'email', 'phone'];
+
+export async function enrichEmployeeRecords(companyId: string, items: any[]): Promise<any[]> {
+  const departmentIds = new Set<string>();
+  const designationIds = new Set<string>();
+
+  for (const item of items) {
+    if (item.departmentId) departmentIds.add(item.departmentId);
+    if (item.designationId) designationIds.add(item.designationId);
+  }
+
+  const [departments, designations] = await Promise.all([
+    departmentIds.size > 0
+      ? DepartmentRepository.findMany({ id: { $in: [...departmentIds] } }, { companyId })
+      : Promise.resolve([]),
+    designationIds.size > 0
+      ? DesignationRepository.findMany({ id: { $in: [...designationIds] } }, { companyId })
+      : Promise.resolve([]),
+  ]);
+
+  const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
+  const designationMap = new Map(designations.map((d) => [d.id, d.name]));
+
+  return items.map((item) => {
+    const raw = typeof item.toObject === 'function' ? item.toObject() : item;
+    return {
+      ...raw,
+      departmentName: item.departmentId ? departmentMap.get(item.departmentId) : undefined,
+      designationName: item.designationId ? designationMap.get(item.designationId) : undefined,
+    };
+  });
+}
 
 function buildEmployeeFilter(query: EmployeeListQuery): DomainQueryFilter {
   const filters: DomainQueryFilter[] = [];
@@ -48,7 +80,7 @@ function buildEmployeeFilter(query: EmployeeListQuery): DomainQueryFilter {
 export const EmployeeQueryService = {
   async list(companyId: string, query: EmployeeListQuery): Promise<PaginatedResult<EmployeeDocument>> {
     const filter = buildEmployeeFilter(query);
-    return EmployeeRepository.paginate(filter, {
+    const result = await EmployeeRepository.paginate(filter, {
       page: query.page,
       pageSize: query.pageSize,
       sortBy: query.sortBy ?? 'lastName',
@@ -56,11 +88,16 @@ export const EmployeeQueryService = {
       companyId,
       includeDeleted: query.includeDeleted,
     });
+    return {
+      ...result,
+      items: await enrichEmployeeRecords(companyId, result.items),
+    } as any;
   },
 
   async search(companyId: string, search: string, limit = 20): Promise<EmployeeDocument[]> {
     const filter = mergeFilters(buildSearchFilter(search, SEARCH_FIELDS));
     const results = await EmployeeRepository.findMany(filter, { companyId });
-    return results.slice(0, limit);
+    const sliced = results.slice(0, limit);
+    return enrichEmployeeRecords(companyId, sliced);
   },
 };

@@ -116,7 +116,16 @@ function resolveStatusCode(error: unknown, apiError?: ApiErrorResponse): number 
 }
 
 export function parseMutationError(error: unknown): ParsedMutationError {
-  const apiError = isApiErrorShape(error) ? error : undefined;
+  let apiError: ApiErrorResponse | undefined;
+  if (error && typeof error === 'object' && 'response' in error) {
+    const data = (error as any).response?.data;
+    if (isApiErrorShape(data)) {
+      apiError = data;
+    }
+  } else if (isApiErrorShape(error)) {
+    apiError = error;
+  }
+
   const statusCode = resolveStatusCode(error, apiError);
   const code = apiError?.error?.code ?? 'UNKNOWN';
   const backendMessage = apiError?.error?.message?.trim() ?? '';
@@ -144,13 +153,31 @@ export function parseMutationError(error: unknown): ParsedMutationError {
     preferInline = false;
   } else if (isServerError) {
     title = SERVER_ERROR_MESSAGE;
-    description = import.meta.env.DEV && backendMessage ? backendMessage : undefined;
+    const detailFromDetails =
+      apiError?.error?.details?.find(
+        (entry): entry is { message?: string } =>
+          Boolean(entry && typeof entry === 'object' && typeof (entry as { message?: string }).message === 'string'),
+      )?.message ?? '';
+    description =
+      import.meta.env.DEV && (backendMessage || detailFromDetails)
+        ? backendMessage || detailFromDetails
+        : undefined;
     preferInline = false;
   } else if (isValidation) {
     title = validationMessages[0] ?? backendMessage ?? 'Validation failed';
     description = validationMessages.length > 1 ? validationMessages.slice(1).join('\n') : undefined;
   } else if (isConflict) {
+    const conflictField =
+      typeof metadata?.field === 'string' ? metadata.field : undefined;
+    const conflictValue = metadata?.value;
     title = backendMessage || 'This action conflicts with existing data';
+    if (!backendMessage && conflictField) {
+      const label = conflictField.charAt(0).toUpperCase() + conflictField.slice(1);
+      title =
+        conflictValue !== undefined && conflictValue !== null
+          ? `${label} "${String(conflictValue)}" is already in use`
+          : `${label} is already in use`;
+    }
     description = formatDependencyDescription(dependencies);
     preferInline = false;
   } else if (!title) {

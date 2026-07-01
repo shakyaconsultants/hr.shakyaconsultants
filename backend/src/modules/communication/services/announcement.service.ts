@@ -83,7 +83,7 @@ async function filterAnnouncementsForEmployee(companyId: string, employeeId: str
       case ANNOUNCEMENT_AUDIENCE.BRANCH:
         return employee.branchId ? a.targetIds.includes(employee.branchId) : false;
       case ANNOUNCEMENT_AUDIENCE.ROLE:
-        return employee.jobRoleId ? a.targetIds.includes(employee.jobRoleId) : false;
+        return employee.designationId ? a.targetIds.includes(employee.designationId) : false;
       case ANNOUNCEMENT_AUDIENCE.TEAM:
         return a.targetIds.some((id) => id === employeeId || id === employee.reportingManagerId);
       case ANNOUNCEMENT_AUDIENCE.PROJECT:

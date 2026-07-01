@@ -1,85 +1,90 @@
-import path from 'node:path';
-import fs from 'node:fs';
-import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
 import { getEnv } from '@config/env.js';
 import { LogCategory } from '@shared/enums/index.js';
 import { getCorrelationId } from '@shared/context/request.context.js';
 import { redactUnknown } from '@shared/utils/sensitive-redact.util.js';
 
-const { combine, timestamp, json, errors, printf, colorize } = winston.format;
+type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'http';
+type LogMeta = Record<string, unknown>;
 
-function ensureLogDir(logDir: string): string {
-  const resolved = path.isAbsolute(logDir) ? logDir : path.resolve(process.cwd(), logDir);
-  if (!fs.existsSync(resolved)) {
-    fs.mkdirSync(resolved, { recursive: true });
-  }
-  return resolved;
+interface CategoryLogger {
+  debug(message: string, meta?: unknown): void;
+  info(message: string, meta?: unknown): void;
+  warn(message: string, meta?: unknown): void;
+  error(message: string, meta?: unknown): void;
+  http(message: string, meta?: unknown): void;
+  add(): void;
 }
 
-function correlationFormat() {
-  return winston.format((info) => {
-    const correlationId = getCorrelationId();
-    if (correlationId) {
-      info.correlationId = correlationId;
-    }
-    return info;
-  })();
-}
-
-function createDailyTransport(filename: string, level?: string): DailyRotateFile {
+function shouldLog(level: LogLevel): boolean {
   const env = getEnv();
-  const logDir = ensureLogDir(env.LOG_DIR);
-
-  return new DailyRotateFile({
-    dirname: logDir,
-    filename: `${filename}-%DATE%.log`,
-    datePattern: 'YYYY-MM-DD',
-    zippedArchive: true,
-    maxSize: '20m',
-    maxFiles: '14d',
-    level,
-  });
+  const configured = env.LOG_LEVEL;
+  const order: LogLevel[] = ['debug', 'http', 'info', 'warn', 'error'];
+  const minIndex = order.indexOf(configured as LogLevel);
+  const levelIndex = order.indexOf(level);
+  if (minIndex === -1) {
+    return levelIndex >= order.indexOf('info');
+  }
+  return levelIndex >= minIndex;
 }
 
-const consoleFormat = printf((info) => {
-  const { level, message, timestamp: ts, ...meta } = info;
-  const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-  const tsStr = typeof ts === 'string' ? ts : JSON.stringify(ts);
-  const levelStr = typeof level === 'string' ? level : JSON.stringify(level);
-  const msgStr = typeof message === 'string' ? message : JSON.stringify(message);
-  return `${tsStr} [${levelStr}]: ${msgStr}${metaStr}`;
-});
+function writeLog(level: LogLevel, category: LogCategory, message: string, meta?: unknown): void {
+  if (!shouldLog(level)) {
+    return;
+  }
 
-function redactFormat() {
-  return winston.format((info) => redactUnknown(info) as winston.Logform.TransformableInfo)();
+  const correlationId = getCorrelationId();
+  const payload = redactUnknown({
+    ...(meta && typeof meta === 'object' ? (meta as LogMeta) : {}),
+    ...(correlationId ? { correlationId } : {}),
+    service: getEnv().APP_NAME,
+    category,
+  }) as LogMeta;
+
+  const ts = new Date().toISOString();
+  const suffix = Object.keys(payload).length > 0 ? ` ${JSON.stringify(payload)}` : '';
+  const line = `${ts} [${level}] ${message}${suffix}`;
+
+  if (level === 'error') {
+    console.error(line);
+    return;
+  }
+  if (level === 'warn') {
+    console.warn(line);
+    return;
+  }
+  console.log(line);
 }
 
-const baseFormat = combine(errors({ stack: true }), correlationFormat(), redactFormat(), timestamp(), json());
-
-function createCategoryLogger(category: LogCategory, filename: string, level?: string): winston.Logger {
-  return winston.createLogger({
-    level: level ?? getEnv().LOG_LEVEL,
-    format: baseFormat,
-    defaultMeta: { service: getEnv().APP_NAME, category },
-    transports: [createDailyTransport(filename, level)],
-  });
+function createCategoryLogger(category: LogCategory): CategoryLogger {
+  return {
+    debug(message, meta) {
+      writeLog('debug', category, message, meta);
+    },
+    info(message, meta) {
+      writeLog('info', category, message, meta);
+    },
+    warn(message, meta) {
+      writeLog('warn', category, message, meta);
+    },
+    error(message, meta) {
+      writeLog('error', category, message, meta);
+    },
+    http(message, meta) {
+      writeLog('http', category, message, meta);
+    },
+    add() {
+      // Compatibility with previous Winston API — console logging needs no extra transports.
+    },
+  };
 }
 
-export const logger = createCategoryLogger(LogCategory.Application, 'application');
-export const auditLogger = createCategoryLogger(LogCategory.Audit, 'audit', 'info');
-export const securityLogger = createCategoryLogger(LogCategory.Security, 'security', 'warn');
-export const httpLogger = createCategoryLogger(LogCategory.Http, 'http', 'http');
-export const queueLogger = createCategoryLogger(LogCategory.Queue, 'queue', 'info');
-export const databaseLogger = createCategoryLogger(LogCategory.Database, 'database', 'info');
-export const errorLogger = createCategoryLogger(LogCategory.Error, 'errors', 'error');
-
-logger.add(
-  new winston.transports.Console({
-    format: combine(colorize(), timestamp(), consoleFormat),
-    level: getEnv().NODE_ENV === 'production' ? 'info' : 'debug',
-  }),
-);
+export const logger = createCategoryLogger(LogCategory.Application);
+export const auditLogger = createCategoryLogger(LogCategory.Audit);
+export const securityLogger = createCategoryLogger(LogCategory.Security);
+export const httpLogger = createCategoryLogger(LogCategory.Http);
+export const queueLogger = createCategoryLogger(LogCategory.Queue);
+export const databaseLogger = createCategoryLogger(LogCategory.Database);
+export const errorLogger = createCategoryLogger(LogCategory.Error);
 
 export function logAudit(action: string, meta: Record<string, unknown>): void {
   auditLogger.info(action, meta);

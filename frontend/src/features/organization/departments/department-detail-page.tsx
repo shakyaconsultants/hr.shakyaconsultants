@@ -15,7 +15,6 @@ const TABS = [
   'Overview',
   'Employees',
   'Hierarchy',
-  'Assigned Job Roles',
   'Projects',
   'Activity Timeline',
   'Audit History',
@@ -65,11 +64,10 @@ export function DepartmentDetailPage() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="Employees" value={department.stats.employees} />
         <StatCard label="Managers" value={department.stats.managers} />
         <StatCard label="Projects" value={department.stats.projects} />
-        <StatCard label="Active Job Roles" value={department.stats.openPositions} />
       </div>
 
       <div className="flex flex-wrap gap-1 border-b">
@@ -209,22 +207,7 @@ export function DepartmentDetailPage() {
           </div>
         )}
 
-        {activeTab === 'Assigned Job Roles' && (
-          <ul className="space-y-2 text-sm">
-            {department.jobRoles.length === 0 ? (
-              <li className="text-muted-foreground">No job roles linked to this department.</li>
-            ) : (
-              department.jobRoles.map((role) => (
-                <li key={role.id} className="flex items-center justify-between rounded border px-3 py-2">
-                  <span>
-                    {role.name} <span className="font-mono text-xs text-muted-foreground">({role.code})</span>
-                  </span>
-                  <span className="capitalize text-muted-foreground">{role.status}</span>
-                </li>
-              ))
-            )}
-          </ul>
-        )}
+
 
         {activeTab === 'Projects' && (
           <ul className="space-y-2 text-sm">

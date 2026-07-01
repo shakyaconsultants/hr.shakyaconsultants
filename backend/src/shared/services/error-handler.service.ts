@@ -2,12 +2,37 @@ import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { HTTP_STATUS } from '@shared/constants/http.constants.js';
+import { isProduction } from '@config/env.js';
 import { isAppError, InternalServerError, type AppError } from '@shared/errors/app.error.js';
 import { ResponseService } from '@shared/services/response.service.js';
 import type { ApiErrorResponse } from '@shared/types/api.types.js';
 import { errorLogger } from '@logging/winston.logger.js';
 import { sanitizeClientErrorMessage } from '@shared/utils/production-sanitize.util.js';
 import { redactObject } from '@shared/utils/sensitive-redact.util.js';
+import { normalizeDatabaseError } from '@shared/utils/database-error.util.js';
+
+function logServerError(
+  label: string,
+  req: Request,
+  err: Error,
+  extra?: Record<string, unknown>,
+): void {
+  const payload = redactObject({
+    ...extra,
+    message: err.message,
+    stack: err.stack,
+    correlationId: req.correlationId,
+    requestId: req.requestId,
+    method: req.method,
+    path: req.originalUrl,
+  });
+
+  errorLogger.error(label, payload);
+  console.error(`[ERROR] ${req.method} ${req.originalUrl} — ${label}: ${err.message}`);
+  if (err.stack) {
+    console.error(err.stack);
+  }
+}
 
 export const ErrorHandlerService = {
   buildErrorResponse(
@@ -33,6 +58,10 @@ export const ErrorHandlerService = {
   },
 
   handleZodError(req: Request, res: Response, err: ZodError): void {
+    if (!isProduction()) {
+      logServerError('Validation failed', req, err);
+    }
+
     const body = this.buildErrorResponse(
       req,
       HTTP_STATUS.BAD_REQUEST,
@@ -44,14 +73,11 @@ export const ErrorHandlerService = {
   },
 
   handleAppError(req: Request, res: Response, err: AppError): void {
-    if (!err.isOperational) {
-      errorLogger.error('Non-operational error', redactObject({
+    if (!err.isOperational || !isProduction()) {
+      logServerError(err.isOperational ? 'Operational error' : 'Non-operational error', req, err, {
         code: err.code,
-        message: err.message,
-        stack: err.stack,
-        correlationId: req.correlationId,
-        requestId: req.requestId,
-      }));
+        statusCode: err.statusCode,
+      });
     }
 
     const body = this.buildErrorResponse(
@@ -67,21 +93,22 @@ export const ErrorHandlerService = {
 
   handleUnknownError(req: Request, res: Response, err: unknown): void {
     const message = err instanceof Error ? err.message : 'Internal server error';
-    errorLogger.error('Unhandled error', redactObject({
-      error: message,
-      stack: err instanceof Error ? err.stack : undefined,
-      correlationId: req.correlationId,
-      requestId: req.requestId,
-    }));
+    const stack = err instanceof Error ? err.stack : undefined;
 
-    const internal = new InternalServerError(undefined, req.correlationId);
+    logServerError('Unhandled error', req, err instanceof Error ? err : new Error(message));
+
+    const clientMessage = isProduction()
+      ? new InternalServerError(undefined, req.correlationId).message
+      : message;
+
     const body = this.buildErrorResponse(
       req,
-      internal.statusCode,
-      internal.code,
-      internal.message,
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      ERROR_CODES.INTERNAL_SERVER_ERROR,
+      clientMessage,
+      isProduction() || !stack ? [] : [{ message, stack }],
     );
-    res.status(internal.statusCode).json(body);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(body);
   },
 };
 
@@ -103,6 +130,12 @@ export function globalErrorHandler(
 ): void {
   if (err instanceof ZodError) {
     ErrorHandlerService.handleZodError(req, res, err);
+    return;
+  }
+
+  const dbError = normalizeDatabaseError(err);
+  if (dbError) {
+    ErrorHandlerService.handleAppError(req, res, dbError);
     return;
   }
 

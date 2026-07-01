@@ -57,17 +57,7 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     { key: 'departmentId', label: 'Department', type: 'select', refEntity: 'department' },
     { key: 'salaryGradeId', label: 'Salary Grade', type: 'select', refEntity: 'salary-grade' },
   ],
-  'job-role': [
-    ...BASE_FIELDS,
-    { key: 'departmentId', label: 'Department', type: 'select', refEntity: 'department' },
-    { key: 'designationId', label: 'Designation', type: 'select', refEntity: 'designation' },
-    { key: 'employmentTypeId', label: 'Employment Type', type: 'select', refEntity: 'employment-type' },
-    { key: 'salaryGradeId', label: 'Salary Grade', type: 'select', refEntity: 'salary-grade' },
-    { key: 'experienceMinYears', label: 'Min Experience (years)', type: 'number' },
-    { key: 'experienceMaxYears', label: 'Max Experience (years)', type: 'number' },
-    { key: 'level', label: 'Level', type: 'number' },
-    { key: 'responsibilities', label: 'Responsibilities (comma-separated)', type: 'textarea' },
-  ],
+
   'office-location': [
     ...BASE_FIELDS,
     { key: 'branchId', label: 'Branch', type: 'select', refEntity: 'branch' },

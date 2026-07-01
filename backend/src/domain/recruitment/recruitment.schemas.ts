@@ -49,7 +49,6 @@ export interface CandidateLeadDocument extends BaseDocument {
   email: string;
   phone?: string;
   source?: string;
-  jobRoleId?: string;
   departmentId?: string;
   branchId?: string;
   designationId?: string;
@@ -70,7 +69,7 @@ export interface CandidateLeadDocument extends BaseDocument {
 
 export interface InterviewDocument extends BaseDocument {
   candidateLeadId: string;
-  jobRoleId: string;
+  designationId: string;
   round: number;
   interviewType: string;
   interviewerIds: string[];
@@ -99,10 +98,9 @@ export interface InterviewFeedbackDocument extends BaseDocument {
 
 export interface OfferLetterDocument extends BaseDocument {
   candidateLeadId: string;
-  jobRoleId: string;
   departmentId: string;
   branchId?: string;
-  designationId?: string;
+  designationId: string;
   reportingManagerId?: string;
   salary: number;
   salaryBreakdown: Record<string, unknown>;
@@ -119,9 +117,9 @@ export interface OfferLetterDocument extends BaseDocument {
 }
 
 export interface OnboardingDocument extends BaseDocument {
-  candidateLeadId: string;
+  candidateLeadId?: string;
   employeeId?: string;
-  offerLetterId: string;
+  offerLetterId?: string;
   startDate: Date;
   formData: Record<string, unknown>;
   completedSections: string[];
@@ -157,7 +155,6 @@ const candidateLeadFields: SchemaDefinition = {
   email: { type: String, required: true, trim: true, lowercase: true },
   phone: { type: String, trim: true },
   source: { type: String, trim: true },
-  jobRoleId: { type: String, index: true },
   departmentId: { type: String, index: true },
   branchId: { type: String, index: true },
   designationId: { type: String, index: true },
@@ -178,7 +175,7 @@ const candidateLeadFields: SchemaDefinition = {
 
 const interviewFields: SchemaDefinition = {
   candidateLeadId: { type: String, required: true, index: true },
-  jobRoleId: { type: String, required: true, index: true },
+  designationId: { type: String, required: true, index: true },
   round: { type: Number, default: 1, min: 1 },
   interviewType: { type: String, default: 'online', index: true },
   interviewerIds: { type: [String], default: [] },
@@ -207,10 +204,9 @@ const interviewFeedbackFields: SchemaDefinition = {
 
 const offerLetterFields: SchemaDefinition = {
   candidateLeadId: { type: String, required: true, index: true },
-  jobRoleId: { type: String, required: true, index: true },
   departmentId: { type: String, required: true, index: true },
   branchId: { type: String, index: true },
-  designationId: { type: String, index: true },
+  designationId: { type: String, required: true, index: true },
   reportingManagerId: { type: String, index: true },
   salary: { type: Number, required: true, min: 0 },
   salaryBreakdown: { type: Schema.Types.Mixed, default: {} },
@@ -227,9 +223,9 @@ const offerLetterFields: SchemaDefinition = {
 };
 
 const onboardingFields: SchemaDefinition = {
-  candidateLeadId: { type: String, required: true, index: true },
+  candidateLeadId: { type: String, index: true },
   employeeId: { type: String, index: true },
-  offerLetterId: { type: String, required: true, index: true },
+  offerLetterId: { type: String, index: true },
   startDate: { type: Date, required: true },
   formData: { type: Schema.Types.Mixed, default: {} },
   completedSections: { type: [String], default: [] },
@@ -275,7 +271,7 @@ export const candidateLeadModel = defineDomainModel<CandidateLeadDocument>(
       { fields: { companyId: 1, phone: 1 }, options: { name: 'idx_candidate_leads_company_phone', sparse: true } },
       { fields: { companyId: 1, pipelineStage: 1 }, options: { name: 'idx_candidate_leads_company_pipeline' } },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_candidate_leads_company_status' } },
-      { fields: { companyId: 1, jobRoleId: 1, pipelineStage: 1 }, options: { name: 'idx_candidate_leads_company_job_pipeline' } },
+      { fields: { companyId: 1, designationId: 1, pipelineStage: 1 }, options: { name: 'idx_candidate_leads_company_designation_pipeline' } },
       { fields: { companyId: 1, recruiterId: 1 }, options: { name: 'idx_candidate_leads_company_recruiter' } },
     ],
   },

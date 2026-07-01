@@ -2,6 +2,13 @@ import { z } from 'zod';
 import { EMPLOYEE_BULK_ACTION } from '@modules/employee/constants/employee.constants.js';
 import { DOCUMENT_TYPE, EMPLOYEE_EMPLOYMENT_STATUS, EMPLOYMENT_TYPE, GENDER, REPORTING_RELATIONSHIP_TYPE } from '@domain/employee/employee.schemas.js';
 
+function optionalUuid() {
+  return z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.uuid().optional(),
+  );
+}
+
 const addressSchema = z.object({
   line1: z.string().min(1),
   line2: z.string().optional(),
@@ -28,9 +35,9 @@ export const listQuerySchema = z.object({
   search: z.string().optional(),
   status: z.string().optional(),
   employmentStatus: z.enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]]).optional(),
-  departmentId: z.uuid().optional(),
-  branchId: z.uuid().optional(),
-  designationId: z.uuid().optional(),
+  departmentId: optionalUuid(),
+  branchId: optionalUuid(),
+  designationId: optionalUuid(),
   reportingManagerId: z.uuid().optional(),
   includeDeleted: z.coerce.boolean().optional(),
   includeArchived: z.coerce.boolean().optional(),
@@ -39,6 +46,27 @@ export const listQuerySchema = z.object({
 export const searchQuerySchema = z.object({
   q: z.string().min(1),
   limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
+function optionalTrimmedString() {
+  return z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().optional(),
+  );
+}
+
+export const adminCreateEmployeeSchema = z.object({
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  email: z.email(),
+  phone: optionalTrimmedString(),
+  departmentId: z.uuid(),
+  designationId: z.uuid(),
+  branchId: optionalUuid(),
+  reportingManagerId: optionalUuid(),
+  joinedAt: z.coerce.date(),
+  employmentType: z.enum(Object.values(EMPLOYMENT_TYPE) as [string, ...string[]]).optional(),
+  employmentStatus: z.enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]]).optional(),
 });
 
 export const createEmployeeSchema = z.object({
@@ -54,17 +82,16 @@ export const createEmployeeSchema = z.object({
   languages: z.array(z.string()).optional(),
   permanentAddress: addressSchema,
   communicationAddress: addressSchema,
-  aadhaarNumber: z.string().optional(),
-  panNumber: z.string().optional(),
+  aadhaarNumber: optionalTrimmedString(),
+  panNumber: optionalTrimmedString(),
   departmentId: z.uuid(),
   designationId: z.uuid(),
-  jobRoleId: z.uuid().optional(),
-  branchId: z.uuid().optional(),
-  officeLocationId: z.uuid().optional(),
-  shiftId: z.uuid().optional(),
-  employmentTypeId: z.uuid().optional(),
-  reportingManagerId: z.uuid().optional(),
-  dottedManagerId: z.uuid().optional(),
+  branchId: optionalUuid(),
+  officeLocationId: optionalUuid(),
+  shiftId: optionalUuid(),
+  employmentTypeId: optionalUuid(),
+  reportingManagerId: optionalUuid(),
+  dottedManagerId: optionalUuid(),
   joinedAt: z.coerce.date(),
   probationEndDate: z.coerce.date().optional(),
   confirmationDate: z.coerce.date().optional(),

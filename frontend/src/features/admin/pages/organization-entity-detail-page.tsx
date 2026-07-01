@@ -1,7 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { DepartmentDetailPage } from '@/features/organization/departments/department-detail-page';
 import { DesignationDetailPage } from '@/features/organization/designations/designation-detail-page';
-import { JobRoleDetailPage } from '@/features/admin/pages/job-role-detail-page';
 
 export function OrganizationEntityDetailPage() {
   const { entityKey } = useParams<{ entityKey: string }>();
@@ -10,9 +9,6 @@ export function OrganizationEntityDetailPage() {
     return <DepartmentDetailPage />;
   }
 
-  if (entityKey === 'job-role') {
-    return <JobRoleDetailPage />;
-  }
 
   if (entityKey === 'designation') {
     return <DesignationDetailPage />;

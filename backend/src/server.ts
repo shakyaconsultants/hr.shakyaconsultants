@@ -23,8 +23,9 @@ export async function startServer(): Promise<HttpServer> {
   const app = createApp();
 
   await connectMongoDB();
-  const { registerDomainModels } = await import('@domain/index.js');
+  const { registerDomainModels, syncDomainIndexes } = await import('@domain/index.js');
   registerDomainModels();
+  await syncDomainIndexes();
 
   const redisConnected = await connectRedis();
   initializeCloudinary();
@@ -37,12 +38,23 @@ export async function startServer(): Promise<HttpServer> {
   httpServer = createServer(app);
   initializeSocket(httpServer);
 
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((resolve, reject) => {
     const server = httpServer;
     if (!server) {
       resolve();
       return;
     }
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(
+          new Error(
+            `Port ${env.PORT} is already in use. Stop the other backend process (or change PORT in .env) and restart.`,
+          ),
+        );
+        return;
+      }
+      reject(err);
+    });
     server.listen(env.PORT, env.HOST, () => {
       logger.info(`${env.APP_NAME} started`, {
         host: env.HOST,

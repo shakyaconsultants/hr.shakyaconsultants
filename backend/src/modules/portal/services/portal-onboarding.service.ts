@@ -7,6 +7,7 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
 import { AuditAction } from '@shared/enums/index.js';
 import { getEnv } from '@config/env.js';
+import { EmployeeOnboardingApplyService } from '@modules/employee/services/employee-onboarding-apply.service.js';
 
 const ALL_SECTIONS = Object.values(ONBOARDING_SECTION);
 
@@ -72,6 +73,19 @@ export const PortalOnboardingService = {
     const onboarding = await OnboardingRepository.findById(resolved.entityId, { companyId: resolved.companyId });
     if (!onboarding) {
       throw new NotFoundError('Onboarding record not found', ERROR_CODES.NOT_FOUND);
+    }
+
+    if (onboarding.status === ONBOARDING_STATUS.COMPLETED) {
+      throw new ConflictError('Onboarding already submitted', ERROR_CODES.CONFLICT);
+    }
+
+    if (onboarding.employeeId) {
+      await EmployeeOnboardingApplyService.applyFormData(
+        resolved.companyId,
+        onboarding.employeeId,
+        onboarding.formData,
+        'portal',
+      );
     }
 
     const updated = await OnboardingRepository.update(

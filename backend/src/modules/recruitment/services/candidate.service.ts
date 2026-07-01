@@ -26,8 +26,8 @@ function buildFilter(query: CandidateListQuery): DomainQueryFilter {
   if (query.pipelineStage) {
     filters.push(buildExactFilter({ pipelineStage: query.pipelineStage }));
   }
-  if (query.jobRoleId) {
-    filters.push(buildExactFilter({ jobRoleId: query.jobRoleId }));
+  if (query.designationId) {
+    filters.push(buildExactFilter({ designationId: query.designationId }));
   }
   if (query.departmentId) {
     filters.push(buildExactFilter({ departmentId: query.departmentId }));
@@ -287,7 +287,7 @@ export const CandidateService = {
   },
 
   exportToCsv(candidates: CandidateLeadDocument[]): string {
-    const cols = ['id', 'firstName', 'lastName', 'email', 'phone', 'pipelineStage', 'jobRoleId', 'departmentId'] as const;
+    const cols = ['id', 'firstName', 'lastName', 'email', 'phone', 'pipelineStage', 'designationId', 'departmentId'] as const;
     const header = cols.join(',');
     const rows = candidates.map((c) =>
       cols.map((col) => csvCell(c[col])).join(','),

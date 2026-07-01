@@ -60,11 +60,13 @@ export function isTlsEnabled(url: string): boolean {
 
 export function buildRedisClientOptions(url: string): RedisOptions {
   return {
-    maxRetriesPerRequest: null,
+    maxRetriesPerRequest: 3,
     enableReadyCheck: false,
     lazyConnect: true,
     connectTimeout: REDIS_CONNECT_TIMEOUT_MS,
+    enableOfflineQueue: false,
     retryStrategy: () => null,
+    reconnectOnError: () => false,
     ...(isTlsEnabled(url) ? { tls: {} } : {}),
   };
 }
@@ -86,6 +88,9 @@ export function getRedisConnectionOptions(): ConnectionOptions {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
     connectTimeout: REDIS_CONNECT_TIMEOUT_MS,
+    enableOfflineQueue: false,
+    retryStrategy: () => null,
+    reconnectOnError: () => false,
     ...(tls ? { tls: {} } : {}),
   };
 }

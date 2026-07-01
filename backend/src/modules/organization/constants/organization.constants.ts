@@ -31,7 +31,6 @@ export const MASTER_DATA_ENTITY = {
   BRANCH: 'branch',
   DEPARTMENT: 'department',
   DESIGNATION: 'designation',
-  JOB_ROLE: 'job-role',
   OFFICE_LOCATION: 'office-location',
   WORK_SHIFT: 'work-shift',
   HOLIDAY: 'holiday',

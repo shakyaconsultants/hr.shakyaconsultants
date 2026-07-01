@@ -1,4 +1,4 @@
-import { type SchemaDefinition } from 'mongoose';
+import { Schema, type SchemaDefinition } from 'mongoose';
 import { defineDomainModel } from '@infrastructure/database/model.factory.js';
 import { COLLECTIONS } from '@infrastructure/database/constants/collections.js';
 import type { BaseDocument } from '@infrastructure/database/types/base-document.types.js';
@@ -94,7 +94,6 @@ export interface EmployeeDocument extends BaseDocument {
   panNumber?: string;
   departmentId: string;
   designationId: string;
-  jobRoleId?: string;
   branchId?: string;
   officeLocationId?: string;
   shiftId?: string;
@@ -108,6 +107,20 @@ export interface EmployeeDocument extends BaseDocument {
   employmentType: string;
   employmentStatus: string;
   status: string;
+  lifecycleEmails?: EmployeeLifecycleEmails;
+}
+
+export interface EmployeeEmailDeliverySnapshot {
+  lastSentAt?: Date;
+  lastSentBy?: string;
+  sendCount: number;
+  lastError?: string;
+}
+
+export interface EmployeeLifecycleEmails {
+  accountActivation?: EmployeeEmailDeliverySnapshot;
+  onboardingPortal?: EmployeeEmailDeliverySnapshot;
+  passwordReset?: EmployeeEmailDeliverySnapshot;
 }
 
 export interface EmergencyContactDocument extends BaseDocument {
@@ -232,11 +245,10 @@ const employeeFields: SchemaDefinition = {
   languages: { type: [String], default: [] },
   permanentAddress: addressSubSchema,
   communicationAddress: addressSubSchema,
-  aadhaarNumber: { type: String, trim: true, sparse: true },
-  panNumber: { type: String, trim: true, uppercase: true, sparse: true },
+  aadhaarNumber: { type: String, trim: true },
+  panNumber: { type: String, trim: true, uppercase: true },
   departmentId: { type: String, required: true, index: true },
   designationId: { type: String, required: true, index: true },
-  jobRoleId: { type: String, index: true },
   branchId: { type: String, index: true },
   officeLocationId: { type: String, index: true },
   shiftId: { type: String, index: true },
@@ -250,6 +262,7 @@ const employeeFields: SchemaDefinition = {
   employmentType: { type: String, enum: Object.values(EMPLOYMENT_TYPE), default: EMPLOYMENT_TYPE.FULL_TIME },
   employmentStatus: { type: String, enum: Object.values(EMPLOYEE_EMPLOYMENT_STATUS), default: EMPLOYEE_EMPLOYMENT_STATUS.ACTIVE },
   status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
+  lifecycleEmails: { type: Schema.Types.Mixed, default: {} },
 };
 
 const emergencyContactFields: SchemaDefinition = {
@@ -352,8 +365,8 @@ export const employeeModel = defineDomainModel<EmployeeDocument>(
     indexes: [
       { fields: { companyId: 1, employeeNumber: 1 }, options: { unique: true, name: 'uq_employees_company_number' } },
       { fields: { companyId: 1, email: 1 }, options: { unique: true, name: 'uq_employees_company_email', partialFilterExpression: { status: 'active', isDeleted: false } } },
-      { fields: { companyId: 1, aadhaarNumber: 1 }, options: { unique: true, name: 'uq_employees_company_aadhaar', sparse: true } },
-      { fields: { companyId: 1, panNumber: 1 }, options: { unique: true, name: 'uq_employees_company_pan', sparse: true } },
+      { fields: { companyId: 1, aadhaarNumber: 1 }, options: { unique: true, name: 'uq_employees_company_aadhaar', partialFilterExpression: { aadhaarNumber: { $gt: '' } } } },
+      { fields: { companyId: 1, panNumber: 1 }, options: { unique: true, name: 'uq_employees_company_pan', partialFilterExpression: { panNumber: { $gt: '' } } } },
       { fields: { companyId: 1, status: 1, departmentId: 1 }, options: { name: 'idx_employees_company_status_dept' } },
       { fields: { companyId: 1, reportingManagerId: 1, status: 1 }, options: { name: 'idx_employees_company_manager_status' } },
       { fields: { companyId: 1, departmentId: 1, lastName: 1, firstName: 1 }, options: { name: 'idx_employees_company_dept_name' } },

@@ -13,13 +13,8 @@ export const DESIGNATION_HIERARCHY_LEVELS = [
   { value: 12, label: 'C-Level' },
 ] as const;
 
-export function buildDesignationFullTitle(designationName: string, jobRoleName?: string): string {
-  const base = designationName.trim();
-  const role = jobRoleName?.trim();
-  if (!role) {
-    return base;
-  }
-  return `${base} ${role}`;
+export function buildDesignationFullTitle(designationName: string, _jobRoleName?: string): string {
+  return designationName.trim();
 }
 
 export function getHierarchyLevelLabel(level?: number): string {

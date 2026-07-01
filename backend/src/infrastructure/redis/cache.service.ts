@@ -35,6 +35,22 @@ async function setMongoCacheValue(key: string, value: string, ttlSeconds?: numbe
   });
 }
 
+const REDIS_TIMEOUT_MS = 150;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutId: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error('Redis operation timed out'));
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
+}
+
 export const CacheService = {
   isEnabled(): boolean {
     return isRedisAvailable();
@@ -43,12 +59,12 @@ export const CacheService = {
   async get(key: string): Promise<string | null> {
     if (isRedisAvailable()) {
       try {
-        const value = await getRedisClient().get(key);
+        const value = await withTimeout(getRedisClient().get(key), REDIS_TIMEOUT_MS);
         if (value !== null) {
           return value;
         }
       } catch {
-        // Fall through to Mongo when Redis is temporarily unavailable.
+        // Fall through to Mongo when Redis is temporarily unavailable or slow.
       }
     }
 
@@ -59,11 +75,11 @@ export const CacheService = {
     if (isRedisAvailable()) {
       try {
         const client = getRedisClient();
-        if (ttlSeconds !== undefined && ttlSeconds > 0) {
-          await client.set(key, value, 'EX', ttlSeconds);
-        } else {
-          await client.set(key, value);
-        }
+        const setPromise =
+          ttlSeconds !== undefined && ttlSeconds > 0
+            ? client.set(key, value, 'EX', ttlSeconds)
+            : client.set(key, value);
+        await withTimeout(setPromise, REDIS_TIMEOUT_MS);
         void setMongoCacheValue(key, value, ttlSeconds).catch(() => undefined);
         return true;
       } catch {
@@ -82,7 +98,7 @@ export const CacheService = {
     }
 
     try {
-      await getRedisClient().set(key, '1', 'EX', ttlSeconds);
+      await withTimeout(getRedisClient().set(key, '1', 'EX', ttlSeconds), REDIS_TIMEOUT_MS);
     } catch {
       // Replay protection is best-effort when Redis is unavailable.
     }
@@ -95,7 +111,7 @@ export const CacheService = {
     }
 
     try {
-      const value = await getRedisClient().get(key);
+      const value = await withTimeout(getRedisClient().get(key), REDIS_TIMEOUT_MS);
       return value !== null;
     } catch {
       return false;
@@ -105,7 +121,7 @@ export const CacheService = {
   async del(key: string): Promise<boolean> {
     if (isRedisAvailable()) {
       try {
-        await getRedisClient().del(key);
+        await withTimeout(getRedisClient().del(key), REDIS_TIMEOUT_MS);
       } catch {
         // Continue with Mongo cleanup.
       }

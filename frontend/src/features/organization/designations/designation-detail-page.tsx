@@ -12,7 +12,6 @@ import { ROUTES } from '@/config/app.config';
 const TABS = [
   'Overview',
   'Assigned Employees',
-  'Applicable Job Roles',
   'Promotion Path',
   'Activity Timeline',
   'Audit History',
@@ -143,20 +142,7 @@ export function DesignationDetailPage() {
           </div>
         )}
 
-        {activeTab === 'Applicable Job Roles' && (
-          <ul className="space-y-2 text-sm">
-            {designation.applicableJobRoles?.length ? (
-              designation.applicableJobRoles.map((role) => (
-                <li key={role.id} className="flex items-center justify-between rounded border px-3 py-2">
-                  <span>{role.fullTitle}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{role.code}</span>
-                </li>
-              ))
-            ) : (
-              <li className="text-muted-foreground">No applicable job roles linked.</li>
-            )}
-          </ul>
-        )}
+
 
         {activeTab === 'Promotion Path' && (
           <div className="space-y-2 text-sm">

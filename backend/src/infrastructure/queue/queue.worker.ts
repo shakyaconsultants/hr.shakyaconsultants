@@ -2,6 +2,7 @@ import type { Job } from 'bullmq';
 import { registerWorker, isQueuesEnabled } from '@infrastructure/queue/bullmq.connection.js';
 import { QUEUE_NAMES } from '@shared/constants/queue.constants.js';
 import type { QueueJobData } from '@infrastructure/queue/queue.producer.js';
+import { processEmailJob } from '@infrastructure/queue/processors/email-queue.processor.js';
 import { queueLogger } from '@logging/winston.logger.js';
 import { runWithRequestContext } from '@shared/context/request.context.js';
 
@@ -34,7 +35,7 @@ export function initializeWorkers(): void {
     return;
   }
 
-  registerWorker(QUEUE_NAMES.EMAIL, wrapProcessor(noopProcessor));
+  registerWorker(QUEUE_NAMES.EMAIL, wrapProcessor(processEmailJob));
   registerWorker(QUEUE_NAMES.NOTIFICATION, wrapProcessor(noopProcessor));
   registerWorker(QUEUE_NAMES.PAYROLL, wrapProcessor(noopProcessor));
   registerWorker(QUEUE_NAMES.ATTENDANCE, wrapProcessor(noopProcessor));

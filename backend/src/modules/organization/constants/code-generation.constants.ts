@@ -49,14 +49,7 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
     includeYear: false,
     includeMonth: false,
   },
-  [MASTER_DATA_ENTITY.JOB_ROLE]: {
-    prefixSettingKey: 'organization.job_role_code_prefix',
-    defaultPrefix: 'ROLE',
-    slugFromName: false,
-    padLength: 3,
-    includeYear: false,
-    includeMonth: false,
-  },
+
   [MASTER_DATA_ENTITY.OFFICE_LOCATION]: {
     prefixSettingKey: 'organization.office_location_code_prefix',
     defaultPrefix: 'LOC',

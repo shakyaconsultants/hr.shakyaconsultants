@@ -8,7 +8,6 @@ import { SelectField } from '@/shared/components/select-field';
 import { Input } from '@/shared/components/ui/input';
 import {
   DESIGNATION_HIERARCHY_LEVELS,
-  buildDesignationFullTitle,
 } from '@/features/organization/designations/designation.constants';
 import type { DesignationRecord } from '@/features/organization/designations/designation.api';
 
@@ -16,9 +15,8 @@ export interface DesignationFormValue {
   name: string;
   description?: string;
   hierarchyLevel?: number;
-  departmentId?: string;
+  departmentIds?: string[];
   salaryGradeId?: string;
-  applicableJobRoleIds: string[];
   promotionDesignationId?: string;
   status: string;
 }
@@ -36,16 +34,15 @@ const STATUS_OPTIONS = [
 
 export function recordToDesignationForm(record: DesignationRecord | null): DesignationFormValue {
   if (!record) {
-    return { name: '', status: 'active', applicableJobRoleIds: [] };
+    return { name: '', status: 'active', departmentIds: [] };
   }
 
   return {
     name: record.name,
     description: typeof record.description === 'string' ? record.description : undefined,
     hierarchyLevel: typeof record.hierarchyLevel === 'number' ? record.hierarchyLevel : undefined,
-    departmentId: record.departmentId,
+    departmentIds: Array.isArray(record.departmentIds) ? record.departmentIds : [],
     salaryGradeId: record.salaryGradeId,
-    applicableJobRoleIds: Array.isArray(record.applicableJobRoleIds) ? record.applicableJobRoleIds : [],
     promotionDesignationId: record.promotionDesignationId,
     status: record.status ?? 'active',
   };
@@ -55,12 +52,11 @@ export function designationFormToPayload(value: DesignationFormValue): Record<st
   const payload: Record<string, unknown> = {
     name: value.name.trim(),
     status: value.status,
-    applicableJobRoleIds: value.applicableJobRoleIds,
+    departmentIds: value.departmentIds ?? [],
   };
 
   if (value.description?.trim()) payload.description = value.description.trim();
   if (value.hierarchyLevel !== undefined) payload.hierarchyLevel = value.hierarchyLevel;
-  if (value.departmentId) payload.departmentId = value.departmentId;
   if (value.salaryGradeId) payload.salaryGradeId = value.salaryGradeId;
   if (value.promotionDesignationId) payload.promotionDesignationId = value.promotionDesignationId;
 
@@ -73,7 +69,7 @@ export function DesignationForm({ value, onChange, excludeDesignationId }: Desig
     pageSize: 100,
     status: 'active',
   });
-  const { data: jobRoleData, isLoading: isLoadingJobRoles } = useMasterDataList('job-role', {
+  const { data: departmentData, isLoading: isLoadingDepartments } = useMasterDataList('department', {
     page: 1,
     pageSize: 100,
     status: 'active',
@@ -100,22 +96,17 @@ export function DesignationForm({ value, onChange, excludeDesignationId }: Desig
     [designationOptions?.items, excludeDesignationId],
   );
 
-  const jobRoleOptions = useMemo(
+  const departmentOptions = useMemo(
     () =>
-      (jobRoleData?.items ?? []).map((role) => ({
-        value: role.id,
-        label: String(role.name),
-        description: role.code ? String(role.code) : undefined,
+      (departmentData?.items ?? []).map((dept) => ({
+        value: dept.id,
+        label: String(dept.name),
+        description: dept.code ? String(dept.code) : undefined,
       })),
-    [jobRoleData?.items],
+    [departmentData?.items],
   );
 
-  const previewFromRoles = useMemo(() => {
-    return value.applicableJobRoleIds
-      .map((roleId) => jobRoleData?.items?.find((role) => role.id === roleId))
-      .filter(Boolean)
-      .map((role) => buildDesignationFullTitle(value.name, role!.name));
-  }, [value.applicableJobRoleIds, value.name, jobRoleData?.items]);
+
 
   return (
     <div className="space-y-4">
@@ -163,24 +154,17 @@ export function DesignationForm({ value, onChange, excludeDesignationId }: Desig
       </FormSection>
 
       <FormSection title={FORM_SECTIONS.RELATIONSHIPS} description="Department mapping and job role applicability.">
-        <SelectField label="Department">
-          <MasterDataSelect
-            entityKey="department"
-            value={value.departmentId ?? ''}
-            placeholder="Select department…"
-            onChange={(next) => onChange({ ...value, departmentId: next || undefined })}
+        <SelectField label="Applicable Departments">
+          <AsyncMultiSearchSelect
+            value={value.departmentIds ?? []}
+            options={departmentOptions}
+            isLoading={isLoadingDepartments}
+            placeholder="Select departments…"
+            onChange={(ids) => onChange({ ...value, departmentIds: ids })}
           />
         </SelectField>
 
-        <SelectField label="Applicable Job Roles">
-          <AsyncMultiSearchSelect
-            value={value.applicableJobRoleIds}
-            options={jobRoleOptions}
-            isLoading={isLoadingJobRoles}
-            placeholder="Select job roles…"
-            onChange={(ids) => onChange({ ...value, applicableJobRoleIds: ids })}
-          />
-        </SelectField>
+
 
         <SelectField label="Promotion Path">
           <AsyncSearchSelect
@@ -203,16 +187,7 @@ export function DesignationForm({ value, onChange, excludeDesignationId }: Desig
           />
         </SelectField>
 
-        {previewFromRoles.length > 0 ? (
-          <div className="rounded-md border bg-background p-3 text-sm">
-            <p className="mb-1 font-medium">Title previews</p>
-            <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
-              {previewFromRoles.map((title) => (
-                <li key={title}>{title}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+
       </FormSection>
     </div>
   );

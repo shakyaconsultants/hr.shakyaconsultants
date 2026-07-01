@@ -31,6 +31,8 @@ import {
   search,
   updateProfile,
   updateWidgetConfig,
+  getOnboardingStatus,
+  requestOnboardingPortalLink,
 } from '@modules/workspace/controllers/workspace.controller.js';
 
 const workspaceRoutes = Router();
@@ -73,5 +75,8 @@ workspaceRoutes.patch('/notifications/:id/archive', authorize(WORKSPACE_PERMISSI
 workspaceRoutes.get('/activity', authorize(WORKSPACE_PERMISSIONS.TIMELINE_READ), listActivity);
 workspaceRoutes.get('/calendar', authorize(WORKSPACE_PERMISSIONS.CALENDAR_READ), getCalendar);
 workspaceRoutes.get('/search', authorize(WORKSPACE_PERMISSIONS.SEARCH), search);
+
+workspaceRoutes.get('/onboarding/status', authorize(WORKSPACE_PERMISSIONS.READ), getOnboardingStatus);
+workspaceRoutes.post('/onboarding/portal-link', authorize(WORKSPACE_PERMISSIONS.READ), requestOnboardingPortalLink);
 
 export { workspaceRoutes };

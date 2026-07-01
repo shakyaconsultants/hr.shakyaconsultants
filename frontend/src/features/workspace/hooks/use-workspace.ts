@@ -16,10 +16,12 @@ import {
   fetchNotifications,
   fetchProfile,
   fetchWidgetData,
+  fetchOnboardingStatus,
   fetchWorkspaceLayout,
   markAllNotificationsRead,
   markNotificationRead,
   quickUpdateTask,
+  requestOnboardingPortalLink,
   updateProfile,
   updateWidgetConfig,
   workspaceSearch,
@@ -38,6 +40,7 @@ const KEYS = {
   announcements: (params: ListParams) => ['workspace', 'announcements', params] as const,
   notifications: (params: ListParams & { isRead?: boolean }) => ['workspace', 'notifications', params] as const,
   activity: (params: ListParams) => ['workspace', 'activity', params] as const,
+  onboarding: ['workspace', 'onboarding', 'status'] as const,
   calendar: (start: string, end: string) => ['workspace', 'calendar', start, end] as const,
   search: (q: string) => ['workspace', 'search', q] as const,
 };
@@ -190,5 +193,18 @@ export function useWorkspaceSearch(q: string) {
     queryKey: KEYS.search(q),
     queryFn: () => workspaceSearch(q),
     enabled: q.length >= 2,
+  });
+}
+
+export function useOnboardingStatus() {
+  return useQuery({
+    queryKey: KEYS.onboarding,
+    queryFn: fetchOnboardingStatus,
+  });
+}
+
+export function useRequestOnboardingPortalLink() {
+  return useAppMutation({
+    mutationFn: requestOnboardingPortalLink,
   });
 }

@@ -73,6 +73,6 @@ export const EmployeeAuditService = {
       userAgent: input.userAgent,
       createdBy: input.userId,
       updatedBy: input.userId,
-    });
+    }, { companyId: input.companyId });
   },
 };

@@ -25,7 +25,6 @@ export interface ConversionInput {
   branchId?: string;
   departmentId: string;
   designationId: string;
-  jobRoleId?: string;
   reportingManagerId?: string;
   roleSlug?: string;
   temporaryPassword?: string;
@@ -78,7 +77,6 @@ export const CandidateConversionService = {
       departmentId,
       designationId,
       branchId: input.branchId ?? candidate.branchId ?? acceptedOffer.branchId,
-      jobRoleId: input.jobRoleId ?? candidate.jobRoleId ?? acceptedOffer.jobRoleId,
       reportingManagerId: input.reportingManagerId ?? candidate.reportingManagerId ?? acceptedOffer.reportingManagerId,
       joinedAt: acceptedOffer.joiningDate,
       ...(typeof formData.personal === 'object' ? formData.personal as Record<string, unknown> : {}),

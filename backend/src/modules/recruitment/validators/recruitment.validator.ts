@@ -12,7 +12,7 @@ export const candidateListQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional(),
   search: z.string().optional(),
   pipelineStage: z.enum(Object.values(PIPELINE_STAGE) as [string, ...string[]]).optional(),
-  jobRoleId: z.uuid().optional(),
+  designationId: z.uuid().optional(),
   departmentId: z.uuid().optional(),
   recruiterId: z.uuid().optional(),
   includeArchived: z.coerce.boolean().optional(),
@@ -24,7 +24,6 @@ export const createCandidateSchema = z.object({
   email: z.email(),
   phone: z.string().optional(),
   source: z.string().optional(),
-  jobRoleId: z.uuid().optional(),
   departmentId: z.uuid().optional(),
   branchId: z.uuid().optional(),
   designationId: z.uuid().optional(),
@@ -48,7 +47,7 @@ export const pipelineTransitionSchema = z.object({
 
 export const createInterviewSchema = z.object({
   candidateLeadId: z.uuid(),
-  jobRoleId: z.uuid(),
+  designationId: z.uuid(),
   round: z.coerce.number().int().min(1).optional(),
   interviewType: z.enum(Object.values(INTERVIEW_TYPE) as [string, ...string[]]).optional(),
   interviewerIds: z.array(z.uuid()).optional(),
@@ -79,10 +78,9 @@ export const interviewFeedbackSchema = z.object({
 
 export const createOfferSchema = z.object({
   candidateLeadId: z.uuid(),
-  jobRoleId: z.uuid(),
+  designationId: z.uuid(),
   departmentId: z.uuid(),
   branchId: z.uuid().optional(),
-  designationId: z.uuid().optional(),
   reportingManagerId: z.uuid().optional(),
   salary: z.coerce.number().min(0),
   currency: z.string().optional(),

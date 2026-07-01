@@ -5,7 +5,6 @@ import {
   DepartmentRepository,
   DesignationRepository,
   HolidayRepository,
-  JobRoleRepository,
   OfficeLocationRepository,
   WorkShiftRepository,
 } from '@domain/organization/organization.schemas.js';
@@ -87,21 +86,7 @@ export const MASTER_DATA_ENTITY_REGISTRY: Record<MasterDataEntityKey, MasterData
     duplicateFields: ['name', 'code'],
     cacheEnabled: false,
   },
-  [MASTER_DATA_ENTITY.JOB_ROLE]: {
-    key: MASTER_DATA_ENTITY.JOB_ROLE,
-    entityType: 'job-role',
-    label: 'Job Role',
-    repository: JobRoleRepository as unknown as BaseRepository<BaseDocument>,
-    permissions: {
-      read: ORG_PERMISSIONS.JOB_ROLE_READ,
-      create: ORG_PERMISSIONS.JOB_ROLE_CREATE,
-      update: ORG_PERMISSIONS.JOB_ROLE_UPDATE,
-      delete: ORG_PERMISSIONS.JOB_ROLE_DELETE,
-    },
-    searchFields: ['name', 'code', 'description'],
-    duplicateFields: ['name', 'code'],
-    cacheEnabled: true,
-  },
+
   [MASTER_DATA_ENTITY.OFFICE_LOCATION]: {
     key: MASTER_DATA_ENTITY.OFFICE_LOCATION,
     entityType: 'office-location',

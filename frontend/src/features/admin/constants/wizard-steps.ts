@@ -16,7 +16,6 @@ export const COMPANY_SETUP_STEPS: WizardStepDefinition[] = [
   { id: 'branch', title: 'Branch', description: 'Primary head office branch.', kind: 'entity', entityKey: 'branch' },
   { id: 'department', title: 'Departments', description: 'Core departments and hierarchy.', kind: 'entity', entityKey: 'department' },
   { id: 'designation', title: 'Designations', description: 'Job titles and levels.', kind: 'entity', entityKey: 'designation' },
-  { id: 'job-role', title: 'Job Roles', description: 'Recruitment-ready role definitions.', kind: 'entity', entityKey: 'job-role' },
   { id: 'office-location', title: 'Office Locations', description: 'Physical and remote work locations.', kind: 'entity', entityKey: 'office-location' },
   { id: 'work-shift', title: 'Work Shifts', description: 'Shift schedules and grace rules.', kind: 'entity', entityKey: 'work-shift' },
   { id: 'holiday', title: 'Holiday Calendar', description: 'Company holidays for the year.', kind: 'entity', entityKey: 'holiday' },

@@ -6,6 +6,8 @@ export interface RunFormMutationOptions<T> {
   successMessage: string;
   setError?: (message: string | null) => void;
   onSuccess?: (result: T) => void;
+  /** Called before showing a toast for non-inline errors (e.g. close modal so toast is visible). */
+  onNonInlineError?: () => void;
   /** When true, validation errors go inline; other errors still toast. Default true. */
   inlineValidation?: boolean;
 }
@@ -16,6 +18,7 @@ export async function runFormMutation<T>({
   successMessage,
   setError,
   onSuccess,
+  onNonInlineError,
   inlineValidation = true,
 }: RunFormMutationOptions<T>): Promise<boolean> {
   setError?.(null);
@@ -33,10 +36,8 @@ export async function runFormMutation<T>({
       return false;
     }
 
+    onNonInlineError?.();
     toastError(parsed.title, parsed.description);
-    if (setError) {
-      setError(parsed.message);
-    }
     return false;
   }
 }

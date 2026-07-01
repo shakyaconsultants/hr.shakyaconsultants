@@ -6,6 +6,8 @@ import { uploadMiddleware } from '@config/upload.config.js';
 import { EMPLOYEE_PERMISSIONS } from '@modules/employee/constants/employee-permissions.constants.js';
 import {
   activateEmployeeAccount,
+  sendEmployeeOnboardingEmail,
+  sendEmployeePasswordResetEmail,
   archiveEmployee,
   assignManager,
   bulkEmployeeAction,
@@ -75,6 +77,8 @@ employeeRoutes.post('/:id/archive', authorize(EMPLOYEE_PERMISSIONS.UPDATE), arch
 employeeRoutes.post('/:id/restore', authorize(EMPLOYEE_PERMISSIONS.UPDATE), restoreEmployee);
 employeeRoutes.post('/:id/deactivate', authorize(EMPLOYEE_PERMISSIONS.UPDATE), deactivateEmployee);
 employeeRoutes.post('/:employeeId/activate-account', authorize(EMPLOYEE_PERMISSIONS.UPDATE), activateEmployeeAccount);
+employeeRoutes.post('/:employeeId/send-onboarding-email', authorize(EMPLOYEE_PERMISSIONS.UPDATE), sendEmployeeOnboardingEmail);
+employeeRoutes.post('/:employeeId/send-password-reset', authorize(EMPLOYEE_PERMISSIONS.UPDATE), sendEmployeePasswordResetEmail);
 employeeRoutes.post('/:id/reactivate', authorize(EMPLOYEE_PERMISSIONS.UPDATE), reactivateEmployee);
 
 employeeRoutes.get('/:employeeId/documents', authorize(EMPLOYEE_PERMISSIONS.DOCUMENTS_READ), listDocuments);

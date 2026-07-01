@@ -17,6 +17,7 @@ import { WorkspaceNotificationsService } from '@modules/workspace/services/works
 import { WorkspaceTimelineService } from '@modules/workspace/services/workspace-timeline.service.js';
 import { WorkspaceCalendarService } from '@modules/workspace/services/workspace-calendar.service.js';
 import { WorkspaceSearchService } from '@modules/workspace/services/workspace-search.service.js';
+import { WorkspaceOnboardingService } from '@modules/workspace/services/workspace-onboarding.service.js';
 import { buildWorkspaceActor } from '@modules/workspace/types/workspace.types.js';
 import {
   bulkTaskStatusSchema,
@@ -393,6 +394,30 @@ export const search: RequestHandler = async (req, res, next) => {
     const query = validateInput(searchQuerySchema, req.query);
     const types = query.types ? query.types.split(',').map((t) => t.trim()) : undefined;
     const data = await WorkspaceSearchService.search(actor(authReq), { q: query.q, types, limit: query.limit });
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getOnboardingStatus: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const context = actor(authReq);
+    const data = await WorkspaceOnboardingService.getStatus(context.companyId, context.employeeId);
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const requestOnboardingPortalLink: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const context = actor(authReq);
+    const data = await WorkspaceOnboardingService.requestPortalLink(context);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);

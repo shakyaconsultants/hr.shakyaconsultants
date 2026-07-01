@@ -46,7 +46,7 @@ export function DesignationListPage() {
   const [formValue, setFormValue] = useState<DesignationFormValue>({
     name: '',
     status: 'active',
-    applicableJobRoleIds: [],
+    departmentIds: [],
   });
   const [deleteTarget, setDeleteTarget] = useState<DesignationRecord | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export function DesignationListPage() {
   const restoreMutation = useRestoreEntity('designation');
 
   function openCreate() {
-    setFormValue({ name: '', status: 'active', applicableJobRoleIds: [] });
+    setFormValue({ name: '', status: 'active', departmentIds: [] });
     setEditingRecord(null);
     setEditorMode('create');
     setFormError(null);
@@ -147,14 +147,7 @@ export function DesignationListPage() {
       header: 'Department',
       render: (row: DesignationRecord) => row.departmentName ?? '—',
     },
-    {
-      key: 'applicableJobRoles',
-      header: 'Applicable Job Roles',
-      render: (row: DesignationRecord) =>
-        row.applicableJobRoleNames?.length
-          ? row.applicableJobRoleNames.join(', ')
-          : row.applicableJobRoles?.map((role) => role.name).join(', ') ?? '—',
-    },
+
     {
       key: 'hierarchyLevel',
       header: 'Hierarchy Level',

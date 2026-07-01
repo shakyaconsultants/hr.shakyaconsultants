@@ -3,7 +3,6 @@ import {
   BranchRepository,
   DepartmentRepository,
   DesignationRepository,
-  JobRoleRepository,
   OfficeLocationRepository,
 } from '@domain/organization/organization.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
@@ -52,15 +51,10 @@ const DELETE_DEPENDENCY_MAP: Partial<Record<MasterDataEntityKey, DependencyCheck
       label: 'Employees',
       message: 'Department has assigned employees',
     },
-    {
-      repository: JobRoleRepository,
-      filter: (id) => ({ departmentId: id }),
-      label: 'Job Roles',
-      message: 'Department is referenced by one or more job roles',
-    },
+
     {
       repository: DesignationRepository,
-      filter: (id) => ({ departmentId: id }),
+      filter: (id) => ({ departmentIds: id }),
       label: 'Designations',
       message: 'Department is referenced by one or more designations',
     },
@@ -83,20 +77,6 @@ const DELETE_DEPENDENCY_MAP: Partial<Record<MasterDataEntityKey, DependencyCheck
       filter: (id) => ({ promotionDesignationId: id }),
       label: 'Promotion Paths',
       message: 'Designation is used as a promotion path',
-    },
-    {
-      repository: JobRoleRepository,
-      filter: (id) => ({ designationId: id }),
-      label: 'Job Roles',
-      message: 'Designation is referenced by one or more job roles',
-    },
-  ],
-  [MASTER_DATA_ENTITY.SKILL]: [
-    {
-      repository: JobRoleRepository,
-      filter: (id) => ({ requiredSkillIds: { $in: [id] } }),
-      label: 'Job Roles',
-      message: 'Skill is required by one or more job roles',
     },
   ],
 };

@@ -9,11 +9,8 @@ export interface DesignationRecord extends MasterDataRecord {
   hierarchyLevelLabel?: string;
   salaryGradeId?: string;
   salaryGradeName?: string;
-  departmentId?: string;
+  departmentIds?: string[];
   departmentName?: string;
-  applicableJobRoleIds?: string[];
-  applicableJobRoleNames?: string[];
-  applicableJobRoles?: Array<{ id: string; name: string; code: string; fullTitle: string }>;
   promotionDesignationId?: string;
   employeeCount?: number;
 }
@@ -27,7 +24,6 @@ export interface DesignationDetail extends DesignationRecord {
     lastName: string;
     email: string;
     status: string;
-    jobRoleId?: string;
     fullTitle: string;
   }>;
   auditHistory: Array<Record<string, unknown>>;

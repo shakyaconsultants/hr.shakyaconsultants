@@ -17,6 +17,8 @@ import {
 import { NotFoundError, ConflictError, ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
+import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
+import { EmployeeLifecycleService, EMPLOYEE_LIFECYCLE_EMAIL } from '@modules/employee/services/employee-lifecycle.service.js';
 
 export interface AccountActivationActor {
   companyId: string;
@@ -107,6 +109,34 @@ export const AccountActivationService = {
 
     if (user.employeeId) {
       await PermissionEngineService.invalidateUserPermissions(resolved.companyId, user.employeeId);
+      try {
+        await OnboardingService.issuePortalLinkForEmployee(
+          {
+            companyId: resolved.companyId,
+            userId: resolved.entityId,
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+          },
+          user.employeeId,
+        );
+        await EmployeeLifecycleService.recordEmailSuccess(
+          resolved.companyId,
+          user.employeeId,
+          EMPLOYEE_LIFECYCLE_EMAIL.ONBOARDING_PORTAL,
+          resolved.entityId,
+        );
+      } catch (onboardingError) {
+        if (user.employeeId) {
+          await EmployeeLifecycleService.recordEmailFailure(
+            resolved.companyId,
+            user.employeeId,
+            EMPLOYEE_LIFECYCLE_EMAIL.ONBOARDING_PORTAL,
+            resolved.entityId,
+            onboardingError,
+          );
+        }
+        console.error('Failed to trigger employee onboarding portal:', onboardingError);
+      }
     }
 
     AuditLogService.log({

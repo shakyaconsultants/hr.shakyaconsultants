@@ -7,6 +7,7 @@ import { generateUuid } from '@shared/utils/random-id.util.js';
 import { CandidateService } from '@modules/recruitment/services/candidate.service.js';
 import { CandidatePipelineService } from '@modules/recruitment/services/candidate-pipeline.service.js';
 import { RecruitmentTimelineService } from '@modules/recruitment/services/recruitment-timeline.service.js';
+import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { RecruitmentAuditService } from '@modules/recruitment/services/recruitment-audit.service.js';
 import { PortalOnboardingService } from '@modules/portal/services/portal-onboarding.service.js';
 import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
@@ -168,6 +169,62 @@ export const OnboardingService = {
       after: { portalIssued: true, expiresAt: expiresAt.toISOString() },
       ip: context.ip,
       userAgent: context.userAgent,
+    });
+
+    return { portalUrl, expiresAt };
+  },
+
+  async startForEmployee(context: { companyId: string; userId: string }, employeeId: string, startDate: Date) {
+    const existing = await OnboardingRepository.findOne({ employeeId }, { companyId: context.companyId });
+    if (existing) {
+      return existing;
+    }
+
+    const id = generateUuid();
+    const onboarding = await OnboardingRepository.create(
+      {
+        id,
+        companyId: context.companyId,
+        employeeId,
+        startDate,
+        formData: {},
+        completedSections: [],
+        progressPercent: 0,
+        currentSection: ONBOARDING_SECTION.PERSONAL,
+        status: ONBOARDING_STATUS.PENDING,
+        checklistItems: ALL_SECTIONS.map((section) => ({ title: section, isCompleted: false })),
+        createdBy: context.userId,
+        updatedBy: context.userId,
+      },
+      { companyId: context.companyId },
+    );
+
+    return onboarding;
+  },
+
+  async issuePortalLinkForEmployee(context: { companyId: string; userId: string; ip?: string; userAgent?: string }, employeeId: string) {
+    const employee = await EmployeeRepository.findById(employeeId, { companyId: context.companyId });
+    if (!employee) {
+      throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
+    }
+
+    // Start onboarding first if it hasn't been started
+    const onboarding = await this.startForEmployee(context, employeeId, employee.joinedAt || new Date());
+
+    const { portalUrl, expiresAt } = await PortalOnboardingService.issuePortalToken({
+      companyId: context.companyId,
+      onboardingId: onboarding.id,
+      candidateLeadId: '',
+      createdByUserId: context.userId,
+    });
+
+    await QueueProducer.addEmailJob(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
+      tenantId: context.companyId,
+      userId: context.userId,
+      to: employee.email,
+      templateType: EMAIL_TEMPLATE_TYPES.ONBOARDING_PORTAL,
+      portalUrl,
+      expiresAt: expiresAt.toISOString(),
     });
 
     return { portalUrl, expiresAt };

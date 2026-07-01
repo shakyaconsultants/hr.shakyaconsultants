@@ -208,7 +208,7 @@ export function EntityAdminPage({ entityKey }: EntityAdminPageProps) {
       header: '',
       render: (row: MasterDataRecord) => (
         <div className="flex gap-1">
-          {entityKey === 'department' || entityKey === 'job-role' ? (
+          {entityKey === 'department' ? (
             <Button
               variant="ghost"
               size="sm"

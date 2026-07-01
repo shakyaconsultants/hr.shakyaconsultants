@@ -21,6 +21,15 @@ function logRedisStartupWarning(message: string, meta?: Record<string, unknown>)
   }
 }
 
+function teardownClient(client: Redis): void {
+  client.removeAllListeners();
+  try {
+    client.disconnect();
+  } catch {
+    // ignore cleanup errors
+  }
+}
+
 export function isRedisAvailable(): boolean {
   return redisAvailable && redisClient !== null;
 }
@@ -53,21 +62,26 @@ export async function connectRedis(): Promise<boolean> {
     keyPrefix: `${getEnv().QUEUE_PREFIX}:`,
   });
 
+  client.on('error', (err) => {
+    redisAvailable = false;
+    logRedisStartupWarning('Redis client error — cache and BullMQ disabled', { error: err.message });
+    if (redisClient === client) {
+      redisClient = null;
+      teardownClient(client);
+    }
+  });
+
   try {
     await client.connect();
     await client.ping();
     redisClient = client;
     redisAvailable = true;
-    logger.info('Redis connected via Upstash', { tls: url.startsWith('rediss://') });
+    logger.info('Redis connected', { tls: url.startsWith('rediss://') });
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown connection error';
     logRedisStartupWarning('Redis connection failed — cache and BullMQ disabled', { error: message });
-    try {
-      client.disconnect();
-    } catch {
-      // ignore cleanup errors
-    }
+    teardownClient(client);
     redisClient = null;
     redisAvailable = false;
     return false;
@@ -76,9 +90,10 @@ export async function connectRedis(): Promise<boolean> {
 
 export async function disconnectRedis(): Promise<void> {
   if (redisClient) {
-    await redisClient.quit();
+    const client = redisClient;
     redisClient = null;
     redisAvailable = false;
+    teardownClient(client);
     logger.info('Redis disconnected');
   }
 }
@@ -92,6 +107,7 @@ export async function checkRedisHealth(): Promise<'healthy' | 'unavailable'> {
     await getRedisClient().ping();
     return 'healthy';
   } catch {
+    redisAvailable = false;
     return 'unavailable';
   }
 }

@@ -25,12 +25,44 @@ import '@domain/integration/integration.schemas.js';
 import '@domain/audit/audit.schemas.js';
 import '@infrastructure/cache/cache-entry.schema.js';
 import { mongoose } from '@infrastructure/database/mongodb.connection.js';
+import { logger } from '@logging/winston.logger.js';
 
 export function registerDomainModels(): void {
   // Models registered via side-effect imports above.
 }
 
 export async function syncDomainIndexes(): Promise<void> {
-  const models = Object.values(mongoose.models);
-  await Promise.all(models.map((model) => model.syncIndexes()));
+  await repairEmployeeUniqueIndexes();
+}
+
+async function repairEmployeeUniqueIndexes(): Promise<void> {
+  const Employee = mongoose.models.Employee;
+  if (!Employee) {
+    return;
+  }
+
+  await Employee.updateMany(
+    { $or: [{ aadhaarNumber: null }, { aadhaarNumber: '' }] },
+    { $unset: { aadhaarNumber: '' } },
+  );
+  await Employee.updateMany(
+    { $or: [{ panNumber: null }, { panNumber: '' }] },
+    { $unset: { panNumber: '' } },
+  );
+
+  const collection = Employee.collection;
+  for (const indexName of ['uq_employees_company_aadhaar', 'uq_employees_company_pan']) {
+    try {
+      await collection.dropIndex(indexName);
+    } catch {
+      // Index may not exist or already matches schema.
+    }
+  }
+
+  try {
+    await Employee.syncIndexes();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn('Employee index sync warning', { message });
+  }
 }

@@ -39,7 +39,6 @@ export interface DepartmentDetail extends DepartmentRecord {
     email: string;
     status: string;
   }>;
-  jobRoles: Array<{ id: string; name: string; code: string; status: string }>;
   projects: Array<{ id: string; name: string; code: string; status: string }>;
   auditHistory: Array<Record<string, unknown>>;
 }

@@ -66,14 +66,7 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
     icon: Users,
     permission: 'designation.create',
   },
-  {
-    id: 'job-role',
-    label: 'Job Role',
-    description: 'Add via company setup wizard',
-    path: `${ROUTES.organizationEntity('job-role')}?action=create`,
-    icon: Users,
-    permission: 'jobrole.create',
-  },
+
   {
     id: 'project',
     label: 'Project',

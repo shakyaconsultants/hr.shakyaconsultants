@@ -16,30 +16,13 @@ export interface DepartmentDocument extends BaseDocument {
   status: string;
 }
 
-export interface JobRoleDocument extends BaseDocument {
-  name: string;
-  code: string;
-  description?: string;
-  departmentId?: string;
-  designationId?: string;
-  employmentTypeId?: string;
-  salaryGradeId?: string;
-  requiredSkillIds: string[];
-  responsibilities: string[];
-  experienceMinYears?: number;
-  experienceMaxYears?: number;
-  level?: number;
-  status: string;
-}
-
 export interface DesignationDocument extends BaseDocument {
   name: string;
   code: string;
   description?: string;
   hierarchyLevel?: number;
   salaryGradeId?: string;
-  departmentId?: string;
-  applicableJobRoleIds: string[];
+  departmentIds?: string[];
   promotionDesignationId?: string;
   status: string;
 }
@@ -132,30 +115,13 @@ const departmentFields: SchemaDefinition = {
   status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
 };
 
-const jobRoleFields: SchemaDefinition = {
-  name: { type: String, required: true, trim: true },
-  code: { type: String, required: true, trim: true, uppercase: true },
-  description: { type: String, trim: true },
-  departmentId: { type: String, index: true },
-  designationId: { type: String, index: true },
-  employmentTypeId: { type: String, index: true },
-  salaryGradeId: { type: String, index: true },
-  requiredSkillIds: { type: [String], default: [] },
-  responsibilities: { type: [String], default: [] },
-  experienceMinYears: { type: Number, min: 0 },
-  experienceMaxYears: { type: Number, min: 0 },
-  level: { type: Number, min: 1 },
-  status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
-};
-
 const designationFields: SchemaDefinition = {
   name: { type: String, required: true, trim: true },
   code: { type: String, required: true, trim: true, uppercase: true },
   description: { type: String, trim: true },
   hierarchyLevel: { type: Number, min: 1, max: 12, index: true },
   salaryGradeId: { type: String, index: true },
-  departmentId: { type: String, index: true },
-  applicableJobRoleIds: { type: [String], default: [] },
+  departmentIds: { type: [String], default: [], index: true },
   promotionDesignationId: { type: String, index: true },
   status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
 };
@@ -241,17 +207,7 @@ export const departmentModel = defineDomainModel<DepartmentDocument>(
   },
 );
 
-export const jobRoleModel = defineDomainModel<JobRoleDocument>(
-  'JobRole',
-  COLLECTIONS.JOB_ROLES,
-  jobRoleFields,
-  {
-    indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_job_roles_company_code' } },
-      { fields: { companyId: 1, departmentId: 1 }, options: { name: 'idx_job_roles_company_department' } },
-    ],
-  },
-);
+
 
 export const designationModel = defineDomainModel<DesignationDocument>(
   'Designation',
@@ -315,7 +271,6 @@ export const workShiftModel = defineDomainModel<WorkShiftDocument>(
 );
 
 export const DepartmentModel = departmentModel.model;
-export const JobRoleModel = jobRoleModel.model;
 export const DesignationModel = designationModel.model;
 export const BranchModel = branchModel.model;
 export const OfficeLocationModel = officeLocationModel.model;
@@ -323,7 +278,6 @@ export const HolidayModel = holidayModel.model;
 export const WorkShiftModel = workShiftModel.model;
 
 export const DepartmentRepository = departmentModel.repository;
-export const JobRoleRepository = jobRoleModel.repository;
 export const DesignationRepository = designationModel.repository;
 export const BranchRepository = branchModel.repository;
 export const OfficeLocationRepository = officeLocationModel.repository;

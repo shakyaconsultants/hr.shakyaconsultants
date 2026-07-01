@@ -10,16 +10,16 @@ import {
   EmployeeSubresourceService,
 } from '@modules/employee/services/employee-profile.service.js';
 import type { EmployeeActorContext } from '@modules/employee/types/employee.types.js';
-import { AccountActivationService } from '@modules/auth/services/account-activation.service.js';
+import { EmployeeLifecycleService } from '@modules/employee/services/employee-lifecycle.service.js';
 import { ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import type { z } from 'zod';
 import {
+  adminCreateEmployeeSchema,
   assignManagerSchema,
   bankDetailsSchema,
   bulkActionSchema,
   certificationSchema,
-  createEmployeeSchema,
   documentUploadMetaSchema,
   educationSchema,
   emergencyContactSchema,
@@ -98,7 +98,7 @@ export const getEmployeeDashboard: RequestHandler = async (req, res, next) => {
 export const createEmployee: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const payload = validateInput(createEmployeeSchema, req.body);
+    const payload = validateInput(adminCreateEmployeeSchema, req.body);
     const employee = await EmployeeService.create(buildActor(authReq), payload);
     return ResponseService.created(res, authReq, employee);
   } catch (error) {
@@ -512,15 +512,31 @@ export const activateEmployeeAccount: RequestHandler = async (req, res, next) =>
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const result = await AccountActivationService.issueActivationToken(
-      {
-        companyId: authReq.user.companyId,
-        userId: authReq.user.userId,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
-      },
-      employeeId,
-    );
+    const result = await EmployeeLifecycleService.sendActivationEmail(buildActor(authReq), employeeId);
+    return ResponseService.success(res, authReq, result);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const sendEmployeeOnboardingEmail: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { employeeId } = validateInput(employeeIdParamSchema, req.params);
+    const result = await EmployeeLifecycleService.sendOnboardingEmail(buildActor(authReq), employeeId);
+    return ResponseService.success(res, authReq, result);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const sendEmployeePasswordResetEmail: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { employeeId } = validateInput(employeeIdParamSchema, req.params);
+    const result = await EmployeeLifecycleService.sendPasswordResetEmail(buildActor(authReq), employeeId);
     return ResponseService.success(res, authReq, result);
   } catch (error) {
     next(error);

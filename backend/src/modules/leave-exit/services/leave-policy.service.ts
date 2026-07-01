@@ -9,7 +9,17 @@ import type { LeaveExitActorContext } from '@modules/approval/types/approval.typ
 
 export const LeavePolicyService = {
   async list(companyId: string): Promise<LeavePolicyDocument[]> {
-    return LeavePolicyRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId });
+    let policies = await LeavePolicyRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId });
+    if (policies.length === 0) {
+      const { LeaveExitSeederService } = await import('@modules/leave-exit/services/leave-exit-seeder.service.js');
+      await LeaveExitSeederService.seedLeavePolicies({
+        companyId,
+        userId: 'system',
+        employeeId: 'system',
+      });
+      policies = await LeavePolicyRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId });
+    }
+    return policies;
   },
 
   async getById(companyId: string, id: string): Promise<LeavePolicyDocument> {
@@ -54,6 +64,18 @@ export const LeavePolicyService = {
       {
         id,
         companyId: context.companyId,
+        name: payload.name,
+        code: payload.code.trim().toUpperCase(),
+        leaveTypeId: payload.leaveTypeId,
+        category: payload.category,
+        description: payload.description,
+        annualQuota: payload.annualQuota,
+        maxConsecutiveDays: payload.maxConsecutiveDays,
+        maxNegativeBalance: payload.maxNegativeBalance,
+        maxCarryForwardDays: payload.maxCarryForwardDays,
+        carryForwardExpiryMonths: payload.carryForwardExpiryMonths,
+        accrualRatePerMonth: payload.accrualRatePerMonth,
+        workflowSlug: payload.workflowSlug ?? 'leave-default',
         allowHalfDay: payload.allowHalfDay ?? true,
         allowNegativeBalance: payload.allowNegativeBalance ?? false,
         carryForwardEnabled: payload.carryForwardEnabled ?? false,

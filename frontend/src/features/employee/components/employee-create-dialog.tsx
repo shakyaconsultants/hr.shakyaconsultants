@@ -42,11 +42,24 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
     await runFormMutation({
       setError,
       successMessage: 'Employee created successfully.',
-      mutation: () =>
-        createMutation.mutateAsync({
-          ...form,
+      onNonInlineError: () => onOpenChange(false),
+      mutation: () => {
+        const payload: Record<string, unknown> = {
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email.trim(),
+          departmentId: form.departmentId,
+          designationId: form.designationId,
           joinedAt: new Date(form.joinedAt),
-        }),
+        };
+        if (form.phone.trim()) {
+          payload.phone = form.phone.trim();
+        }
+        if (form.branchId.trim()) {
+          payload.branchId = form.branchId;
+        }
+        return createMutation.mutateAsync(payload);
+      },
       onSuccess: (employee) => {
         onOpenChange(false);
         navigate(ROUTES.employeeDetail(employee.id));

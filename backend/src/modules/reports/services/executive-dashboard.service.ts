@@ -67,8 +67,8 @@ export const ExecutiveDashboardService = {
       candidates
         .filter((c) => c.pipelineStage !== PIPELINE_STAGE.EMPLOYEE_CONVERTED
           && c.pipelineStage !== PIPELINE_STAGE.REJECTED
-          && c.jobRoleId)
-        .map((c) => c.jobRoleId!),
+          && c.designationId)
+        .map((c) => c.designationId!),
     ).size;
 
     const sortedAudit = recentAuditEvents

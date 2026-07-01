@@ -20,7 +20,7 @@ export interface CandidateListQuery {
   sortOrder?: 'asc' | 'desc';
   search?: string;
   pipelineStage?: string;
-  jobRoleId?: string;
+  designationId?: string;
   departmentId?: string;
   recruiterId?: string;
   includeArchived?: boolean;

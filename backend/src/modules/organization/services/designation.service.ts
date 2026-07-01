@@ -2,7 +2,6 @@ import type { DesignationDocument } from '@domain/organization/organization.sche
 import {
   DepartmentRepository,
   DesignationRepository,
-  JobRoleRepository,
 } from '@domain/organization/organization.schemas.js';
 import { SalaryGradeRepository } from '@domain/master-data/master-data.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
@@ -16,7 +15,6 @@ import { buildExactFilter, mergeFilters } from '@infrastructure/database/query/f
 import { documentToRecord } from '@shared/utils/document.util.js';
 import type { DomainQueryFilter } from '@infrastructure/database/types/domain-query.types.js';
 import {
-  buildDesignationFullTitle,
   getHierarchyLevelLabel,
 } from '@modules/organization/constants/designation.constants.js';
 
@@ -56,7 +54,7 @@ function buildDesignationListFilter(query: MasterDataListQuery): DomainQueryFilt
   }
 
   if (query.departmentId) {
-    filters.push(buildExactFilter({ departmentId: query.departmentId }));
+    filters.push(buildExactFilter({ departmentIds: query.departmentId }));
   }
 
   if (query.salaryGradeId) {
@@ -76,54 +74,40 @@ async function enrichDesignationRecords(
 ): Promise<Array<DesignationDocument & DesignationListEnrichment>> {
   const departmentIds = new Set<string>();
   const salaryGradeIds = new Set<string>();
-  const jobRoleIds = new Set<string>();
 
   for (const item of items) {
-    if (item.departmentId) departmentIds.add(item.departmentId);
-    if (item.salaryGradeId) salaryGradeIds.add(item.salaryGradeId);
-    for (const roleId of item.applicableJobRoleIds ?? []) {
-      jobRoleIds.add(roleId);
+    for (const deptId of item.departmentIds ?? []) {
+      departmentIds.add(deptId);
     }
+    if (item.salaryGradeId) salaryGradeIds.add(item.salaryGradeId);
   }
 
-  const [departments, salaryGrades, jobRoles] = await Promise.all([
+  const [departments, salaryGrades] = await Promise.all([
     departmentIds.size > 0
       ? DepartmentRepository.findMany({ id: { $in: [...departmentIds] } }, { companyId })
       : Promise.resolve([]),
     salaryGradeIds.size > 0
       ? SalaryGradeRepository.findMany({ id: { $in: [...salaryGradeIds] } }, { companyId })
       : Promise.resolve([]),
-    jobRoleIds.size > 0
-      ? JobRoleRepository.findMany({ id: { $in: [...jobRoleIds] } }, { companyId })
-      : Promise.resolve([]),
   ]);
 
   const departmentMap = new Map(departments.map((department) => [department.id, department.name]));
   const salaryGradeMap = new Map(salaryGrades.map((grade) => [grade.id, grade.name]));
-  const jobRoleMap = new Map(jobRoles.map((role) => [role.id, role]));
 
   return Promise.all(
     items.map(async (item) => {
       const employeeCount = await EmployeeRepository.count({ designationId: item.id }, { companyId });
-      const applicableJobRoles = (item.applicableJobRoleIds ?? [])
-        .map((roleId) => jobRoleMap.get(roleId))
-        .filter(Boolean)
-        .map((role) => ({
-          id: role!.id,
-          name: role!.name,
-          fullTitle: buildDesignationFullTitle(item.name, role!.name),
-        }));
 
       return {
         ...documentToRecord(item),
-        departmentName: item.departmentId ? departmentMap.get(item.departmentId) : undefined,
+        departmentName: (item.departmentIds ?? []).map((id) => departmentMap.get(id)).filter(Boolean).join(', '),
         salaryGradeName: item.salaryGradeId ? salaryGradeMap.get(item.salaryGradeId) : undefined,
-        applicableJobRoleNames: applicableJobRoles.map((role) => role.name),
-        applicableJobRoles,
+        applicableJobRoleNames: [],
+        applicableJobRoles: [],
         employeeCount,
         hierarchyLevelLabel:
           item.hierarchyLevel !== undefined ? getHierarchyLevelLabel(item.hierarchyLevel) : undefined,
-      } as DesignationDocument & DesignationListEnrichment;
+      } as unknown as DesignationDocument & DesignationListEnrichment;
     }),
   );
 }
@@ -162,19 +146,16 @@ export const DesignationService = {
       throw new NotFoundError('Designation not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const [department, salaryGrade, promotion, jobRoles, employees, auditHistory] = await Promise.all([
-      designation.departmentId
-        ? DepartmentRepository.findById(designation.departmentId, { companyId })
-        : Promise.resolve(null),
+    const [departments, salaryGrade, promotion, employees, auditHistory] = await Promise.all([
+      (designation.departmentIds ?? []).length > 0
+        ? DepartmentRepository.findMany({ id: { $in: designation.departmentIds } }, { companyId })
+        : Promise.resolve([]),
       designation.salaryGradeId
         ? SalaryGradeRepository.findById(designation.salaryGradeId, { companyId })
         : Promise.resolve(null),
       designation.promotionDesignationId
         ? DesignationRepository.findById(designation.promotionDesignationId, { companyId })
         : Promise.resolve(null),
-      (designation.applicableJobRoleIds ?? []).length > 0
-        ? JobRoleRepository.findMany({ id: { $in: designation.applicableJobRoleIds } }, { companyId })
-        : Promise.resolve([]),
       EmployeeRepository.findMany({ designationId: id }, { companyId }),
       AuditLogRepository.paginate(
         { entityType: 'designation', entityId: id },
@@ -183,43 +164,27 @@ export const DesignationService = {
       ),
     ]);
 
-    const jobRoleLookup = new Map(jobRoles.map((role) => [role.id, role]));
-
     return {
       ...documentToRecord(designation),
-      departmentName: department?.name,
+      departmentName: departments.map((d) => d.name).join(', '),
       salaryGradeName: salaryGrade?.name,
       hierarchyLevelLabel:
         designation.hierarchyLevel !== undefined
           ? getHierarchyLevelLabel(designation.hierarchyLevel)
           : undefined,
       promotionDesignationName: promotion?.name,
-      applicableJobRoles: jobRoles.map((role) => ({
-        id: role.id,
-        name: role.name,
-        code: role.code,
-        fullTitle: buildDesignationFullTitle(designation.name, role.name),
-      })),
-      employees: await Promise.all(
-        employees.map(async (employee) => {
-          const role = employee.jobRoleId ? jobRoleLookup.get(employee.jobRoleId) : undefined;
-          let fullTitle = buildDesignationFullTitle(designation.name, role?.name);
-          if (!role && employee.jobRoleId) {
-            const fetchedRole = await JobRoleRepository.findById(employee.jobRoleId, { companyId });
-            fullTitle = buildDesignationFullTitle(designation.name, fetchedRole?.name);
-          }
-          return {
-            id: employee.id,
-            employeeNumber: employee.employeeNumber,
-            firstName: employee.firstName,
-            lastName: employee.lastName,
-            email: employee.email,
-            status: employee.status,
-            jobRoleId: employee.jobRoleId,
-            fullTitle,
-          };
-        }),
-      ),
+      applicableJobRoles: [],
+      employees: employees.map((employee) => {
+        return {
+          id: employee.id,
+          employeeNumber: employee.employeeNumber,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          email: employee.email,
+          status: employee.status,
+          fullTitle: designation.name,
+        };
+      }),
       auditHistory: auditHistory.items.map((entry) => ({
         id: entry.id,
         action: entry.action,

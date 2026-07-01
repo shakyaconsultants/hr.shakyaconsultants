@@ -23,10 +23,16 @@ function registerShutdownHandlers(): void {
 
   process.on('unhandledRejection', (reason: unknown) => {
     const message = reason instanceof Error ? reason.message : String(reason);
+    console.error('[unhandledRejection]', message);
+    if (reason instanceof Error && reason.stack) {
+      console.error(reason.stack);
+    }
     logger.error('Unhandled rejection', { message });
   });
 
   process.on('uncaughtException', (error: Error) => {
+    console.error('[uncaughtException]', error.message);
+    console.error(error.stack);
     logger.error('Uncaught exception', { message: error.message });
     void stopServer().finally(() => process.exit(1));
   });
