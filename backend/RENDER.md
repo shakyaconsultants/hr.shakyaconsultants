@@ -24,3 +24,14 @@ Optional but recommended: `CLOUDINARY_*`, `SMTP_*`, `LOG_LEVEL=info`
 Do **not** set `SEED_*` or `SUPER_ADMIN_*` on Render unless running seed locally.
 
 If startup fails, logs will show `=== HR Shakya ERP — startup failed ===` with the exact missing/invalid variable.
+
+## MongoDB: `Server selection timed out`
+
+This means Render could not reach your Atlas cluster (not a code bug).
+
+1. **Render env** — add `MONGODB_URI` with the same `mongodb+srv://...` string you use locally.
+2. **Atlas Network Access** — [MongoDB Atlas](https://cloud.mongodb.com) → your project → **Network Access** → **Add IP Address** → **Allow Access from Anywhere** (`0.0.0.0/0`). Render uses dynamic outbound IPs; without this, only your home IP can connect.
+3. **Password encoding** — if the DB password contains `@`, `#`, `/`, etc., URL-encode it in the URI (`@` → `%40`).
+4. **Database name** — set `MONGODB_DB_NAME=hr_shakya` (or your actual DB name).
+
+After changing Atlas network rules, wait ~1 minute, then **Manual Deploy** on Render.

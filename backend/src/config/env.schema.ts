@@ -17,6 +17,8 @@ const envSchema = z.object({
 
   MONGODB_URI: z.string().min(1),
   MONGODB_DB_NAME: z.string().min(1).default('hr_shakya'),
+  MONGODB_SERVER_SELECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  MONGODB_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   REDIS_URL: z.string().optional().default(''),
 

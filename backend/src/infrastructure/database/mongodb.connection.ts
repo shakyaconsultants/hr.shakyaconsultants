@@ -4,6 +4,22 @@ import { logger } from '@logging/winston.logger.js';
 
 let isConnected = false;
 
+function buildMongoConnectionHint(message: string): string {
+  if (!message.includes('Server selection timed out') && !message.includes('ECONNREFUSED')) {
+    return message;
+  }
+
+  return [
+    message,
+    '',
+    'MongoDB could not be reached. Common fixes on Render + Atlas:',
+    '• Set MONGODB_URI in Render → Environment (full mongodb+srv://... string)',
+    '• Atlas → Network Access → allow 0.0.0.0/0 (or Render outbound IPs)',
+    '• URL-encode special characters in the password (@ → %40, # → %23)',
+    '• Confirm MONGODB_DB_NAME matches the database name in Atlas',
+  ].join('\n');
+}
+
 export async function connectMongoDB(): Promise<void> {
   if (isConnected) {
     return;
@@ -13,11 +29,16 @@ export async function connectMongoDB(): Promise<void> {
   mongoose.set('strictQuery', true);
   mongoose.set('bufferCommands', false);
 
-  await mongoose.connect(env.MONGODB_URI, {
-    dbName: env.MONGODB_DB_NAME,
-    serverSelectionTimeoutMS: 5000,
-    connectTimeoutMS: 5000,
-  });
+  try {
+    await mongoose.connect(env.MONGODB_URI, {
+      dbName: env.MONGODB_DB_NAME,
+      serverSelectionTimeoutMS: env.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
+      connectTimeoutMS: env.MONGODB_CONNECT_TIMEOUT_MS,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(buildMongoConnectionHint(message));
+  }
 
   isConnected = true;
   logger.info('MongoDB connected', { dbName: env.MONGODB_DB_NAME });

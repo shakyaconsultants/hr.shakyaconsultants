@@ -4,6 +4,8 @@ import { resetPasswordRequest } from '@/features/auth/api/auth.api';
 import { ROUTES } from '@/config/app.config';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { PASSWORD_POLICY_HINT, validatePasswordStrength } from '@/shared/auth/password-policy';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
 
 export function ResetPasswordPage() {
   const { token = '' } = useParams();
@@ -19,13 +21,18 @@ export function ResetPasswordPage() {
       setError('Passwords do not match');
       return;
     }
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
       const result = await resetPasswordRequest(token, password);
       setMessage(result.message);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to reset password');
+      setError(parseMutationError(e).message);
     } finally {
       setSubmitting(false);
     }
@@ -49,6 +56,7 @@ export function ResetPasswordPage() {
           <label className="block space-y-1 text-sm">
             <span className="font-medium">New password</span>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+            <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_HINT}</p>
           </label>
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Confirm password</span>
