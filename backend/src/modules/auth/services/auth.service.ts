@@ -454,6 +454,10 @@ export const AuthService = {
       throw new NotFoundError('User not found', ERROR_CODES.NOT_FOUND);
     }
 
+    if (user.employeeId) {
+      await EmployeeProvisioningService.refreshEmployeePortalAccess(user.companyId, user.employeeId);
+    }
+
     const [company, permissionsResult, employee, navigationItems, featureFlagList] =
       await Promise.all([
         CompanyRepository.findById(user.companyId, { companyId: user.companyId }),

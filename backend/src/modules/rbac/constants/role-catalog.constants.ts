@@ -115,6 +115,8 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleDefinition[] = [
       'resignation.update',
       'approval.read',
       'approval.execute',
+      'conversation.read',
+      'conversation.create',
       'chat.message.send',
       'settings.read',
     ],

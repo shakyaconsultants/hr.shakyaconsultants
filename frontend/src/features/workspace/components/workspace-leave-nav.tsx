@@ -6,7 +6,7 @@ import { cn } from '@/shared/utils/cn';
 const NAV_ITEMS = [
   { label: 'Apply Leave', path: ROUTES.WORKSPACE_LEAVE_APPLY, permission: 'leave.create' },
   { label: 'My Requests', path: ROUTES.WORKSPACE_LEAVE_REQUESTS, permission: 'leave.read' },
-  { label: 'My Leave Balance', path: ROUTES.WORKSPACE_LEAVE_BALANCE, permission: 'leave.read' },
+  { label: 'My Leave Balance', path: ROUTES.WORKSPACE_LEAVE_BALANCE, permission: 'leave.balance.read' },
   { label: 'Resignation', path: ROUTES.WORKSPACE_RESIGNATION, permission: 'resignation.read' },
 ] as const;
 

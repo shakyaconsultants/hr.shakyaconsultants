@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMyTasks, useMyTasksKanban, useBulkUpdateTasks, useQuickUpdateTask } from '@/features/workspace/hooks/use-workspace';
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
@@ -10,19 +11,28 @@ type View = 'list' | 'kanban';
 type Filter = 'pending' | 'completed' | 'waiting_verification' | 'rejected' | '';
 
 export function WorkspaceTasksPage() {
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get('project') ?? undefined;
   const [view, setView] = useState<View>('list');
   const [filter, setFilter] = useState<Filter>('pending');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
 
-  const { data: tasks, isLoading } = useMyTasks({ status: filter || undefined, search: search || undefined });
-  const { data: kanban, isLoading: kanbanLoading } = useMyTasksKanban();
+  const { data: tasks, isLoading } = useMyTasks({
+    status: filter || undefined,
+    search: search || undefined,
+    projectId,
+  });
+  const { data: kanban, isLoading: kanbanLoading } = useMyTasksKanban(projectId);
   const bulkUpdate = useBulkUpdateTasks();
   const quickUpdate = useQuickUpdateTask();
 
   return (
     <div className="space-y-6">
-      <WorkspacePageHeader title="My Tasks" description="Kanban, list views, filters, and bulk actions." />
+      <WorkspacePageHeader
+        title="My Tasks"
+        description={projectId ? 'Tasks for your selected project.' : 'Kanban, list views, filters, and bulk actions.'}
+      />
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-2">
           {(['list', 'kanban'] as View[]).map((v) => (

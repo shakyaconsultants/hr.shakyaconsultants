@@ -85,7 +85,7 @@ function ProjectList({ items }: { items: Record<string, unknown>[] }) {
         if (!project) return null;
         return (
           <li key={String(project.id)}>
-            <Link to={ROUTES.WORKSPACE_PROJECTS} className="block rounded border px-3 py-2 text-sm hover:bg-muted">
+            <Link to={ROUTES.workspaceProjectTasks(String(project.id))} className="block rounded border px-3 py-2 text-sm hover:bg-muted">
               <span className="font-medium">{String(project.name)}</span>
               <span className="ml-2 text-xs text-muted-foreground">{String(item.role ?? '')}</span>
             </Link>

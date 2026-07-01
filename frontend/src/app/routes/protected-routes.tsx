@@ -11,6 +11,7 @@ export const protectedAppRoutes: RouteObject[] = [
   { path: ROUTES.MANAGER.slice(1), ...lazyRoute(() => import('@/features/enterprise/pages/manager-dashboard-page'), 'ManagerDashboardPage') },
   { path: ROUTES.WORKSPACE.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-dashboard-page'), 'WorkspaceDashboardPage') },
   { path: ROUTES.WORKSPACE_PROFILE.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-profile-page'), 'WorkspaceProfilePage') },
+  { path: ROUTES.WORKSPACE_HIERARCHY.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-hierarchy-page'), 'WorkspaceHierarchyPage') },
   { path: ROUTES.WORKSPACE_PROJECTS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-projects-page'), 'WorkspaceProjectsPage') },
   { path: ROUTES.WORKSPACE_TASKS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-tasks-page'), 'WorkspaceTasksPage') },
   { path: ROUTES.WORKSPACE_DOCUMENTS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-documents-page'), 'WorkspaceDocumentsPage') },

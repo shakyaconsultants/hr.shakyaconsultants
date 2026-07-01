@@ -23,7 +23,7 @@ export function WorkspaceProjectsPage() {
               <article key={String(project.id)} className="rounded-lg border bg-card p-5">
                 <div className="mb-3 flex items-start justify-between">
                   <div>
-                    <Link to={ROUTES.projectDetail(String(project.id))} className="text-lg font-semibold hover:underline">
+                    <Link to={ROUTES.workspaceProjectTasks(String(project.id))} className="text-lg font-semibold hover:underline">
                       {String(project.name)}
                     </Link>
                     <p className="text-xs font-mono text-muted-foreground">{String(project.code)}</p>
@@ -38,6 +38,12 @@ export function WorkspaceProjectsPage() {
                   <div className="h-2 rounded-full bg-primary" style={{ width: `${item.progress}%` }} />
                 </div>
                 <p className="text-xs text-muted-foreground">{item.completedTasks}/{item.totalTasks} tasks completed</p>
+                <Link
+                  to={ROUTES.workspaceProjectTasks(String(project.id))}
+                  className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+                >
+                  View project tasks
+                </Link>
                 {item.upcomingDeadlines.length > 0 && (
                   <div className="mt-3 border-t pt-3">
                     <p className="mb-1 text-xs font-medium">Upcoming deadlines</p>

@@ -34,7 +34,7 @@ const KEYS = {
   profile: ['workspace', 'profile'] as const,
   hierarchy: ['workspace', 'hierarchy'] as const,
   projects: (params: ListParams) => ['workspace', 'projects', params] as const,
-  tasks: (params: ListParams & { status?: string }) => ['workspace', 'tasks', params] as const,
+  tasks: (params: ListParams & { status?: string; projectId?: string }) => ['workspace', 'tasks', params] as const,
   kanban: (projectId?: string) => ['workspace', 'tasks', 'kanban', projectId] as const,
   documents: (params: ListParams) => ['workspace', 'documents', params] as const,
   announcements: (params: ListParams) => ['workspace', 'announcements', params] as const,
@@ -89,7 +89,7 @@ export function useMyProjects(params: ListParams = {}) {
   return useQuery({ queryKey: KEYS.projects(params), queryFn: () => fetchMyProjects(params) });
 }
 
-export function useMyTasks(params: ListParams & { status?: string } = {}) {
+export function useMyTasks(params: ListParams & { status?: string; projectId?: string } = {}) {
   return useQuery({ queryKey: KEYS.tasks(params), queryFn: () => fetchMyTasks(params) });
 }
 
