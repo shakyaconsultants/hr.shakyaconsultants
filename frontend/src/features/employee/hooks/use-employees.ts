@@ -20,27 +20,31 @@ import {
   type EmployeeDashboard,
   type ListEmployeesParams,
 } from '@/features/employee/api/employee.api';
+import { employeeQueryKeys, refreshEmployeeQueries } from '@/features/employee/employee-query-keys';
 
 export function useEmployees(params: ListEmployeesParams = {}) {
   return useQuery({
-    queryKey: ['employees', params],
+    queryKey: employeeQueryKeys.list(params),
     queryFn: () => fetchEmployees(params),
+    refetchOnMount: true,
   });
 }
 
 export function useEmployee(id: string) {
   return useQuery({
-    queryKey: ['employee', id],
+    queryKey: employeeQueryKeys.detail(id),
     queryFn: () => fetchEmployee(id),
     enabled: Boolean(id),
+    refetchOnMount: true,
   });
 }
 
 export function useEmployeeDashboard(id: string) {
   return useQuery({
-    queryKey: ['employee', id, 'dashboard'],
+    queryKey: employeeQueryKeys.dashboard(id),
     queryFn: () => fetchEmployeeDashboard(id),
     enabled: Boolean(id),
+    refetchOnMount: true,
   });
 }
 
@@ -50,9 +54,7 @@ export function useCreateEmployee() {
     mutationFn: createEmployee,
     errorToast: false,
     successMessage: false,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['employees'] });
-    },
+    onSuccess: () => refreshEmployeeQueries(queryClient),
   });
 }
 
@@ -62,19 +64,16 @@ export function useUpdateEmployee() {
     mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) => updateEmployee(id, payload),
     errorToast: false,
     successMessage: false,
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['employees'] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', variables.id] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', variables.id, 'dashboard'] });
-    },
+    onSuccess: (_data, variables) => refreshEmployeeQueries(queryClient, variables.id),
   });
 }
 
 export function useSearchEmployees(search: string) {
   return useQuery({
-    queryKey: ['employees', 'search', search],
+    queryKey: employeeQueryKeys.search(search),
     queryFn: () => searchEmployees(search),
     enabled: search.length >= 2,
+    refetchOnMount: true,
   });
 }
 
@@ -93,7 +92,8 @@ export function useUploadDocument() {
     errorToast: false,
     successMessage: false,
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['employee', variables.employeeId, 'dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: employeeQueryKeys.dashboard(variables.employeeId) });
+      void queryClient.refetchQueries({ queryKey: employeeQueryKeys.dashboard(variables.employeeId) });
     },
   });
 }
@@ -102,9 +102,7 @@ export function useDeleteEmployee() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: deleteEmployee,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['employees'] });
-    },
+    onSuccess: (_data, id) => refreshEmployeeQueries(queryClient, id),
   });
 }
 
@@ -112,11 +110,7 @@ export function useArchiveEmployee() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: archiveEmployee,
-    onSuccess: (_data, id) => {
-      void queryClient.invalidateQueries({ queryKey: ['employees'] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
-    },
+    onSuccess: (_data, id) => refreshEmployeeQueries(queryClient, id),
   });
 }
 
@@ -124,11 +118,7 @@ export function useRestoreEmployee() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: restoreEmployee,
-    onSuccess: (_data, id) => {
-      void queryClient.invalidateQueries({ queryKey: ['employees'] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
-    },
+    onSuccess: (_data, id) => refreshEmployeeQueries(queryClient, id),
   });
 }
 
@@ -136,11 +126,7 @@ export function useDeactivateEmployee() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: deactivateEmployee,
-    onSuccess: (_data, id) => {
-      void queryClient.invalidateQueries({ queryKey: ['employees'] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
-    },
+    onSuccess: (_data, id) => refreshEmployeeQueries(queryClient, id),
   });
 }
 
@@ -148,21 +134,17 @@ export function useReactivateEmployee() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: reactivateEmployee,
-    onSuccess: (_data, id) => {
-      void queryClient.invalidateQueries({ queryKey: ['employees'] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id] });
-      void queryClient.invalidateQueries({ queryKey: ['employee', id, 'dashboard'] });
-    },
+    onSuccess: (_data, id) => refreshEmployeeQueries(queryClient, id),
   });
 }
 
 function usePatchEmployeeDashboardLifecycle(employeeId: string) {
   const queryClient = useQueryClient();
   return (lifecycle: EmployeeDashboard['lifecycle']) => {
-    queryClient.setQueryData<EmployeeDashboard>(['employee', employeeId, 'dashboard'], (current) =>
+    queryClient.setQueryData<EmployeeDashboard>(employeeQueryKeys.dashboard(employeeId), (current) =>
       current ? { ...current, lifecycle } : current,
     );
-    void queryClient.invalidateQueries({ queryKey: ['employee', employeeId, 'dashboard'] });
+    void queryClient.invalidateQueries({ queryKey: employeeQueryKeys.dashboard(employeeId) });
   };
 }
 

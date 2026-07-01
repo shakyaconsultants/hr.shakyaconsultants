@@ -7,6 +7,7 @@ import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { PasswordInput } from '@/shared/components/ui/password-input';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ export function LoginPage() {
         </label>
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Password</span>
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />

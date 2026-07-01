@@ -5,6 +5,7 @@ import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { EmployeeRoleRepository, RoleRepository } from '@domain/permission/permission.schemas.js';
 import { USER_STATUS } from '@domain/auth/user.schema.js';
 import { EffectivePermissionService } from '@modules/rbac/services/effective-permission.service.js';
+import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
 import { NavigationConfigService } from '@modules/settings/services/navigation-config.service.js';
 import { FeatureFlagService } from '@modules/settings/services/feature-flag.service.js';
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
@@ -471,7 +472,6 @@ export const AuthService = {
       throw new NotFoundError('Company not found', ERROR_CODES.NOT_FOUND);
     }
 
-    let permissions = permissionsResult;
     const roles: CurrentUserResponse['roles'] = [];
     let employeeSummary: CurrentUserResponse['employee'];
 
@@ -487,9 +487,26 @@ export const AuthService = {
             ).map((entry) => entry.roleId)
           : [];
 
-    if (roleIdsForLookup.length > 0) {
+    let resolvedRoleIds = roleIdsForLookup;
+    if (user.employeeId && resolvedRoleIds.length === 0) {
+      const provisioned = await EmployeeProvisioningService.ensureDefaultEmployeeRole(
+        user.companyId,
+        user.employeeId,
+        { companyId: user.companyId, userId: user.userId },
+      );
+      if (provisioned) {
+        resolvedRoleIds = (
+          await EmployeeRoleRepository.findMany(
+            { employeeId: user.employeeId, effectiveTo: null },
+            { companyId: user.companyId },
+          )
+        ).map((entry) => entry.roleId);
+      }
+    }
+
+    if (resolvedRoleIds.length > 0) {
       const roleDocs = await RoleRepository.findMany(
-        { id: { $in: roleIdsForLookup } },
+        { id: { $in: resolvedRoleIds } },
         { companyId: user.companyId },
       );
       for (const role of roleDocs) {
@@ -498,11 +515,13 @@ export const AuthService = {
     }
     perf.mark('roles_fetch');
 
-    if (permissions.length === 0 && user.roleIds.length > 0) {
-      permissions = await EffectivePermissionService.calculateForRoleIds(
-        user.companyId,
-        user.roleIds,
-      );
+    let permissions = permissionsResult;
+    if (permissions.length === 0 && resolvedRoleIds.length > 0) {
+      if (user.employeeId) {
+        permissions = await PermissionEngineService.getPermissionsForUser(user.companyId, user.employeeId);
+      } else {
+        permissions = await EffectivePermissionService.calculateForRoleIds(user.companyId, resolvedRoleIds);
+      }
       perf.mark('permission_fallback');
     }
 

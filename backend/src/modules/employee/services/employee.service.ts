@@ -15,6 +15,7 @@ import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
 import { PasswordService } from '@modules/auth/services/password.service.js';
 import { AccountActivationService } from '@modules/auth/services/account-activation.service.js';
 import { EmployeeLifecycleService, EMPLOYEE_LIFECYCLE_EMAIL } from '@modules/employee/services/employee-lifecycle.service.js';
+import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
 import { logger } from '@logging/winston.logger.js';
 
 const ENTITY_TYPE = 'employee';
@@ -168,6 +169,14 @@ export const EmployeeService = {
       entityId: id,
       action: 'create',
       after: EmployeeAuditService.toRecord(employee),
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
+
+    await EmployeeProvisioningService.ensureDefaultEmployeeRole(context.companyId, id, {
+      companyId: context.companyId,
+      userId: context.userId,
+      employeeId: id,
       ip: context.ip,
       userAgent: context.userAgent,
     });

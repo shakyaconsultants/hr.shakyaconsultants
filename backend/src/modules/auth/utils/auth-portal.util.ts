@@ -7,12 +7,15 @@ const ENTERPRISE_PORTAL_PERMISSIONS = [
   'workflow.manage',
 ] as const;
 
+/** Permissions that indicate HR/management portal access — not self-service employee signals. */
 const MANAGER_PORTAL_PERMISSIONS = [
-  'employee.read',
+  'employee.create',
+  'employee.update',
+  'employee.delete',
+  'employee.import',
+  'employee.export',
   'candidate.read',
   'project.dashboard.read',
-  'approval.read',
-  'leave.read',
   'leave.approve',
   'attendance.approve',
   'payroll.process',

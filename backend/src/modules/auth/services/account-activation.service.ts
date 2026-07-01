@@ -19,6 +19,7 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
 import { EmployeeLifecycleService, EMPLOYEE_LIFECYCLE_EMAIL } from '@modules/employee/services/employee-lifecycle.service.js';
+import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
 
 export interface AccountActivationActor {
   companyId: string;
@@ -108,6 +109,13 @@ export const AccountActivationService = {
     await SecureAccessTokenService.consume(resolved, resolved.entityId);
 
     if (user.employeeId) {
+      await EmployeeProvisioningService.ensureDefaultEmployeeRole(resolved.companyId, user.employeeId, {
+        companyId: resolved.companyId,
+        userId: resolved.entityId,
+        employeeId: user.employeeId,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
       await PermissionEngineService.invalidateUserPermissions(resolved.companyId, user.employeeId);
       try {
         await OnboardingService.issuePortalLinkForEmployee(

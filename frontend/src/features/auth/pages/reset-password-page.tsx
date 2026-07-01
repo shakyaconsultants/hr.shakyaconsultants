@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { resetPasswordRequest } from '@/features/auth/api/auth.api';
 import { ROUTES } from '@/config/app.config';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { PasswordInput } from '@/shared/components/ui/password-input';
 import { PASSWORD_POLICY_HINT, validatePasswordStrength } from '@/shared/auth/password-policy';
 import { parseMutationError } from '@/shared/feedback/mutation-error.util';
 
@@ -55,12 +55,12 @@ export function ResetPasswordPage() {
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           <label className="block space-y-1 text-sm">
             <span className="font-medium">New password</span>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
             <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_HINT}</p>
           </label>
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Confirm password</span>
-            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
+            <PasswordInput value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
           </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <Button type="submit" className="w-full" disabled={submitting || !token}>

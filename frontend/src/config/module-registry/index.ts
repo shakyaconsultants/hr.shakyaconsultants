@@ -125,7 +125,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         label: 'Dashboard',
         path: ROUTES.MANAGER,
         icon: LayoutDashboard,
-        permissionsAny: ['employee.read', 'project.dashboard.read', 'approval.read'],
+        permissionsAny: ['employee.create', 'employee.read', 'project.dashboard.read', 'approval.read', 'candidate.read'],
         portals: MANAGER_ONLY,
       },
     ],
@@ -1005,7 +1005,7 @@ const NAV_GROUPS: ModuleNavGroup[] = [
 
 const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.ENTERPRISE, portals: ENTERPRISE_ONLY, permission: 'company.read' },
-  { path: ROUTES.MANAGER, portals: [PORTAL.MANAGER], permissionsAny: ['employee.read', 'project.dashboard.read', 'approval.read'] },
+  { path: ROUTES.MANAGER, portals: [PORTAL.MANAGER], permissionsAny: ['employee.create', 'employee.read', 'project.dashboard.read', 'approval.read', 'candidate.read'] },
   { path: ROUTES.WORKSPACE, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_PROFILE, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_PROJECTS, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
