@@ -96,7 +96,11 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .pipe(z.boolean()),
   SMTP_USER: z.string().min(1).default('noreply@example.com'),
-  SMTP_PASSWORD: z.string().min(1).default('not-configured'),
+  SMTP_PASSWORD: z
+    .string()
+    .min(1)
+    .default('not-configured')
+    .transform((value) => value.replace(/\s+/g, '')),
   SMTP_FROM_NAME: z.string().min(1).default('HR Shakya ERP'),
   SMTP_FROM_EMAIL: z.email().default('noreply@example.com'),
 

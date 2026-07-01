@@ -35,6 +35,29 @@ export async function startServer(): Promise<HttpServer> {
     initializeWorkers();
   }
 
+  if (env.SMTP_HOST.includes('example.com') || env.SMTP_PASSWORD === 'not-configured') {
+    logger.warn('SMTP is not fully configured — transactional emails will fail', {
+      host: env.SMTP_HOST,
+      from: env.SMTP_FROM_EMAIL,
+    });
+  } else {
+    logger.info('SMTP configured', {
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      user: env.SMTP_USER,
+      from: env.SMTP_FROM_EMAIL,
+    });
+  }
+
+  const primaryFrontendUrl = env.FRONTEND_URL.split(',')[0]?.trim() ?? '';
+  if (env.NODE_ENV === 'production' && primaryFrontendUrl.includes('localhost')) {
+    logger.warn('FRONTEND_URL points to localhost in production — email activation/onboarding links will be wrong', {
+      frontendUrl: env.FRONTEND_URL,
+    });
+  } else {
+    logger.info('Email link base URL', { primaryFrontendUrl });
+  }
+
   httpServer = createServer(app);
   initializeSocket(httpServer);
 
