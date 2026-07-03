@@ -61,12 +61,6 @@ export function CommunicationEnterprisePage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link to={ROUTES.COMMUNICATION_REPORTS}>
-              <FileText className="mr-2 h-4 w-4" />
-              Reports
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
             <Link to={ROUTES.COMMUNICATION_SEARCH}>
               <Search className="mr-2 h-4 w-4" />
               Search
@@ -153,7 +147,7 @@ export function CommunicationEnterprisePage() {
           />
           {statsId ? (
             <p className="text-sm text-muted-foreground">
-              View delivery stats on the Broadcast History tab or Reports page for announcement {statsId}.
+              View delivery stats on the Broadcast History tab for announcement {statsId}.
             </p>
           ) : null}
         </section>

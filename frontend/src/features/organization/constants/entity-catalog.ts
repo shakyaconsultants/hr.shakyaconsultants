@@ -8,8 +8,6 @@ export const MASTER_ENTITIES = {
   EMPLOYMENT_TYPE: 'employment-type',
   SALARY_GRADE: 'salary-grade',
   LEAVE_TYPE: 'leave-type',
-  TECHNOLOGY: 'technology',
-  SKILL: 'skill',
 } as const;
 
 export type MasterEntityKey = (typeof MASTER_ENTITIES)[keyof typeof MASTER_ENTITIES];
@@ -31,8 +29,6 @@ export const ENTITY_CATALOG: EntityMeta[] = [
   { key: MASTER_ENTITIES.EMPLOYMENT_TYPE, label: 'Employment Type', pluralLabel: 'Employment Types', description: 'Employment classifications' },
   { key: MASTER_ENTITIES.SALARY_GRADE, label: 'Salary Grade', pluralLabel: 'Salary Grades', description: 'Compensation grade bands' },
   { key: MASTER_ENTITIES.LEAVE_TYPE, label: 'Leave Type', pluralLabel: 'Leave Types', description: 'Leave policy types' },
-  { key: MASTER_ENTITIES.TECHNOLOGY, label: 'Technology', pluralLabel: 'Technologies', description: 'Technology stack catalog' },
-  { key: MASTER_ENTITIES.SKILL, label: 'Skill', pluralLabel: 'Skills', description: 'Skills for roles and resume matching' },
 ];
 
 export function getEntityMeta(key: string): EntityMeta | undefined {

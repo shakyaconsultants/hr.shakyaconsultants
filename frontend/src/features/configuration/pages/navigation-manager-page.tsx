@@ -19,6 +19,7 @@ interface FlatNavItem {
   label: string;
   path: string;
   groupLabel: string;
+  groupId: string;
 }
 
 function flattenNavItems(): FlatNavItem[] {
@@ -31,6 +32,7 @@ function flattenNavItems(): FlatNavItem[] {
           label: item.label,
           path: item.path,
           groupLabel: group.label,
+          groupId: group.id,
         });
         if (item.children) {
           for (const child of item.children) {
@@ -39,6 +41,7 @@ function flattenNavItems(): FlatNavItem[] {
               label: child.label,
               path: child.path,
               groupLabel: group.label,
+              groupId: group.id,
             });
           }
         }
@@ -68,6 +71,7 @@ export function NavigationManagerPage() {
         order: override?.order ?? index,
         label: override?.label ?? item.label,
         path: override?.path ?? item.path,
+        groupId: item.groupId,
       };
     });
     return [...source].sort((a, b) => a.order - b.order);
@@ -87,6 +91,7 @@ export function NavigationManagerPage() {
             order: override?.order ?? index,
             label: override?.label ?? item.label,
             path: override?.path ?? item.path,
+            groupId: item.groupId,
           };
         });
       return current.map((item) => (item.id === id ? { ...item, ...patch } : item));

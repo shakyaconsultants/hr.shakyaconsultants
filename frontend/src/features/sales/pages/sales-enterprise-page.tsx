@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { BarChart3, FileDown, FileUp, Layers, Settings, Target, TrendingUp, Users } from 'lucide-react';
 import { LeadPipelineBoard } from '@/features/sales/components/lead-pipeline-board';
 import { PipelineStageEditor } from '@/features/sales/components/pipeline-stage-editor';
@@ -24,7 +23,6 @@ import { Loading } from '@/shared/components/loading';
 import { StatCard } from '@/shared/components/stat-card';
 import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
-import { ROUTES } from '@/config/app.config';
 
 const TABS = ['Overview', 'Sources', 'Pipelines', 'Teams', 'Territories', 'Targets', 'Policies', 'Import/Export', 'Analytics'] as const;
 
@@ -78,12 +76,6 @@ export function SalesEnterprisePage() {
             Configure sources, pipelines, teams, territories, targets, and sales policies.
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link to={ROUTES.SALES_REPORTS}>
-            <FileDown className="mr-2 h-4 w-4" />
-            Reports
-          </Link>
-        </Button>
       </div>
 
       <div className="flex flex-wrap gap-1 border-b">

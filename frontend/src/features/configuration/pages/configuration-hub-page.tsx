@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Palette, Flag, Compass, Shield } from 'lucide-react';
+import { Building2, Palette, Compass, Shield } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
 import { ConfigurationSidebar } from '@/features/configuration/components/configuration-sidebar';
 import { useConfigurationCatalog, useConfigurationSettings } from '@/features/configuration/hooks/use-configuration';
@@ -10,7 +10,6 @@ import { Loading } from '@/shared/components/loading';
 const QUICK_LINKS = [
   { slug: 'company', label: 'Company Profile', icon: Building2, description: 'Legal name, timezone, currency, GST' },
   { slug: 'branding', label: 'Branding & Theme', icon: Palette, description: 'Logo, colors, portal title, footer' },
-  { slug: 'feature_flags', label: 'Feature Management', icon: Flag, description: 'Enable or disable platform modules' },
   { slug: 'security', label: 'Security', icon: Shield, description: 'Authentication, sessions, and policies' },
 ];
 
@@ -37,7 +36,7 @@ export function ConfigurationHubPage() {
     <div className="space-y-6">
       <PageHeader
         title="Enterprise Configuration"
-        description="Central hub for company settings, branding, feature flags, integrations, and system policies."
+        description="Central hub for company settings, branding, integrations, and system policies."
       />
       <div className="flex flex-col gap-6 lg:flex-row">
         <ConfigurationSidebar catalog={catalog} search={search} onSearchChange={setSearch} />

@@ -68,7 +68,6 @@ export const SETTING_GROUPS = [
   'projects',
   'recruitment',
   'security',
-  'feature_flags',
   'templates',
 ] as const;
 

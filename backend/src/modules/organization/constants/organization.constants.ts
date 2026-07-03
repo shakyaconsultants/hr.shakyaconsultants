@@ -38,8 +38,6 @@ export const MASTER_DATA_ENTITY = {
   SALARY_GRADE: 'salary-grade',
   LEAVE_TYPE: 'leave-type',
   PROJECT_CATEGORY: 'project-category',
-  TECHNOLOGY: 'technology',
-  SKILL: 'skill',
 } as const;
 
 export type MasterDataEntityKey = (typeof MASTER_DATA_ENTITY)[keyof typeof MASTER_DATA_ENTITY];

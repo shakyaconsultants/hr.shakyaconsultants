@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Building2, GitBranch, Layers, Network, Settings2, Wand2 } from 'lucide-react';
+import { Building2, GitBranch, Layers, Network, Settings2 } from 'lucide-react';
 import { ENTITY_CATALOG } from '@/features/organization/constants/entity-catalog';
 import { ROUTES } from '@/config/app.config';
 import { useQuery } from '@tanstack/react-query';
@@ -24,24 +24,16 @@ export function OrganizationDashboardPage() {
         title="Organization"
         description="Configure company structure, master data, and organizational hierarchy from the enterprise console."
         actions={
-          <>
-            <Button asChild variant="default">
-              <Link to={ROUTES.ORGANIZATION_SETUP}>
-                <Wand2 className="mr-2 h-4 w-4" />
-                Setup Wizard
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to={ROUTES.ORGANIZATION_CHART}>
-                <Network className="mr-2 h-4 w-4" />
-                Org Chart
-              </Link>
-            </Button>
-          </>
+          <Button asChild variant="outline">
+            <Link to={ROUTES.ORGANIZATION_CHART}>
+              <Network className="mr-2 h-4 w-4" />
+              Org Chart
+            </Link>
+          </Button>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="mb-2 flex items-center gap-2 text-primary">
             <Building2 className="h-5 w-5" />
@@ -60,15 +52,6 @@ export function OrganizationDashboardPage() {
         </div>
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="mb-2 flex items-center gap-2 text-primary">
-            <GitBranch className="h-5 w-5" />
-            <h2 className="font-semibold">Quick Setup</h2>
-          </div>
-          <Link to={ROUTES.ORGANIZATION_SETUP} className="text-sm font-medium text-primary hover:underline">
-            Resume company setup wizard →
-          </Link>
-        </div>
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-primary">
             <Settings2 className="h-5 w-5" />
             <h2 className="font-semibold">System Settings</h2>
           </div>
@@ -78,21 +61,24 @@ export function OrganizationDashboardPage() {
         </div>
       </div>
 
-      <div>
-        <h2 className="mb-4 text-xl font-semibold">Master Data Modules</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section>
+        <h2 className="mb-4 text-lg font-semibold">Master Data Sections</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {ENTITY_CATALOG.map((entity) => (
             <Link
               key={entity.key}
               to={ROUTES.organizationEntity(entity.key)}
-              className="rounded-lg border bg-card p-5 shadow-sm transition hover:border-primary/50 hover:shadow-md"
+              className="rounded-lg border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
             >
-              <h3 className="font-semibold">{entity.pluralLabel}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{entity.description}</p>
+              <div className="mb-1 flex items-center gap-2 font-medium">
+                <GitBranch className="h-4 w-4 text-primary" />
+                {entity.pluralLabel}
+              </div>
+              <p className="text-sm text-muted-foreground">{entity.description}</p>
             </Link>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

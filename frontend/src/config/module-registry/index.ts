@@ -69,15 +69,6 @@ function buildOrganizationNavItems(): ModuleNavItem[] {
     portals: ENTERPRISE_ONLY,
   };
 
-  const setupItem: ModuleNavItem = {
-    id: 'org-setup',
-    label: 'Setup Wizard',
-    path: ROUTES.ORGANIZATION_SETUP,
-    icon: GitBranch,
-    permission: 'company.update',
-    portals: ENTERPRISE_ONLY,
-  };
-
   const chartItem: ModuleNavItem = {
     id: 'org-chart',
     label: 'Org Chart',
@@ -96,7 +87,7 @@ function buildOrganizationNavItems(): ModuleNavItem[] {
     portals: ENTERPRISE_ONLY,
   }));
 
-  return [companyItem, setupItem, chartItem, ...entityItems];
+  return [companyItem, chartItem, ...entityItems];
 }
 
 const NAV_GROUPS: ModuleNavGroup[] = [
@@ -439,15 +430,6 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             portals: ENTERPRISE_ONLY,
             featureFlag: 'attendance',
           },
-          {
-            id: 'attendance-reports',
-            label: 'Reports',
-            path: ROUTES.ATTENDANCE_REPORTS,
-            icon: FileText,
-            permission: 'attendance.read',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'attendance',
-          },
         ],
       },
       {
@@ -473,15 +455,6 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             label: 'HR Compensation',
             path: ROUTES.PAYROLL_HR,
             icon: Users,
-            permission: 'payroll.read',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'payroll',
-          },
-          {
-            id: 'payroll-reports',
-            label: 'Reports',
-            path: ROUTES.PAYROLL_REPORTS,
-            icon: FileText,
             permission: 'payroll.read',
             portals: ENTERPRISE_ONLY,
             featureFlag: 'payroll',
@@ -613,15 +586,6 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             portals: ENTERPRISE_ONLY,
             featureFlag: 'sales',
           },
-          {
-            id: 'sales-reports',
-            label: 'Analytics',
-            path: ROUTES.SALES_REPORTS,
-            icon: FileText,
-            permission: 'lead.read',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'sales',
-          },
         ],
       },
       {
@@ -639,15 +603,6 @@ const NAV_GROUPS: ModuleNavGroup[] = [
             path: ROUTES.COMMUNICATION_ADMIN,
             icon: Megaphone,
             permission: 'notifications.broadcast',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'communication',
-          },
-          {
-            id: 'communication-reports',
-            label: 'Reports',
-            path: ROUTES.COMMUNICATION_REPORTS,
-            icon: FileText,
-            permissionsAny: ['notifications.broadcast', 'notification.read'],
             portals: ENTERPRISE_ONLY,
             featureFlag: 'communication',
           },
@@ -742,60 +697,6 @@ const NAV_GROUPS: ModuleNavGroup[] = [
           },
         ],
       },
-      {
-        id: 'manager-reports',
-        label: 'Team Reports',
-        path: ROUTES.reportsDashboardRole('hr'),
-        icon: BarChart3,
-        permission: 'analytics.dashboard.read',
-        portals: MANAGER_ONLY,
-        featureFlag: 'reports',
-      },
-    ],
-  },
-  {
-    id: 'insights',
-    label: 'Insights',
-    portals: ENTERPRISE_ONLY,
-    items: [
-      {
-        id: 'insights',
-        label: 'Reports & BI',
-        path: ROUTES.REPORTS_EXECUTIVE,
-        icon: BarChart3,
-        permissionsAny: ['analytics.dashboard.read', 'analytics.report.read'],
-        portals: ENTERPRISE_ONLY,
-        featureFlag: 'reports',
-        children: [
-          {
-            id: 'reports-executive',
-            label: 'Executive Dashboard',
-            path: ROUTES.REPORTS_EXECUTIVE,
-            icon: LayoutDashboard,
-            permission: 'analytics.dashboard.read',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'reports',
-          },
-          {
-            id: 'analytics-hub',
-            label: 'Analytics Hub',
-            path: ROUTES.ANALYTICS,
-            icon: BarChart3,
-            permission: 'analytics.report.read',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'analytics',
-          },
-          {
-            id: 'reports-catalog',
-            label: 'Report Catalog',
-            path: ROUTES.REPORTS,
-            icon: FileText,
-            permission: 'analytics.report.read',
-            portals: ENTERPRISE_ONLY,
-            featureFlag: 'reports',
-          },
-        ],
-      },
     ],
   },
   {
@@ -873,14 +774,6 @@ const NAV_GROUPS: ModuleNavGroup[] = [
         id: 'configuration-hub',
         label: 'Configuration Hub',
         path: ROUTES.CONFIGURATION,
-        icon: Settings,
-        permission: 'settings.manage',
-        portals: ENTERPRISE_ONLY,
-      },
-      {
-        id: 'feature-flags',
-        label: 'Feature Flags',
-        path: ROUTES.configurationSection('feature_flags'),
         icon: Settings,
         permission: 'settings.manage',
         portals: ENTERPRISE_ONLY,
@@ -1039,7 +932,6 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.WORKSPACE_SEARCH, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_MESSAGES, portals: WORKSPACE_ONLY, permissionsAny: ['chat.message.send', 'conversation.read'] },
   { path: ROUTES.ORGANIZATION, portals: ENTERPRISE_ONLY, permission: 'company.read' },
-  { path: ROUTES.ORGANIZATION_SETUP, portals: ENTERPRISE_ONLY, permission: 'company.update' },
   { path: ROUTES.ORGANIZATION_CHART, portals: ENTERPRISE_ONLY, permission: 'company.read' },
   { path: ROUTES.SETTINGS, portals: ENTERPRISE_ONLY, permissionsAny: ['settings.read', 'company.update'] },
   { path: `${ROUTES.ORGANIZATION}/:entityKey/:id`, portals: ENTERPRISE_ONLY, permission: 'company.read' },
@@ -1089,33 +981,21 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.ATTENDANCE_HR, portals: ENTERPRISE_ONLY, permission: 'attendance.approve' },
   { path: ROUTES.ATTENDANCE_TEAM, portals: MANAGER_ONLY, permission: 'attendance.read' },
   { path: ROUTES.WORKSPACE_ATTENDANCE, portals: WORKSPACE_ONLY, permission: 'attendance.read' },
-  { path: ROUTES.ATTENDANCE_REPORTS, portals: ENTERPRISE_ONLY, permission: 'attendance.read' },
   { path: ROUTES.PAYROLL, portals: ENTERPRISE_ONLY, permission: 'payroll.read' },
   { path: ROUTES.PAYROLL_ADMIN, portals: ENTERPRISE_ONLY, permission: 'payroll.update' },
   { path: ROUTES.PAYROLL_FINANCE, portals: [PORTAL.MANAGER, PORTAL.ENTERPRISE], permission: 'payroll.process' },
   { path: ROUTES.PAYROLL_HR, portals: ENTERPRISE_ONLY, permission: 'payroll.read' },
   { path: ROUTES.WORKSPACE_PAYROLL, portals: WORKSPACE_ONLY, permission: 'payslip.read' },
-  { path: ROUTES.PAYROLL_REPORTS, portals: ENTERPRISE_ONLY, permission: 'payroll.read' },
   { path: ROUTES.SALES, portals: ENTERPRISE_ONLY, permission: 'lead.read' },
   { path: ROUTES.SALES_ADMIN, portals: ENTERPRISE_ONLY, permission: 'pipeline.update' },
   { path: ROUTES.SALES_MANAGER, portals: MANAGER_ONLY, permission: 'lead.read' },
   { path: ROUTES.SALES_EXECUTIVE, portals: WORKSPACE_ONLY, permission: 'lead.read' },
-  { path: ROUTES.SALES_REPORTS, portals: ENTERPRISE_ONLY, permission: 'lead.read' },
   { path: ROUTES.COMMUNICATION, portals: ENTERPRISE_ONLY, permissionsAny: ['notification.read', 'notifications.broadcast'] },
   { path: ROUTES.COMMUNICATION_ADMIN, portals: ENTERPRISE_ONLY, permission: 'notifications.broadcast' },
   { path: ROUTES.COMMUNICATION_MANAGER, portals: MANAGER_ONLY, permission: 'conversation.read' },
   { path: ROUTES.COMMUNICATION_INBOX, portals: MANAGER_ONLY, permission: 'notification.read' },
-  { path: ROUTES.COMMUNICATION_REPORTS, portals: ENTERPRISE_ONLY, permissionsAny: ['notifications.broadcast', 'notification.read'] },
   { path: ROUTES.COMMUNICATION_SEARCH, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'conversation.read' },
   { path: `${ROUTES.SALES}/leads/:id`, portals: [...MANAGER_ONLY, ...WORKSPACE_ONLY], permission: 'lead.read' },
-  { path: ROUTES.REPORTS, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
-  { path: ROUTES.REPORTS_EXECUTIVE, portals: ENTERPRISE_ONLY, permission: 'analytics.dashboard.read' },
-  { path: ROUTES.REPORTS_DASHBOARD, portals: ENTERPRISE_ONLY, permission: 'analytics.dashboard.read' },
-  { path: `${ROUTES.REPORTS_DASHBOARD}/:role`, portals: MANAGER_ONLY, permission: 'analytics.dashboard.read' },
-  { path: '/reports/portal', portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
-  { path: ROUTES.REPORTS_RUN, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
-  { path: `${ROUTES.REPORTS_RUN}/:domain/:type`, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
-  { path: ROUTES.ANALYTICS, portals: ENTERPRISE_ONLY, permission: 'analytics.report.read' },
   { path: ROUTES.INTEGRATIONS, portals: ENTERPRISE_ONLY, permission: 'system.config.read' },
   { path: ROUTES.INTEGRATION_CONNECTORS, portals: ENTERPRISE_ONLY, permission: 'system.config.read' },
   { path: ROUTES.API_KEYS, portals: ENTERPRISE_ONLY, permission: 'system.config.manage' },
@@ -1171,11 +1051,8 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   },
 ];
 
-function isFeatureEnabled(featureFlag: string | undefined, flags: FeatureFlags): boolean {
-  if (!featureFlag) {
-    return true;
-  }
-  return flags[featureFlag] ?? false;
+function isFeatureEnabled(_featureFlag: string | undefined, _flags: FeatureFlags): boolean {
+  return true;
 }
 
 function canAccessItem(

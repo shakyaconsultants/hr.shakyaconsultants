@@ -43,9 +43,6 @@ export function SalesManagerPage() {
           </div>
           <p className="text-sm text-muted-foreground">Monitor team leads, assignments, performance, and follow-ups.</p>
         </div>
-        <Button variant="outline" asChild>
-          <Link to={ROUTES.SALES_REPORTS}>Reports</Link>
-        </Button>
       </div>
 
       {dashboard ? (

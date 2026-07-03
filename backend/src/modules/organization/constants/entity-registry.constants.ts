@@ -13,8 +13,6 @@ import {
   LeaveTypeRepository,
   ProjectCategoryRepository,
   SalaryGradeRepository,
-  SkillRepository,
-  TechnologyRepository,
 } from '@domain/master-data/master-data.schemas.js';
 import {
   MASTER_DATA_ENTITY,
@@ -191,36 +189,6 @@ export const MASTER_DATA_ENTITY_REGISTRY: Record<MasterDataEntityKey, MasterData
     searchFields: ['name', 'code'],
     duplicateFields: ['name', 'code'],
     cacheEnabled: false,
-  },
-  [MASTER_DATA_ENTITY.TECHNOLOGY]: {
-    key: MASTER_DATA_ENTITY.TECHNOLOGY,
-    entityType: 'technology',
-    label: 'Technology',
-    repository: TechnologyRepository as unknown as BaseRepository<BaseDocument>,
-    permissions: {
-      read: ORG_PERMISSIONS.TECHNOLOGY_READ,
-      create: ORG_PERMISSIONS.TECHNOLOGY_CREATE,
-      update: ORG_PERMISSIONS.TECHNOLOGY_UPDATE,
-      delete: ORG_PERMISSIONS.TECHNOLOGY_DELETE,
-    },
-    searchFields: ['name', 'code', 'category'],
-    duplicateFields: ['name', 'code'],
-    cacheEnabled: true,
-  },
-  [MASTER_DATA_ENTITY.SKILL]: {
-    key: MASTER_DATA_ENTITY.SKILL,
-    entityType: 'skill',
-    label: 'Skill',
-    repository: SkillRepository as unknown as BaseRepository<BaseDocument>,
-    permissions: {
-      read: ORG_PERMISSIONS.SKILL_READ,
-      create: ORG_PERMISSIONS.SKILL_CREATE,
-      update: ORG_PERMISSIONS.SKILL_UPDATE,
-      delete: ORG_PERMISSIONS.SKILL_DELETE,
-    },
-    searchFields: ['name', 'code', 'category'],
-    duplicateFields: ['name', 'code'],
-    cacheEnabled: true,
   },
 };
 

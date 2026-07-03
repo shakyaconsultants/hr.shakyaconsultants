@@ -57,18 +57,6 @@ export const ENTITY_PERMISSIONS: Record<MasterEntityKey, EntityPermissionSet> = 
     update: 'salary-grade.update',
     delete: 'salary-grade.delete',
   },
-  skill: {
-    read: 'skill.read',
-    create: 'skill.create',
-    update: 'skill.update',
-    delete: 'skill.delete',
-  },
-  technology: {
-    read: 'technology.read',
-    create: 'technology.create',
-    update: 'technology.update',
-    delete: 'technology.delete',
-  },
   'leave-type': {
     read: 'leave-type.read',
     create: 'leave-type.create',

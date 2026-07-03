@@ -27,6 +27,8 @@ export {
 
 const SETTINGS_PREFIX = '/api/v1/settings';
 
+const EXCLUDED_SECTIONS = new Set(['feature_flags', 'reports', 'analytics']);
+
 export interface ConfigurationSection {
   id: string;
   slug: string;
@@ -59,14 +61,6 @@ export interface SettingHistoryEntry {
   reason?: string;
 }
 
-export interface FeatureFlagDefinition {
-  key: string;
-  label: string;
-  description?: string;
-  enabled: boolean;
-  category?: string;
-}
-
 export interface NavigationItemConfig {
   id: string;
   enabled: boolean;
@@ -75,6 +69,7 @@ export interface NavigationItemConfig {
   icon?: string;
   portals?: string[];
   path?: string;
+  groupId?: string;
 }
 
 export interface NavigationConfig {
@@ -122,25 +117,92 @@ export interface SystemHealthResponse {
   metrics?: Record<string, number | string>;
 }
 
-function buildFallbackCatalog(): ConfigurationCatalog {
-  const sections: ConfigurationSection[] = SETTING_GROUPS.map((slug) => ({
-    id: slug,
-    slug,
-    label: slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    group: 'system',
-    description: `${slug} configuration settings`,
-  }));
+interface BackendConfigurationSection {
+  id: string;
+  name: string;
+  description?: string;
+  group: string;
+  settings?: unknown[];
+}
+
+interface BackendNavigationItem {
+  id: string;
+  label?: string;
+  enabled: boolean;
+  sortOrder: number;
+  groupId?: string;
+  icon?: string;
+  portals?: string[];
+  permission?: string;
+}
+
+function formatGroupLabel(groupId: string): string {
+  return groupId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function normalizeSection(raw: BackendConfigurationSection): ConfigurationSection {
+  return {
+    id: raw.id,
+    slug: raw.id,
+    label: raw.name,
+    description: raw.description,
+    group: raw.group,
+    settingCount: Array.isArray(raw.settings) ? raw.settings.length : undefined,
+  };
+}
+
+function buildCatalogFromSections(sections: ConfigurationSection[]): ConfigurationCatalog {
+  const groupMap = new Map<string, string[]>();
+  for (const section of sections) {
+    const list = groupMap.get(section.group) ?? [];
+    list.push(section.slug);
+    groupMap.set(section.group, list);
+  }
 
   return {
     sections,
-    groups: [{ id: 'system', label: 'System', sections: [...SETTING_GROUPS] }],
+    groups: [...groupMap.entries()].map(([id, sectionSlugs]) => ({
+      id,
+      label: formatGroupLabel(id),
+      sections: sectionSlugs,
+    })),
   };
+}
+
+function buildFallbackCatalog(): ConfigurationCatalog {
+  const sections: ConfigurationSection[] = SETTING_GROUPS.filter(
+    (slug) => !EXCLUDED_SECTIONS.has(slug),
+  ).map((slug) => ({
+    id: slug,
+    slug,
+    label: formatGroupLabel(slug),
+    group: 'system',
+    description: `${formatGroupLabel(slug)} configuration settings`,
+  }));
+
+  return buildCatalogFromSections(sections);
+}
+
+function normalizeNavigationItems(raw: BackendNavigationItem[]): NavigationItemConfig[] {
+  return raw.map((item) => ({
+    id: item.id,
+    enabled: item.enabled,
+    order: item.sortOrder,
+    label: item.label,
+    icon: item.icon,
+    portals: item.portals,
+    groupId: item.groupId,
+  }));
 }
 
 export async function fetchConfigurationSections(): Promise<ConfigurationSection[]> {
   try {
-    const { data } = await apiClient.get<ApiSuccessResponse<ConfigurationSection[]>>(`${SETTINGS_PREFIX}/sections`);
-    return data.data;
+    const { data } = await apiClient.get<ApiSuccessResponse<BackendConfigurationSection[]>>(
+      `${SETTINGS_PREFIX}/sections`,
+    );
+    return data.data
+      .filter((section) => !EXCLUDED_SECTIONS.has(section.id))
+      .map(normalizeSection);
   } catch {
     return buildFallbackCatalog().sections;
   }
@@ -148,19 +210,24 @@ export async function fetchConfigurationSections(): Promise<ConfigurationSection
 
 export async function fetchConfigurationCatalog(): Promise<ConfigurationCatalog> {
   try {
-    const { data } = await apiClient.get<ApiSuccessResponse<ConfigurationCatalog>>(`${SETTINGS_PREFIX}/catalog`);
-    return data.data;
+    const { data } = await apiClient.get<ApiSuccessResponse<BackendConfigurationSection[]>>(
+      `${SETTINGS_PREFIX}/catalog`,
+    );
+    const sections = data.data
+      .filter((section) => !EXCLUDED_SECTIONS.has(section.id))
+      .map(normalizeSection);
+    return buildCatalogFromSections(sections);
   } catch {
     return buildFallbackCatalog();
   }
 }
 
 export async function seedConfigurationDefaults(section?: string): Promise<{ seeded: number }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{ seeded: number }>>(
-    `${SETTINGS_PREFIX}/seed-defaults`,
-    section ? { section } : {},
-  );
-  return data.data;
+  const { data } = await apiClient.post<
+    ApiSuccessResponse<{ created: number; skipped: number; updated: number }>
+  >(`${SETTINGS_PREFIX}/seed-defaults`, section ? { section } : {});
+  const result = data.data;
+  return { seeded: result.created + result.updated };
 }
 
 export async function fetchSettingHistory(
@@ -173,38 +240,32 @@ export async function fetchSettingHistory(
   return normalizePaginatedItems<SettingHistoryEntry>(data.data);
 }
 
-export async function fetchFeatureFlagDefinitions(): Promise<FeatureFlagDefinition[]> {
-  try {
-    const { data } = await apiClient.get<ApiSuccessResponse<FeatureFlagDefinition[]>>(`${SETTINGS_PREFIX}/feature-flags`);
-    return data.data;
-  } catch {
-    return [];
-  }
-}
-
-export async function updateFeatureFlags(flags: Record<string, boolean>): Promise<FeatureFlagDefinition[]> {
-  await Promise.all(
-    Object.entries(flags).map(([flagKey, enabled]) =>
-      apiClient.patch(`${SETTINGS_PREFIX}/feature-flags/${encodeURIComponent(flagKey)}`, { enabled }),
-    ),
-  );
-  return fetchFeatureFlagDefinitions();
-}
-
 export async function fetchNavigationConfig(): Promise<NavigationConfig> {
   try {
-    const { data } = await apiClient.get<ApiSuccessResponse<NavigationConfig>>(`${SETTINGS_PREFIX}/navigation`);
-    return data.data;
+    const { data } = await apiClient.get<ApiSuccessResponse<BackendNavigationItem[]>>(
+      `${SETTINGS_PREFIX}/navigation`,
+    );
+    return { items: normalizeNavigationItems(data.data) };
   } catch {
     return { items: [] };
   }
 }
 
 export async function updateNavigationConfig(items: NavigationItemConfig[]): Promise<NavigationConfig> {
-  const { data } = await apiClient.put<ApiSuccessResponse<NavigationConfig>>(`${SETTINGS_PREFIX}/navigation`, {
-    items,
-  });
-  return data.data;
+  const { data } = await apiClient.put<ApiSuccessResponse<BackendNavigationItem[]>>(
+    `${SETTINGS_PREFIX}/navigation`,
+    {
+      overrides: items.map((item) => ({
+        id: item.id,
+        enabled: item.enabled,
+        sortOrder: item.order,
+        groupId: item.groupId ?? 'core',
+        icon: item.icon,
+        portals: item.portals,
+      })),
+    },
+  );
+  return { items: normalizeNavigationItems(data.data) };
 }
 
 export async function fetchAuditLogs(params: AuditListParams = {}): Promise<PaginatedResult<AuditLogEntry>> {
@@ -225,8 +286,19 @@ export async function exportAuditLogsCsv(params: Omit<AuditListParams, 'page' | 
 
 export async function fetchSystemHealth(): Promise<SystemHealthResponse> {
   try {
-    const { data } = await apiClient.get<ApiSuccessResponse<SystemHealthResponse>>(`${SETTINGS_PREFIX}/system/health`);
-    return data.data;
+    const { data } = await apiClient.get<ApiSuccessResponse<SystemHealthResponse>>(
+      `${SETTINGS_PREFIX}/system/health`,
+    );
+    const payload = data.data;
+    return {
+      status: payload.status ?? 'unknown',
+      uptime: payload.uptime,
+      version: payload.version,
+      environment: payload.environment,
+      services: payload.services ?? {},
+      queues: payload.queues,
+      metrics: payload.metrics,
+    };
   } catch {
     return { status: 'unknown', services: {} };
   }

@@ -11,7 +11,7 @@ export interface ProjectWizardStepDefinition {
 export const PROJECT_WIZARD_STEPS: ProjectWizardStepDefinition[] = [
   { id: 'basic', title: 'Project Basics', description: 'Name, type, status, manager, and optional timeline.' },
   { id: 'requirements', title: 'Requirements & Docs', description: 'Goals, functionality, UI docs, and reference links.' },
-  { id: 'tech', title: 'Technology & Scalability', description: 'Tech stack and scalability notes.' },
+  { id: 'tech', title: 'Scalability & Tags', description: 'Scalability notes and project tags.' },
   { id: 'deployment', title: 'Repository & Deployment', description: 'GitHub, deployment URL, and encrypted environment variables.' },
   { id: 'team', title: 'Initial Team', description: 'Optional team members to add on day one.' },
   { id: 'review', title: 'Review', description: 'Confirm configuration before creating the project.' },
@@ -43,7 +43,6 @@ export interface ProjectWizardDraft {
     documentUrls: string;
   };
   tech: {
-    technologyIds: string[];
     scalabilityNotes: string;
     tags: string;
   };
@@ -77,7 +76,6 @@ export const EMPTY_PROJECT_WIZARD_DRAFT: ProjectWizardDraft = {
     documentUrls: '',
   },
   tech: {
-    technologyIds: [],
     scalabilityNotes: '',
     tags: '',
   },

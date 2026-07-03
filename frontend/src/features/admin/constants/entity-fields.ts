@@ -90,14 +90,6 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     { key: 'maxSalary', label: 'Max Salary', type: 'number' },
     { key: 'level', label: 'Level', type: 'number' },
   ],
-  skill: [
-    ...BASE_FIELDS,
-    { key: 'category', label: 'Category', type: 'text' },
-  ],
-  technology: [
-    ...BASE_FIELDS,
-    { key: 'category', label: 'Category', type: 'text' },
-  ],
   'leave-type': [
     ...BASE_FIELDS,
     { key: 'isPaid', label: 'Paid Leave', type: 'boolean' },

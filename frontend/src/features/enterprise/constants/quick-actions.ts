@@ -13,7 +13,6 @@ import {
   Workflow,
 } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
-import { buildWizardStepUrl } from '@/features/admin/constants/wizard-steps';
 
 export interface EnterpriseQuickAction {
   id: string;
@@ -45,7 +44,7 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
   {
     id: 'branch',
     label: 'Branch',
-    description: 'Add via company setup wizard',
+    description: 'Add a company branch',
     path: `${ROUTES.organizationEntity('branch')}?action=create`,
     icon: Building2,
     permission: 'branch.create',
@@ -53,7 +52,7 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
   {
     id: 'department',
     label: 'Department',
-    description: 'Add via company setup wizard',
+    description: 'Add an organizational department',
     path: `${ROUTES.organizationEntity('department')}?action=create`,
     icon: GitBranch,
     permission: 'department.create',
@@ -61,8 +60,8 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
   {
     id: 'designation',
     label: 'Designation',
-    description: 'Add via company setup wizard',
-    path: buildWizardStepUrl('designation'),
+    description: 'Add a job designation',
+    path: `${ROUTES.organizationEntity('designation')}?action=create`,
     icon: Users,
     permission: 'designation.create',
   },
@@ -94,16 +93,16 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
   {
     id: 'holiday',
     label: 'Holiday',
-    description: 'Add via company setup wizard',
-    path: buildWizardStepUrl('holiday'),
+    description: 'Add a holiday to the calendar',
+    path: `${ROUTES.organizationEntity('holiday')}?action=create`,
     icon: CalendarDays,
     permission: 'holiday.create',
   },
   {
     id: 'work-shift',
     label: 'Work Shift',
-    description: 'Add via company setup wizard',
-    path: buildWizardStepUrl('work-shift'),
+    description: 'Define a work shift schedule',
+    path: `${ROUTES.organizationEntity('work-shift')}?action=create`,
     icon: Clock,
     permission: 'work-shift.create',
   },

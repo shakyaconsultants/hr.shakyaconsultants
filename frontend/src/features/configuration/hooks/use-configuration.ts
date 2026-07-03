@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppMutation } from '@/shared/feedback/use-app-mutation';
-import { DEFAULT_FEATURE_FLAGS, type FeatureFlags } from '@/config/module-registry';
 import { ON_DEMAND_QUERY_OPTIONS, MASTER_DATA_QUERY_OPTIONS } from '@/shared/api/query-config';
 import { queryKeys } from '@/shared/api/query-keys';
 import { useAuthStore } from '@/shared/stores/app.store';
@@ -9,14 +8,12 @@ import {
   fetchAuditLogs,
   fetchConfigurationCatalog,
   fetchConfigurationSections,
-  fetchFeatureFlagDefinitions,
   fetchNavigationConfig,
   fetchSettingHistory,
   fetchSettings,
   fetchSettingsByGroup,
   fetchSystemHealth,
   seedConfigurationDefaults,
-  updateFeatureFlags,
   updateNavigationConfig,
   updateSetting,
   createSetting,
@@ -56,7 +53,7 @@ export function useConfigurationSettingsByGroup(group: string) {
   return useQuery({
     queryKey: [...CONFIG_QUERY_KEY, 'settings', 'group', group],
     queryFn: () => fetchSettingsByGroup(group),
-    enabled: Boolean(group),
+    enabled: Boolean(group) && !['feature_flags', 'reports', 'analytics'].includes(group),
     ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
@@ -79,7 +76,6 @@ export function useUpdateConfigurationSetting() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: ['settings'] });
-      void queryClient.invalidateQueries({ queryKey: ['feature-flags'] });
     },
   });
 }
@@ -110,65 +106,6 @@ export function useSeedConfigurationDefaults() {
     mutationFn: (section?: string) => seedConfigurationDefaults(section),
     successMessage: 'Defaults seeded successfully',
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY }),
-  });
-}
-
-function parseFeatureFlagsFromDefinitions(
-  definitions: Array<{ key: string; enabled: boolean }>,
-): FeatureFlags {
-  const flags: FeatureFlags = { ...DEFAULT_FEATURE_FLAGS };
-  for (const def of definitions) {
-    const flagKey = def.key.replace(/^feature\./, '');
-    if (flagKey in flags) {
-      flags[flagKey] = Boolean(def.enabled);
-    } else {
-      flags[flagKey] = Boolean(def.enabled);
-    }
-  }
-  return flags;
-}
-
-export function useConfigurationFeatureFlags() {
-  const queryClient = useQueryClient();
-  const setSessionFeatureFlags = useAuthStore((s) => s.setSessionFeatureFlags);
-  const query = useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'feature-flags'],
-    queryFn: async () => {
-      const definitions = await fetchFeatureFlagDefinitions();
-      if (definitions.length === 0) {
-        const settings = await fetchSettingsByGroup('feature_flags');
-        if (settings.length === 0) return DEFAULT_FEATURE_FLAGS;
-        const flags: FeatureFlags = { ...DEFAULT_FEATURE_FLAGS };
-        for (const setting of settings) {
-          const flagKey = setting.key.replace(/^feature\./, '');
-          flags[flagKey] = Boolean(setting.value);
-        }
-        return flags;
-      }
-      return parseFeatureFlagsFromDefinitions(definitions);
-    },
-    ...MASTER_DATA_QUERY_OPTIONS,
-  });
-
-  const mutation = useAppMutation({
-    mutationFn: (flags: Record<string, boolean>) => updateFeatureFlags(flags),
-    errorToast: false,
-    successMessage: false,
-    onSuccess: (_data, variables) => {
-      setSessionFeatureFlags({ ...DEFAULT_FEATURE_FLAGS, ...variables } as FeatureFlags);
-      void queryClient.invalidateQueries({ queryKey: [...CONFIG_QUERY_KEY, 'feature-flags'] });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.featureFlags });
-    },
-  });
-
-  return { ...query, updateFlags: mutation };
-}
-
-export function useFeatureFlagDefinitions() {
-  return useQuery({
-    queryKey: [...CONFIG_QUERY_KEY, 'feature-flag-definitions'],
-    queryFn: fetchFeatureFlagDefinitions,
-    ...MASTER_DATA_QUERY_OPTIONS,
   });
 }
 

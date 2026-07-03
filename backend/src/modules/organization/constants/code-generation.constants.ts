@@ -98,22 +98,6 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
     includeYear: false,
     includeMonth: false,
   },
-  [MASTER_DATA_ENTITY.TECHNOLOGY]: {
-    prefixSettingKey: 'organization.technology_code_prefix',
-    defaultPrefix: 'TECH',
-    slugFromName: false,
-    padLength: 3,
-    includeYear: false,
-    includeMonth: false,
-  },
-  [MASTER_DATA_ENTITY.SKILL]: {
-    prefixSettingKey: 'organization.skill_code_prefix',
-    defaultPrefix: 'SKL',
-    slugFromName: false,
-    padLength: 3,
-    includeYear: false,
-    includeMonth: false,
-  },
 };
 
 export function entitySupportsAutoCode(entityKey: MasterDataEntityKey): boolean {

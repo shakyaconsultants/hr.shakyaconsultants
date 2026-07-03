@@ -20,7 +20,6 @@ import {
   useSaveProjectWizardDraft,
 } from '@/features/project/hooks/use-projects';
 import { useEmployees } from '@/features/employee/hooks/use-employees';
-import { useMasterDataList } from '@/features/organization/hooks/use-master-data';
 import { PageHeader } from '@/shared/components/page-header';
 import { Button } from '@/shared/components/ui/button';
 import { DatePicker } from '@/shared/components/date-picker';
@@ -61,7 +60,6 @@ function buildFinalizePayload(draft: ProjectWizardDraft) {
       uiDocs: draft.requirements.uiDocs || undefined,
       scalabilityNotes: draft.tech.scalabilityNotes || undefined,
       tags,
-      technologyIds: draft.tech.technologyIds,
     },
     repository: {
       repositoryUrl: draft.deployment.repositoryUrl || undefined,
@@ -70,7 +68,6 @@ function buildFinalizePayload(draft: ProjectWizardDraft) {
       deploymentGuide: draft.deployment.deploymentGuide || undefined,
       documentUrls: documentUrls.length > 0 ? documentUrls : undefined,
     },
-    technologyIds: draft.tech.technologyIds,
     documentUrls,
     teamMembers: draft.teamMembers.filter((m) => m.employeeId),
   };
@@ -88,7 +85,6 @@ export function ProjectCreateWizardPage() {
   const saveDraftMutation = useSaveProjectWizardDraft();
   const finalizeMutation = useFinalizeProjectWizard();
   const { data: employees } = useEmployees({ pageSize: 300, status: 'active' });
-  const { data: technologies } = useMasterDataList('technology', { pageSize: 100 });
 
   const step = PROJECT_WIZARD_STEPS[draft.currentStepIndex];
   const employeeOptions = employees?.items ?? [];
@@ -198,18 +194,6 @@ export function ProjectCreateWizardPage() {
     }));
   }
 
-  function toggleTechnology(id: string) {
-    setDraft((prev) => ({
-      ...prev,
-      tech: {
-        ...prev.tech,
-        technologyIds: prev.tech.technologyIds.includes(id)
-          ? prev.tech.technologyIds.filter((t) => t !== id)
-          : [...prev.tech.technologyIds, id],
-      },
-    }));
-  }
-
   function exportEnvFile() {
     const blob = new Blob([draft.deployment.envVariables], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -304,24 +288,7 @@ export function ProjectCreateWizardPage() {
 
           {step.id === 'tech' && (
             <div className="space-y-4">
-              <Field label="Technologies">
-                <div className="flex flex-wrap gap-2">
-                  {(technologies?.items ?? []).map((tech) => (
-                    <button
-                      key={tech.id}
-                      type="button"
-                      onClick={() => toggleTechnology(tech.id)}
-                      className={cn(
-                        'rounded-full border px-3 py-1 text-sm',
-                        draft.tech.technologyIds.includes(tech.id) ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground',
-                      )}
-                    >
-                      {String(tech.name)}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-              <Field label="Scalability & Tech Stack Notes"><textarea className="min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.tech.scalabilityNotes} onChange={(e) => updateTech('scalabilityNotes', e.target.value)} placeholder="Architecture, scaling strategy, infra choices..." /></Field>
+              <Field label="Scalability Notes"><textarea className="min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.tech.scalabilityNotes} onChange={(e) => updateTech('scalabilityNotes', e.target.value)} placeholder="Architecture, scaling strategy, infra choices..." /></Field>
               <Field label="Tags (comma-separated)"><Input value={draft.tech.tags} onChange={(e) => updateTech('tags', e.target.value)} placeholder="backend, mobile, api" /></Field>
             </div>
           )}
@@ -387,7 +354,7 @@ export function ProjectCreateWizardPage() {
               <ReviewRow label="Repository" value={draft.deployment.repositoryUrl || '—'} />
               <ReviewRow label="Deployment" value={draft.deployment.deploymentUrl || '—'} />
               <ReviewRow label="Team Members" value={String(draft.teamMembers.filter((m) => m.employeeId).length)} />
-              <ReviewRow label="Technologies" value={String(draft.tech.technologyIds.length)} />
+              <ReviewRow label="Tags" value={draft.tech.tags || '—'} />
               <ReviewRow label="Env Variables" value={draft.deployment.envVariables ? 'Configured (encrypted)' : 'None'} />
             </div>
           )}

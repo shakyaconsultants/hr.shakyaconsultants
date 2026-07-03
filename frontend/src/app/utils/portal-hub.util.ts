@@ -13,7 +13,7 @@ export function resolveAttendanceHubRoute(portal: PortalType, hasPermission: Per
       return ROUTES.ATTENDANCE_HR;
     }
     if (hasPermission('attendance.read')) {
-      return ROUTES.ATTENDANCE_REPORTS;
+      return ROUTES.ATTENDANCE;
     }
     return ROUTES.FORBIDDEN;
   }
@@ -65,7 +65,7 @@ export function resolveSalesHubRoute(portal: PortalType, hasPermission: Permissi
     return ROUTES.FORBIDDEN;
   }
   if (portal === PORTAL.ENTERPRISE) {
-    return ROUTES.SALES_REPORTS;
+    return ROUTES.SALES;
   }
   if (portal === PORTAL.MANAGER) {
     return ROUTES.SALES_MANAGER;
@@ -81,7 +81,7 @@ export function resolveCommunicationHubRoute(portal: PortalType, hasPermission: 
 
   if (portal === PORTAL.ENTERPRISE) {
     if (hasPermission('notification.read')) {
-      return ROUTES.COMMUNICATION_REPORTS;
+      return ROUTES.COMMUNICATION;
     }
     return ROUTES.FORBIDDEN;
   }

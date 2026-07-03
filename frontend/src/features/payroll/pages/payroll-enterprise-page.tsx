@@ -43,12 +43,6 @@ export function PayrollEnterprisePage() {
             Configure salary structures, components, policies, and payroll calendar.
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link to={ROUTES.PAYROLL_REPORTS}>
-            <FileText className="mr-2 h-4 w-4" />
-            Reports
-          </Link>
-        </Button>
       </div>
 
       <div className="flex flex-wrap gap-1 border-b">

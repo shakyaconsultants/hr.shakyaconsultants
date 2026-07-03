@@ -18,7 +18,7 @@ import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 
-const TABS = ['Overview', 'Policies', 'Shifts', 'Assignments', 'Calendar', 'Reports', 'Processing'] as const;
+const TABS = ['Overview', 'Policies', 'Shifts', 'Assignments', 'Calendar', 'Processing'] as const;
 
 export function AttendanceEnterprisePage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Overview');
@@ -59,12 +59,6 @@ export function AttendanceEnterprisePage() {
           </div>
           <p className="text-sm text-muted-foreground">Configure policies, shift assignments, and process monthly attendance.</p>
         </div>
-        <Button variant="outline" asChild>
-          <Link to={ROUTES.ATTENDANCE_REPORTS}>
-            <FileText className="mr-2 h-4 w-4" />
-            Reports
-          </Link>
-        </Button>
       </div>
 
       <div className="flex flex-wrap gap-1 border-b">
@@ -182,16 +176,6 @@ export function AttendanceEnterprisePage() {
       {activeTab === 'Calendar' ? (
         <section className="rounded-lg border bg-card p-6">
           <AttendanceCalendar showEmployee />
-        </section>
-      ) : null}
-
-      {activeTab === 'Reports' ? (
-        <section className="rounded-lg border bg-card p-6">
-          <h2 className="mb-2 font-semibold">Attendance Reports</h2>
-          <p className="mb-4 text-sm text-muted-foreground">Generate and export attendance reports by period and scope.</p>
-          <Button asChild>
-            <Link to={ROUTES.ATTENDANCE_REPORTS}>Open Reports</Link>
-          </Button>
         </section>
       ) : null}
 

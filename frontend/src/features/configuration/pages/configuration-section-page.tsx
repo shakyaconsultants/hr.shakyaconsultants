@@ -9,7 +9,6 @@ import { SettingFieldEditor } from '@/features/configuration/components/setting-
 import { SettingHistoryPanel } from '@/features/configuration/components/setting-history-panel';
 import { BrandingConfigPage } from '@/features/configuration/pages/branding-config-page';
 import { CompanyConfigPage } from '@/features/configuration/pages/company-config-page';
-import { FeatureManagementPage } from '@/features/configuration/pages/feature-management-page';
 import {
   useConfigurationCatalog,
   useConfigurationSettingsByGroup,
@@ -21,7 +20,7 @@ import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { useAuthStore } from '@/shared/stores/app.store';
 
-const SPECIAL_SECTIONS = new Set(['company', 'branding', 'feature_flags']);
+const SPECIAL_SECTIONS = new Set(['company', 'branding']);
 
 export function ConfigurationSectionPage() {
   const { section = '' } = useParams<{ section: string }>();
@@ -53,7 +52,6 @@ export function ConfigurationSectionPage() {
   if (SPECIAL_SECTIONS.has(section)) {
     if (section === 'company') return <CompanyConfigPage embedded />;
     if (section === 'branding') return <BrandingConfigPage embedded />;
-    if (section === 'feature_flags') return <FeatureManagementPage embedded />;
   }
 
   async function handleSave() {
