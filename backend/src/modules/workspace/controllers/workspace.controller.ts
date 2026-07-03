@@ -14,7 +14,6 @@ import { WorkspaceMyTasksService } from '@modules/workspace/services/workspace-m
 import { WorkspaceDocumentsService } from '@modules/workspace/services/workspace-documents.service.js';
 import { WorkspaceAnnouncementsService } from '@modules/workspace/services/workspace-announcements.service.js';
 import { WorkspaceNotificationsService } from '@modules/workspace/services/workspace-notifications.service.js';
-import { WorkspaceTimelineService } from '@modules/workspace/services/workspace-timeline.service.js';
 import { WorkspaceCalendarService } from '@modules/workspace/services/workspace-calendar.service.js';
 import { WorkspaceSearchService } from '@modules/workspace/services/workspace-search.service.js';
 import { WorkspaceOnboardingService } from '@modules/workspace/services/workspace-onboarding.service.js';
@@ -362,26 +361,6 @@ export const archiveNotification: RequestHandler = async (req, res, next) => {
     const { id } = validateInput(idParamSchema, req.params);
     const data = await WorkspaceNotificationsService.archive(actor(authReq), id);
     return ResponseService.success(res, authReq, data);
-  } catch (error) {
-    next(error);
-    return;
-  }
-};
-
-export const listActivity: RequestHandler = async (req, res, next) => {
-  try {
-    const authReq = req as AuthenticatedRequest;
-    const query = validateInput(listQuerySchema, req.query);
-    const data = await WorkspaceTimelineService.list(actor(authReq), query);
-    return ResponseService.paginated(res, authReq, {
-      items: data.items,
-      pagination: {
-        page: data.page ?? 1,
-        pageSize: data.pageSize ?? 20,
-        total: data.total,
-        totalPages: Math.max(1, Math.ceil(data.total / (data.pageSize ?? 20))),
-      },
-    });
   } catch (error) {
     next(error);
     return;

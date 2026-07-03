@@ -31,19 +31,6 @@ export interface MeResult {
   sessionId: string;
 }
 
-export interface SessionRecord {
-  sessionId: string;
-  deviceName?: string;
-  browser?: string;
-  os?: string;
-  platform?: string;
-  ipAddress?: string;
-  loggedInAt: string;
-  lastActiveAt: string;
-  expiresAt: string;
-  isCurrent: boolean;
-}
-
 async function unwrap<T>(response: { data: ApiSuccessResponse<T> }): Promise<T> {
   return response.data.data;
 }
@@ -84,15 +71,6 @@ export async function resetPasswordRequest(token: string, password: string): Pro
     password,
   });
   return unwrap(response);
-}
-
-export async function fetchSessions(): Promise<SessionRecord[]> {
-  const response = await apiClient.get<ApiSuccessResponse<SessionRecord[]>>(`${AUTH_PREFIX}/sessions`);
-  return unwrap(response);
-}
-
-export async function revokeSessionRequest(sessionId: string): Promise<void> {
-  await apiClient.post(`${AUTH_PREFIX}/sessions/${sessionId}/revoke`);
 }
 
 export async function fetchSystemStatus(): Promise<{ initialized: boolean }> {

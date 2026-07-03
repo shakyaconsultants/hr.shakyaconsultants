@@ -5,7 +5,6 @@ import { WORKSPACE_WIDGET } from '@domain/workspace/workspace-extended.schemas.j
 import { ProjectRepository, ProjectMemberRepository, TaskRepository } from '@domain/project/project.schemas.js';
 import { PROJECT_TASK_STATUS } from '@domain/project/project-extended.schemas.js';
 import { ProjectAccessService } from '@modules/project/services/project-access.service.js';
-import { ActivityLogRepository } from '@domain/audit/audit.schemas.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { WORKSPACE_QUICK_LINKS } from '@modules/workspace/constants/workspace.constants.js';
 import { WorkspaceAuditService } from '@modules/workspace/services/workspace-audit.service.js';
@@ -58,8 +57,6 @@ export const WorkspaceWidgetDataService = {
         return this.getUpcomingDeadlines(context);
       case WORKSPACE_WIDGET.RECENT_NOTIFICATIONS:
         return this.getRecentNotifications(context);
-      case WORKSPACE_WIDGET.RECENT_ACTIVITIES:
-        return this.getRecentActivities(context);
       case WORKSPACE_WIDGET.ATTENDANCE_SUMMARY:
         return { placeholder: true, message: 'Attendance module coming soon', summary: null };
       case WORKSPACE_WIDGET.LEAVE_BALANCE:
@@ -184,15 +181,6 @@ export const WorkspaceWidgetDataService = {
     );
     const sorted = notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return { notifications: sorted.slice(0, 8).map(WorkspaceAuditService.toRecord), unreadCount: sorted.filter((n) => !n.readAt).length };
-  },
-
-  async getRecentActivities(context: WorkspaceActorContext) {
-    const activities = await ActivityLogRepository.findMany(
-      { userId: context.userId },
-      { companyId: context.companyId },
-    );
-    const sorted = activities.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    return { activities: sorted.slice(0, 8).map(WorkspaceAuditService.toRecord) };
   },
 
   async getAnnouncements(context: WorkspaceActorContext) {

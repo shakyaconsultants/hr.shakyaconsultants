@@ -3,14 +3,11 @@ import { AUTH_ROUTES } from '@modules/auth/constants/auth.constants.js';
 import {
   forgotPassword,
   getMe,
-  listSessions,
-  listSessionHistory,
   login,
   logout,
   logoutAll,
   refresh,
   resetPassword,
-  revokeSession,
 } from '@modules/auth/controllers/auth.controller.js';
 import { bootstrap, getSystemStatus } from '@modules/auth/controllers/bootstrap.controller.js';
 import { authenticateMiddleware } from '@modules/auth/middleware/authenticate.middleware.js';
@@ -216,8 +213,5 @@ authRoutes.post(AUTH_ROUTES.RESET_PASSWORD, resetPasswordRateLimitMiddleware, re
  *         description: Current user profile with permissions
  */
 authRoutes.get(AUTH_ROUTES.ME, authenticateMiddleware, getMe);
-authRoutes.get(AUTH_ROUTES.SESSIONS, authenticateMiddleware, listSessions);
-authRoutes.get(AUTH_ROUTES.SESSIONS_HISTORY, authenticateMiddleware, listSessionHistory);
-authRoutes.post(AUTH_ROUTES.SESSION_REVOKE, authenticateMiddleware, revokeSession);
 
 export { authRoutes };

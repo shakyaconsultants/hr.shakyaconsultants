@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useMergedNavigation } from '@/features/configuration/hooks/use-navigation-config';
+import { useMergedNavigation } from '@/app/hooks/use-merged-navigation';
 import type { ModuleNavItem } from '@/config/module-registry/types';
 import type { PortalType } from '@/config/portals';
 import { cn } from '@/shared/utils/cn';

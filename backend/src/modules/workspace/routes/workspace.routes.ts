@@ -19,7 +19,6 @@ import {
   getProfile,
   getWidgetData,
   getWorkspaceLayout,
-  listActivity,
   listAnnouncements,
   listDocuments,
   listMyProjects,
@@ -74,7 +73,6 @@ workspaceRoutes.patch('/notifications/:id/read', authorize(WORKSPACE_PERMISSIONS
 workspaceRoutes.post('/notifications/mark-all-read', authorize(WORKSPACE_PERMISSIONS.NOTIFICATION_MANAGE), markAllNotificationsRead);
 workspaceRoutes.patch('/notifications/:id/archive', authorize(WORKSPACE_PERMISSIONS.NOTIFICATION_MANAGE), archiveNotification);
 
-workspaceRoutes.get('/activity', authorize(WORKSPACE_PERMISSIONS.TIMELINE_READ), listActivity);
 workspaceRoutes.get('/calendar', authorize(WORKSPACE_PERMISSIONS.CALENDAR_READ), getCalendar);
 workspaceRoutes.get('/search', authorize(WORKSPACE_PERMISSIONS.SEARCH), search);
 

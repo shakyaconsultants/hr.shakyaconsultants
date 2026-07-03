@@ -25,15 +25,14 @@ export const WORKSPACE_WIDGET_CATALOG: WidgetCatalogEntry[] = [
   { slug: WORKSPACE_WIDGET.PROJECT_PROGRESS, name: 'Project Progress', description: 'Overall progress across your projects', defaultSortOrder: 3, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
   { slug: WORKSPACE_WIDGET.UPCOMING_DEADLINES, name: 'Upcoming Deadlines', description: 'Tasks and milestones due soon', defaultSortOrder: 4, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
   { slug: WORKSPACE_WIDGET.RECENT_NOTIFICATIONS, name: 'Recent Notifications', description: 'Latest notifications', defaultSortOrder: 5, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.NOTIFICATION_READ },
-  { slug: WORKSPACE_WIDGET.RECENT_ACTIVITIES, name: 'Recent Activities', description: 'Your recent activity feed', defaultSortOrder: 6, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.TIMELINE_READ },
-  { slug: WORKSPACE_WIDGET.ATTENDANCE_SUMMARY, name: 'Attendance Summary', description: 'Attendance overview (coming soon)', defaultSortOrder: 7, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, isPlaceholder: true },
-  { slug: WORKSPACE_WIDGET.LEAVE_BALANCE, name: 'Leave Balance', description: 'Leave balance overview (coming soon)', defaultSortOrder: 8, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, isPlaceholder: true },
-  { slug: WORKSPACE_WIDGET.PAYSLIPS, name: 'Payslips', description: 'Recent payslips (coming soon)', defaultSortOrder: 9, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, isPlaceholder: true },
-  { slug: WORKSPACE_WIDGET.ANNOUNCEMENTS, name: 'Company Announcements', description: 'Latest company announcements', defaultSortOrder: 10, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.ANNOUNCEMENT_READ },
-  { slug: WORKSPACE_WIDGET.QUICK_LINKS, name: 'Quick Links', description: 'Shortcuts to common actions', defaultSortOrder: 11, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
-  { slug: WORKSPACE_WIDGET.UPCOMING_BIRTHDAYS, name: 'Upcoming Birthdays', description: 'Team birthdays this month', defaultSortOrder: 12, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
-  { slug: WORKSPACE_WIDGET.WORK_ANNIVERSARIES, name: 'Work Anniversaries', description: 'Work anniversaries this month', defaultSortOrder: 13, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
-  { slug: WORKSPACE_WIDGET.MANAGER_MESSAGES, name: 'Manager Messages', description: 'Messages from your manager', defaultSortOrder: 14, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, roleHints: ['employee'] },
+  { slug: WORKSPACE_WIDGET.ATTENDANCE_SUMMARY, name: 'Attendance Summary', description: 'Attendance overview (coming soon)', defaultSortOrder: 6, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, isPlaceholder: true },
+  { slug: WORKSPACE_WIDGET.LEAVE_BALANCE, name: 'Leave Balance', description: 'Leave balance overview (coming soon)', defaultSortOrder: 7, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, isPlaceholder: true },
+  { slug: WORKSPACE_WIDGET.PAYSLIPS, name: 'Payslips', description: 'Recent payslips (coming soon)', defaultSortOrder: 8, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, isPlaceholder: true },
+  { slug: WORKSPACE_WIDGET.ANNOUNCEMENTS, name: 'Company Announcements', description: 'Latest company announcements', defaultSortOrder: 9, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.ANNOUNCEMENT_READ },
+  { slug: WORKSPACE_WIDGET.QUICK_LINKS, name: 'Quick Links', description: 'Shortcuts to common actions', defaultSortOrder: 10, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
+  { slug: WORKSPACE_WIDGET.UPCOMING_BIRTHDAYS, name: 'Upcoming Birthdays', description: 'Team birthdays this month', defaultSortOrder: 11, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
+  { slug: WORKSPACE_WIDGET.WORK_ANNIVERSARIES, name: 'Work Anniversaries', description: 'Work anniversaries this month', defaultSortOrder: 12, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ },
+  { slug: WORKSPACE_WIDGET.MANAGER_MESSAGES, name: 'Manager Messages', description: 'Messages from your manager', defaultSortOrder: 13, defaultColumnSpan: 1, requiredPermission: WORKSPACE_PERMISSIONS.READ, roleHints: ['employee'] },
 ];
 
 function filterByPermissions(catalog: WidgetCatalogEntry[], permissions: string[]): WidgetCatalogEntry[] {

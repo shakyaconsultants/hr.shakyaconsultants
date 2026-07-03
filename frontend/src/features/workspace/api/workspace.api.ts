@@ -255,14 +255,6 @@ export async function archiveNotification(id: string): Promise<NotificationRecor
   return data.data;
 }
 
-export async function fetchActivity(params: ListParams = {}): Promise<{ items: TimelineItem[]; total: number }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<{ items: TimelineItem[]; total: number }>>(
-    `${WORKSPACE_PREFIX}/activity`,
-    { params },
-  );
-  return data.data;
-}
-
 export async function fetchCalendar(startDate: string, endDate: string): Promise<{ events: CalendarEvent[] }> {
   const { data } = await apiClient.get<ApiSuccessResponse<{ events: CalendarEvent[] }>>(`${WORKSPACE_PREFIX}/calendar`, { params: { startDate, endDate } });
   return data.data;

@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
 
-type Tab = 'overview' | 'documents' | 'education' | 'experience' | 'skills' | 'certifications' | 'assets' | 'timeline' | 'hierarchy' | 'sessions' | 'permissions' | 'activity';
+type Tab = 'overview' | 'documents' | 'education' | 'experience' | 'skills' | 'certifications' | 'assets' | 'timeline' | 'hierarchy' | 'permissions';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -18,7 +18,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'assets', label: 'Assets' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'hierarchy', label: 'Reporting' },
-  { id: 'sessions', label: 'Sessions' },
   { id: 'permissions', label: 'Permissions' },
 ];
 
@@ -131,13 +130,6 @@ export function WorkspaceProfilePage() {
           <HierarchyCard title="Direct Reports" people={hierarchy.directReports} />
         </div>
       )}
-
-      {tab === 'sessions' && <RecordList items={profile.sessions} render={(s) => (
-        <div>
-          <p className="font-medium">{String(s.deviceName ?? s.userAgent ?? 'Session')}</p>
-          <p className="text-xs text-muted-foreground">{s.lastActiveAt ? new Date(String(s.lastActiveAt)).toLocaleString() : ''}</p>
-        </div>
-      )} />}
 
       {tab === 'permissions' && (
         <div className="rounded-lg border bg-card p-6">

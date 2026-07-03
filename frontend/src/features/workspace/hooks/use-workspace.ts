@@ -5,7 +5,6 @@ import {
   archiveNotification,
   bulkUpdateTaskStatus,
   downloadDocument,
-  fetchActivity,
   fetchAnnouncements,
   fetchCalendar,
   fetchDocuments,
@@ -42,7 +41,6 @@ const KEYS = {
   documents: (params: ListParams) => ['workspace', 'documents', params] as const,
   announcements: (params: ListParams) => ['workspace', 'announcements', params] as const,
   notifications: (params: ListParams & { isRead?: boolean }) => ['workspace', 'notifications', params] as const,
-  activity: (params: ListParams) => ['workspace', 'activity', params] as const,
   onboarding: ['workspace', 'onboarding', 'status'] as const,
   calendar: (start: string, end: string) => ['workspace', 'calendar', start, end] as const,
   search: (q: string) => ['workspace', 'search', q] as const,
@@ -198,10 +196,6 @@ export function useArchiveNotification() {
     successMessage: 'Archived successfully',
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workspace', 'notifications'] }),
   });
-}
-
-export function useActivity(params: ListParams = {}) {
-  return useQuery({ queryKey: KEYS.activity(params), queryFn: () => fetchActivity(params) });
 }
 
 export function useCalendar(startDate: string, endDate: string) {

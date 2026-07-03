@@ -2,18 +2,8 @@
 export const queryKeys = {
   auth: {
     session: ['auth', 'session'] as const,
-    sessions: ['auth', 'sessions'] as const,
   },
   featureFlags: ['feature-flags'] as const,
-  configuration: {
-    root: ['configuration'] as const,
-    navigation: ['configuration', 'navigation'] as const,
-    catalog: ['configuration', 'catalog'] as const,
-    sections: ['configuration', 'sections'] as const,
-    settings: (params: Record<string, unknown> = {}) => ['configuration', 'settings', params] as const,
-    audit: (params: Record<string, unknown> = {}) => ['configuration', 'audit', params] as const,
-    systemHealth: ['configuration', 'system-health'] as const,
-  },
   settings: {
     root: ['settings'] as const,
     group: (group: string) => ['settings', 'group', group] as const,

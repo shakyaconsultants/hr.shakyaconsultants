@@ -45,8 +45,6 @@ function WidgetContent({ slug, data }: { slug: string; data: Record<string, unkn
       return <DeadlineList items={(data.deadlines as Record<string, unknown>[]) ?? []} />;
     case 'recent_notifications':
       return <NotificationList items={(data.notifications as Record<string, unknown>[]) ?? []} unread={Number(data.unreadCount ?? 0)} />;
-    case 'recent_activities':
-      return <ActivityList items={(data.activities as Record<string, unknown>[]) ?? []} />;
     case 'announcements':
       return <AnnouncementList items={(data.announcements as Record<string, unknown>[]) ?? []} />;
     case 'quick_links':
@@ -151,19 +149,6 @@ function NotificationList({ items, unread }: { items: Record<string, unknown>[];
   );
 }
 
-function ActivityList({ items }: { items: Record<string, unknown>[] }) {
-  if (items.length === 0) return <EmptyState title="No recent activity" />;
-  return (
-    <ul className="space-y-2 text-sm">
-      {items.map((a) => (
-        <li key={String(a.id)} className="border-b pb-2 last:border-0">
-          <p>{String(a.description)}</p>
-          <p className="text-xs text-muted-foreground">{a.createdAt ? new Date(String(a.createdAt)).toLocaleString() : ''}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 function AnnouncementList({ items }: { items: Record<string, unknown>[] }) {
   if (items.length === 0) return <EmptyState title="No announcements" />;

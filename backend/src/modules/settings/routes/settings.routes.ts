@@ -7,23 +7,14 @@ import { SETTINGS_PERMISSIONS } from '@modules/settings/constants/settings-permi
 import {
   createSetting,
   deleteSetting,
-  exportAuditLogs,
-  getAuditLogById,
-  getConfigurationCatalog,
-  getConfigurationSections,
-  getNavigationConfig,
   getPublicSettings,
   getSettingByKey,
   getSettingHistory,
   getSettingsByGroup,
-  getSystemHealth,
   listFeatureFlags,
   listSettings,
-  queryAuditLogs,
-  seedConfigurationDefaults,
   testEmailSettings,
   toggleFeatureFlag,
-  updateNavigationConfig,
   updateSetting,
 } from '@modules/settings/controllers/settings.controller.js';
 
@@ -32,18 +23,9 @@ const settingsRoutes = Router();
 settingsRoutes.use(authenticateMiddleware);
 settingsRoutes.use(companyScopeMiddleware());
 
-settingsRoutes.get('/sections', authorize(SETTINGS_PERMISSIONS.READ), getConfigurationSections);
-settingsRoutes.get('/catalog', authorize(SETTINGS_PERMISSIONS.READ), getConfigurationCatalog);
-settingsRoutes.post('/seed-defaults', authorize(SETTINGS_PERMISSIONS.MANAGE), seedConfigurationDefaults);
 settingsRoutes.get('/history/:key', authorize(SETTINGS_PERMISSIONS.READ), getSettingHistory);
 settingsRoutes.get('/feature-flags', authorize(SETTINGS_PERMISSIONS.READ), listFeatureFlags);
 settingsRoutes.patch('/feature-flags/:flagKey', authorize(SETTINGS_PERMISSIONS.MANAGE), toggleFeatureFlag);
-settingsRoutes.get('/navigation', authorize(SETTINGS_PERMISSIONS.READ), getNavigationConfig);
-settingsRoutes.put('/navigation', authorize(SETTINGS_PERMISSIONS.MANAGE), updateNavigationConfig);
-settingsRoutes.get('/audit/export', authorize(SETTINGS_PERMISSIONS.SYSTEM_AUDIT_READ), exportAuditLogs);
-settingsRoutes.get('/audit/:id', authorize(SETTINGS_PERMISSIONS.SYSTEM_AUDIT_READ), getAuditLogById);
-settingsRoutes.get('/audit', authorize(SETTINGS_PERMISSIONS.SYSTEM_AUDIT_READ), queryAuditLogs);
-settingsRoutes.get('/system/health', authorize(SETTINGS_PERMISSIONS.SYSTEM_CONFIG_READ), getSystemHealth);
 settingsRoutes.post('/email/test', authorize(SETTINGS_PERMISSIONS.MANAGE), testEmailSettings);
 
 /**

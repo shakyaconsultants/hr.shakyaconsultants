@@ -41,14 +41,6 @@ export const EnterpriseWidgetComponents = {
   'projects-at-risk': lazy(() =>
     import('@/features/enterprise/widgets/projects-at-risk-widget').then((m) => ({ default: m.ProjectsAtRiskWidget })),
   ),
-  'recent-activities': lazy(() =>
-    import('@/features/enterprise/widgets/recent-activities-widget').then((m) => ({
-      default: m.RecentActivitiesWidget,
-    })),
-  ),
-  'system-health': lazy(() =>
-    import('@/features/enterprise/widgets/system-health-widget').then((m) => ({ default: m.SystemHealthWidget })),
-  ),
   'org-chart-preview': lazy(() =>
     import('@/features/enterprise/widgets/org-chart-preview-widget').then((m) => ({
       default: m.OrgChartPreviewWidget,
