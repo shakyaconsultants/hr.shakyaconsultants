@@ -33,6 +33,19 @@ export const DirectMessageService = {
     );
   },
 
+  async listForEmployee(companyId: string, employeeId: string, query: DirectConversationQuery) {
+    return ConversationRepository.paginate(
+      { type: CONVERSATION_TYPE.DIRECT, participantIds: employeeId },
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: 'lastMessageAt',
+        sortOrder: 'desc',
+      },
+      { companyId },
+    );
+  },
+
   async findOrCreate(context: CommunicationActorContext, targetEmployeeId: string) {
     const actorEmployeeId = context.employeeId ?? (context.isSuperAdmin ? context.userId : undefined);
     if (!actorEmployeeId) {

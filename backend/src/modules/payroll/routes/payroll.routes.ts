@@ -17,6 +17,7 @@ import {
   getComponent,
   getEmployeeCompensation,
   getEmployeeSalaryHistory,
+  getMyCompensation,
   getEnterpriseDashboard,
   getExceptions,
   getFinanceDashboard,
@@ -33,6 +34,7 @@ import {
   listPayrollPayslips,
   listPayrollRuns,
   listPayslips,
+  listMyPayslips,
   listSalaryRevisions,
   listSalaryStructures,
   lockPayrollRun,
@@ -76,6 +78,7 @@ payrollRoutes.patch('/components/:id', authorize(PAYROLL_PERMISSIONS.UPDATE), up
 payrollRoutes.delete('/components/:id', authorize(PAYROLL_PERMISSIONS.DELETE), deleteComponent);
 
 payrollRoutes.get('/employee-compensations', authorize(PAYROLL_PERMISSIONS.READ), listEmployeeCompensations);
+payrollRoutes.get('/me/compensation', authorize(PAYSLIP_PERMISSIONS.READ), getMyCompensation);
 payrollRoutes.post('/employee-compensations', authorize(PAYROLL_PERMISSIONS.CREATE), assignEmployeeCompensation);
 payrollRoutes.get('/employee-compensations/:id', authorize(PAYROLL_PERMISSIONS.READ), getEmployeeCompensation);
 payrollRoutes.patch('/employee-compensations/:id', authorize(PAYROLL_PERMISSIONS.UPDATE), updateEmployeeCompensation);
@@ -91,6 +94,7 @@ payrollRoutes.get('/payroll-runs/:id/payslips', authorize(PAYSLIP_PERMISSIONS.RE
 payrollRoutes.post('/payroll-runs/:id/generate-payslips', authorize(PAYSLIP_PERMISSIONS.CREATE), generatePayrollPayslips);
 
 payrollRoutes.get('/payslips', authorize(PAYSLIP_PERMISSIONS.READ), listPayslips);
+payrollRoutes.get('/me/payslips', authorize(PAYSLIP_PERMISSIONS.READ), listMyPayslips);
 payrollRoutes.get('/payslips/:id', authorize(PAYSLIP_PERMISSIONS.READ), getPayslip);
 payrollRoutes.get('/payslips/:id/download', authorize(PAYSLIP_PERMISSIONS.READ), downloadPayslip);
 

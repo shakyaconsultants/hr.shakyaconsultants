@@ -185,3 +185,80 @@ export async function sendEmployeePasswordResetEmail(employeeId: string): Promis
   }>>(`${EMPLOYEE_PREFIX}/${employeeId}/send-password-reset`);
   return data.data;
 }
+
+export interface ReportingPerson {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  photoUrl?: string;
+  designationId?: string;
+  designationName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  jobTitle?: string;
+}
+
+export interface ReportingRelationship {
+  id: string;
+  employeeId: string;
+  managerId: string;
+  relationshipType: string;
+  isPrimary: boolean;
+  effectiveFrom: string;
+  manager?: ReportingPerson;
+}
+
+export interface DirectReport extends ReportingPerson {
+  relationshipId: string;
+  relationshipType: string;
+}
+
+export interface ReportingChartNode extends ReportingPerson {
+  directReports: ReportingChartNode[];
+}
+
+export interface ReportingChartTree {
+  companyName: string;
+  roots: ReportingChartNode[];
+  stats: {
+    employees: number;
+    withManager: number;
+    roots: number;
+  };
+}
+
+export async function fetchReportingTree(): Promise<ReportingChartTree> {
+  const { data } = await apiClient.get<ApiSuccessResponse<ReportingChartTree>>(`${EMPLOYEE_PREFIX}/reporting-tree`);
+  return data.data;
+}
+
+export async function fetchEmployeeManagers(employeeId: string): Promise<ReportingRelationship[]> {
+  const { data } = await apiClient.get<ApiSuccessResponse<ReportingRelationship[]>>(
+    `${EMPLOYEE_PREFIX}/${employeeId}/managers`,
+  );
+  return data.data;
+}
+
+export async function fetchEmployeeDirectReports(employeeId: string): Promise<DirectReport[]> {
+  const { data } = await apiClient.get<ApiSuccessResponse<DirectReport[]>>(
+    `${EMPLOYEE_PREFIX}/${employeeId}/direct-reports`,
+  );
+  return data.data;
+}
+
+export async function assignEmployeeManager(
+  employeeId: string,
+  payload: { managerId: string; relationshipType?: string; isPrimary?: boolean },
+): Promise<unknown> {
+  const { data } = await apiClient.post(`${EMPLOYEE_PREFIX}/${employeeId}/managers`, {
+    relationshipType: 'direct',
+    isPrimary: true,
+    ...payload,
+  });
+  return data.data;
+}
+
+export async function endEmployeeManagerRelationship(employeeId: string, relationshipId: string): Promise<void> {
+  await apiClient.delete(`${EMPLOYEE_PREFIX}/${employeeId}/managers/${relationshipId}`);
+}

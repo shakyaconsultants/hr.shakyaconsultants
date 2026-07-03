@@ -1,5 +1,9 @@
-import { EmployeeRepository, ReportingHierarchyRepository } from '@domain/employee/employee.schemas.js';
-import { REPORTING_RELATIONSHIP_TYPE } from '@domain/employee/employee.schemas.js';
+import { EmployeeRepository, REPORTING_RELATIONSHIP_TYPE, ReportingHierarchyRepository } from '@domain/employee/employee.schemas.js';
+
+const DIRECT_REPORTING_TYPES: string[] = [
+  REPORTING_RELATIONSHIP_TYPE.DIRECT,
+  REPORTING_RELATIONSHIP_TYPE.MANAGER,
+];
 import { DepartmentRepository, BranchRepository } from '@domain/organization/organization.schemas.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
@@ -38,11 +42,17 @@ export const WorkspaceHierarchyService = {
       ),
     ]);
 
-    const managerIds = reportingEntries
-      .filter((e) => e.relationshipType === REPORTING_RELATIONSHIP_TYPE.DIRECT)
-      .map((e) => e.managerId);
+    const directEntries = reportingEntries.filter((e) => DIRECT_REPORTING_TYPES.includes(e.relationshipType));
+    const managerIds = [...new Set(directEntries.map((e) => e.managerId))];
 
-    const primaryManagerId = reportingEntries.find((e) => e.isPrimary)?.managerId ?? managerIds[0];
+    if (managerIds.length === 0 && employee.reportingManagerId) {
+      managerIds.push(employee.reportingManagerId);
+    }
+
+    const primaryManagerId =
+      directEntries.find((e) => e.isPrimary)?.managerId
+      ?? managerIds[0]
+      ?? employee.reportingManagerId;
 
     const [managers, directReports, peers] = await Promise.all([
       managerIds.length > 0
@@ -51,7 +61,7 @@ export const WorkspaceHierarchyService = {
       ReportingHierarchyRepository.findMany(
         {
           managerId: context.employeeId,
-          relationshipType: REPORTING_RELATIONSHIP_TYPE.DIRECT,
+          relationshipType: { $in: DIRECT_REPORTING_TYPES },
           $or: [{ effectiveTo: null }, { effectiveTo: { $exists: false } }],
         },
         { companyId: context.companyId },
@@ -66,7 +76,7 @@ export const WorkspaceHierarchyService = {
         ? ReportingHierarchyRepository.findMany(
             {
               managerId: primaryManagerId,
-              relationshipType: REPORTING_RELATIONSHIP_TYPE.DIRECT,
+              relationshipType: { $in: DIRECT_REPORTING_TYPES },
               employeeId: { $ne: context.employeeId },
               $or: [{ effectiveTo: null }, { effectiveTo: { $exists: false } }],
             },

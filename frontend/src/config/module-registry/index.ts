@@ -855,7 +855,7 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.WORKSPACE_SEARCH, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_MESSAGES, portals: WORKSPACE_ONLY, permissionsAny: ['chat.message.send', 'conversation.read'] },
   { path: ROUTES.ORGANIZATION, portals: ENTERPRISE_ONLY, permission: 'company.read' },
-  { path: ROUTES.ORGANIZATION_CHART, portals: ENTERPRISE_ONLY, permission: 'company.read' },
+  { path: ROUTES.ORGANIZATION_CHART, portals: ENTERPRISE_ONLY, permission: 'employee.read' },
   { path: ROUTES.SETTINGS, portals: ENTERPRISE_ONLY, permissionsAny: ['settings.read', 'company.update'] },
   { path: `${ROUTES.ORGANIZATION}/:entityKey/:id`, portals: ENTERPRISE_ONLY, permission: 'company.read' },
   { path: ROUTES.ADMIN_SETTINGS, portals: ENTERPRISE_ONLY, permission: 'settings.read' },

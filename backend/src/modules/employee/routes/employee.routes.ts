@@ -27,6 +27,7 @@ import {
   exportEmployees,
   getEmployee,
   getEmployeeDashboard,
+  getReportingTree,
   getSignedUploadParams,
   importEmployees,
   listAssets,
@@ -38,6 +39,7 @@ import {
   listEmployees,
   listExperience,
   listManagers,
+  listDirectReports,
   listSkills,
   listTimeline,
   reactivateEmployee,
@@ -65,6 +67,7 @@ employeeRoutes.use(companyScopeMiddleware());
  */
 employeeRoutes.get('/', authorize(EMPLOYEE_PERMISSIONS.READ), listEmployees);
 employeeRoutes.get('/search', authorize(EMPLOYEE_PERMISSIONS.READ), searchEmployees);
+employeeRoutes.get('/reporting-tree', authorize(EMPLOYEE_PERMISSIONS.READ), getReportingTree);
 employeeRoutes.get('/export', authorize(EMPLOYEE_PERMISSIONS.EXPORT), exportEmployees);
 employeeRoutes.post('/import', authorize(EMPLOYEE_PERMISSIONS.IMPORT), importEmployees);
 employeeRoutes.post('/bulk', authorize(EMPLOYEE_PERMISSIONS.BULK), bulkEmployeeAction);
@@ -116,6 +119,7 @@ employeeRoutes.post('/:employeeId/assets', authorize(EMPLOYEE_PERMISSIONS.ASSETS
 employeeRoutes.post('/:employeeId/assets/:id/return', authorize(EMPLOYEE_PERMISSIONS.ASSETS_MANAGE), returnAsset);
 
 employeeRoutes.get('/:employeeId/managers', authorize(EMPLOYEE_PERMISSIONS.MANAGERS_READ), listManagers);
+employeeRoutes.get('/:employeeId/direct-reports', authorize(EMPLOYEE_PERMISSIONS.MANAGERS_READ), listDirectReports);
 employeeRoutes.post('/:employeeId/managers', authorize(EMPLOYEE_PERMISSIONS.MANAGERS_MANAGE), assignManager);
 employeeRoutes.delete('/:employeeId/managers/:id', authorize(EMPLOYEE_PERMISSIONS.MANAGERS_MANAGE), endManagerRelationship);
 employeeRoutes.get('/:employeeId/timeline', authorize(EMPLOYEE_PERMISSIONS.TIMELINE_READ), listTimeline);

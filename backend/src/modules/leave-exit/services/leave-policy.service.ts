@@ -12,7 +12,7 @@ export const LeavePolicyService = {
     let policies = await LeavePolicyRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId });
     if (policies.length === 0) {
       const { LeaveExitSeederService } = await import('@modules/leave-exit/services/leave-exit-seeder.service.js');
-      await LeaveExitSeederService.seedLeavePolicies({
+      await LeaveExitSeederService.seedDefaults({
         companyId,
         userId: 'system',
         employeeId: 'system',

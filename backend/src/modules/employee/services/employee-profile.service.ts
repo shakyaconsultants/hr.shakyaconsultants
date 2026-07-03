@@ -6,6 +6,7 @@ import {
   EmployeeDocumentFileRepository,
   EmployeeRepository,
   ExperienceRepository,
+  REPORTING_RELATIONSHIP_TYPE,
   ReportingHierarchyRepository,
 } from '@domain/employee/employee.schemas.js';
 import {
@@ -362,6 +363,13 @@ export const EmployeeSubresourceService = {
         { companyId: ctx.companyId },
       );
     }
+    if (payload.relationshipType === REPORTING_RELATIONSHIP_TYPE.MANAGER) {
+      await EmployeeRepository.update(
+        employeeId,
+        { reportingManagerId: payload.managerId, updatedBy: ctx.userId },
+        { companyId: ctx.companyId },
+      );
+    }
     if (payload.relationshipType === 'dotted_line') {
       await EmployeeRepository.update(
         employeeId,
@@ -404,6 +412,33 @@ export const EmployeeSubresourceService = {
     if (!updated) {
       throw new NotFoundError('Manager relationship not found', ERROR_CODES.NOT_FOUND);
     }
+
+    const employee = await EmployeeRepository.findById(employeeId, { companyId: ctx.companyId });
+    if (employee) {
+      const patch: Record<string, unknown> = { updatedBy: ctx.userId };
+      if (
+        (before.relationshipType === REPORTING_RELATIONSHIP_TYPE.DIRECT ||
+          before.relationshipType === REPORTING_RELATIONSHIP_TYPE.MANAGER ||
+          before.isPrimary) &&
+        employee.reportingManagerId === before.managerId
+      ) {
+        const remaining = await ReportingHierarchyRepository.findMany(
+          {
+            employeeId,
+            effectiveTo: null,
+            relationshipType: { $in: [REPORTING_RELATIONSHIP_TYPE.DIRECT, REPORTING_RELATIONSHIP_TYPE.MANAGER] },
+          },
+          { companyId: ctx.companyId },
+        );
+        const nextPrimary = remaining.find((r) => r.isPrimary) ?? remaining[0];
+        patch.reportingManagerId = nextPrimary?.managerId ?? null;
+      }
+      if (before.relationshipType === REPORTING_RELATIONSHIP_TYPE.DOTTED_LINE && employee.dottedManagerId === before.managerId) {
+        patch.dottedManagerId = null;
+      }
+      await EmployeeRepository.update(employeeId, patch, { companyId: ctx.companyId });
+    }
+
     await EmployeeAuditService.log({
       companyId: ctx.companyId,
       userId: ctx.userId,

@@ -468,6 +468,17 @@ export async function fetchDirectConversations(params: ListParams = {}): Promise
   return unwrapList(response);
 }
 
+export async function fetchEmployeeDirectConversations(
+  employeeId: string,
+  params: ListParams = {},
+): Promise<ListResponse<Conversation>> {
+  const response = await apiClient.get<ApiSuccessResponse<Conversation[] | ListResponse<Conversation>>>(
+    `${COMMUNICATION_PREFIX}/employees/${employeeId}/conversations/direct`,
+    { params },
+  );
+  return unwrapList(response);
+}
+
 export async function createDirectConversation(targetEmployeeId: string): Promise<Conversation> {
   const response = await apiClient.post<ApiSuccessResponse<Conversation>>(
     `${COMMUNICATION_PREFIX}/conversations/direct`,

@@ -263,6 +263,7 @@ export function useMessages(conversationId: string, params: ListParams = {}) {
     queryKey: ['communication', 'messages', conversationId, params],
     queryFn: () => fetchMessages(conversationId, params),
     enabled: Boolean(conversationId),
+    refetchInterval: conversationId ? 10_000 : false,
   });
 }
 

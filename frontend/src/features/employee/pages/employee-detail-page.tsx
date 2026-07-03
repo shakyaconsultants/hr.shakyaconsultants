@@ -19,8 +19,11 @@ import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 import { EmployeeEditDialog } from '@/features/employee/components/employee-edit-dialog';
+import { EmployeeRolesPanel } from '@/features/employee/components/employee-roles-panel';
+import { EmployeeMessagesPanel } from '@/features/employee/components/employee-messages-panel';
+import { EmployeeReportingPanel } from '@/features/employee/components/employee-reporting-panel';
 
-const TABS = ['Overview', 'Documents', 'Education', 'Experience', 'Skills', 'Timeline', 'Assets', 'Reporting'] as const;
+const TABS = ['Overview', 'Documents', 'Education', 'Experience', 'Skills', 'Timeline', 'Assets', 'Reporting', 'Roles & Access', 'Messages'] as const;
 
 export function EmployeeDetailPage() {
   const { id = '' } = useParams();
@@ -280,16 +283,15 @@ export function EmployeeDetailPage() {
         )}
 
         {activeTab === 'Reporting' && (
-          <ul className="space-y-2">
-            {data.managers.map((manager) => (
-              <li key={String(manager.id)} className="rounded border px-3 py-2 text-sm">
-                Manager: <span className="font-mono">{String(manager.managerId)}</span>
-                <span className="ml-2 text-muted-foreground">({String(manager.relationshipType)})</span>
-              </li>
-            ))}
-            {data.managers.length === 0 && <p className="text-sm text-muted-foreground">No manager relationships.</p>}
-          </ul>
+          <EmployeeReportingPanel
+            employeeId={id}
+            employeeName={`${employee.firstName} ${employee.lastName}`.trim()}
+          />
         )}
+
+        {activeTab === 'Roles & Access' && <EmployeeRolesPanel employeeId={id} />}
+
+        {activeTab === 'Messages' && <EmployeeMessagesPanel employeeId={id} />}
       </div>
 
       <EmployeeEditDialog employee={employee} open={editOpen} onOpenChange={setEditOpen} />

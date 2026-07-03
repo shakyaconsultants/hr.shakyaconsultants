@@ -24,9 +24,14 @@ export function MessageThread({ messages, currentUserId, isLoading }: MessageThr
     return <EmptyState title="No messages yet" description="Send a message to start the conversation." />;
   }
 
+  const ordered = [...messages].sort(
+    (a, b) =>
+      new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime(),
+  );
+
   return (
     <div className="flex max-h-[480px] flex-col gap-3 overflow-y-auto p-4">
-      {messages.map((message) => {
+      {ordered.map((message) => {
         const isOwn = currentUserId && message.senderId === currentUserId;
         return (
           <div

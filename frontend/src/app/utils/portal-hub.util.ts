@@ -50,7 +50,7 @@ export function resolvePayrollHubRoute(portal: PortalType, hasPermission: Permis
     return ROUTES.FORBIDDEN;
   }
 
-  if (hasPermission('payroll.read')) {
+  if (hasPermission('payslip.read')) {
     return ROUTES.WORKSPACE_PAYROLL;
   }
   return ROUTES.FORBIDDEN;

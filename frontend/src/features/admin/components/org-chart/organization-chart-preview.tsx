@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Network } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { fetchReportingTree } from '@/features/employee/api/employee.api';
+import { ReportingChartTreeView } from '@/features/admin/components/org-chart/reporting-chart-tree-view';
 import { buildOrgChartTree } from '@/features/admin/components/org-chart/build-org-chart-tree';
 import { OrgChartTreeView } from '@/features/admin/components/org-chart/org-chart-tree';
 import { useEmployees } from '@/features/employee/hooks/use-employees';
@@ -44,10 +46,14 @@ export function OrganizationChartPreview({
     pageSize: 100,
     status: 'active',
   });
-  const { data: employees, isLoading: employeesLoading } = useEmployees({
+  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useEmployees({
     page: 1,
     pageSize: 300,
-    status: 'active',
+  });
+
+  const { data: reportingTree } = useQuery({
+    queryKey: ['employees', 'reporting-tree'],
+    queryFn: fetchReportingTree,
   });
 
   const tree = useMemo(
@@ -67,6 +73,12 @@ export function OrganizationChartPreview({
 
   if (isLoading) {
     return <Loading message="Loading organization chart..." />;
+  }
+
+  if (employeesError) {
+    return (
+      <p className="text-sm text-muted-foreground">Organization chart preview unavailable — employee data could not be loaded.</p>
+    );
   }
 
   return (
@@ -98,6 +110,14 @@ export function OrganizationChartPreview({
           compact ? 'p-4' : 'p-6',
         )}
       >
+        {reportingTree && reportingTree.stats.withManager > 0 ? (
+          <div className="mb-6">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Reporting lines
+            </p>
+            <ReportingChartTreeView tree={reportingTree} scale={compact ? maxScale : 0.85} />
+          </div>
+        ) : null}
         <OrgChartTreeView tree={tree} scale={compact ? maxScale : 1} />
       </div>
     </div>

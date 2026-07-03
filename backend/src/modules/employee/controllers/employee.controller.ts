@@ -9,6 +9,8 @@ import {
   EmployeeDocumentService,
   EmployeeSubresourceService,
 } from '@modules/employee/services/employee-profile.service.js';
+import { EmployeeReportingService } from '@modules/employee/services/employee-reporting.service.js';
+import { CompanyRepository } from '@domain/company/company.schema.js';
 import type { EmployeeActorContext } from '@modules/employee/types/employee.types.js';
 import { EmployeeLifecycleService } from '@modules/employee/services/employee-lifecycle.service.js';
 import { ValidationError } from '@shared/errors/app.error.js';
@@ -438,8 +440,35 @@ export const listManagers: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const managers = await EmployeeSubresourceService.listManagers(authReq.user.companyId, employeeId);
+    const managers = await EmployeeReportingService.listManagersEnriched(authReq.user.companyId, employeeId);
     return ResponseService.success(res, authReq, managers);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const listDirectReports: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { employeeId } = validateInput(employeeIdParamSchema, req.params);
+    const reports = await EmployeeReportingService.listDirectReportsEnriched(authReq.user.companyId, employeeId);
+    return ResponseService.success(res, authReq, reports);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getReportingTree: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const company = await CompanyRepository.findById(authReq.user.companyId, { companyId: authReq.user.companyId });
+    const tree = await EmployeeReportingService.getReportingTree(
+      authReq.user.companyId,
+      company?.name ?? 'Company',
+    );
+    return ResponseService.success(res, authReq, tree);
   } catch (error) {
     next(error);
     return;

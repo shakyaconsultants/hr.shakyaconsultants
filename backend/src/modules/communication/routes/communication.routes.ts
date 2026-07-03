@@ -35,6 +35,7 @@ import {
   listAnnouncements,
   listChannels,
   listDirectConversations,
+  listEmployeeDirectConversations,
   listMessages,
   listNotifications,
   markAllNotificationsRead,
@@ -100,6 +101,7 @@ communicationRoutes.delete('/channels/:id', authorize(CONVERSATION_PERMISSIONS.D
 communicationRoutes.get('/channels/:id/members', authorize(CONVERSATION_PERMISSIONS.READ), getChannelMembers);
 
 communicationRoutes.get('/conversations/direct', authorize(CONVERSATION_PERMISSIONS.READ), listDirectConversations);
+communicationRoutes.get('/employees/:id/conversations/direct', authorize(CONVERSATION_PERMISSIONS.READ), listEmployeeDirectConversations);
 communicationRoutes.post('/conversations/direct', authorize(CONVERSATION_PERMISSIONS.CREATE), createDirectConversation);
 communicationRoutes.get('/conversations/:id/messages', authorize(CONVERSATION_PERMISSIONS.READ), listMessages);
 communicationRoutes.post('/conversations/:id/messages', authorize(MESSAGE_PERMISSIONS.SEND), sendMessage);

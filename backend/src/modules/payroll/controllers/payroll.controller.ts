@@ -244,6 +244,23 @@ export const listEmployeeCompensations: RequestHandler = async (req, res, next) 
   }
 };
 
+export const getMyCompensation: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user.employeeId) {
+      return ResponseService.success(res, authReq, null);
+    }
+    const data = await EmployeeCompensationService.getMyCompensation(
+      authReq.user.companyId,
+      authReq.user.employeeId,
+    );
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const assignEmployeeCompensation: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -406,7 +423,34 @@ export const listPayslips: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listPayslipsQuerySchema, req.query);
-    const data = await PayslipService.list(authReq.user.companyId, query);
+    const permissions = authReq.auth?.permissions ?? [];
+    const canViewAllPayroll = permissions.includes('payroll.read') || permissions.includes('payroll.update');
+    const scopedQuery = {
+      ...query,
+      employeeId:
+        !canViewAllPayroll && authReq.user.employeeId && !query.employeeId
+          ? authReq.user.employeeId
+          : query.employeeId,
+    };
+    const data = await PayslipService.list(authReq.user.companyId, scopedQuery);
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const listMyPayslips: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user.employeeId) {
+      return ResponseService.success(res, authReq, { items: [], total: 0, page: 1, pageSize: 20 });
+    }
+    const query = validateInput(listPayslipsQuerySchema, req.query);
+    const data = await PayslipService.list(authReq.user.companyId, {
+      ...query,
+      employeeId: authReq.user.employeeId,
+    });
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);

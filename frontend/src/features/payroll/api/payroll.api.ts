@@ -424,12 +424,18 @@ export async function fetchPayslips(params: ListParams = {}): Promise<PaginatedR
 }
 
 export async function fetchMyPayslips(params: ListParams = {}): Promise<PaginatedResult<Payslip>> {
-  return fetchPayslips(params);
+  const response = await apiClient.get<ApiSuccessResponse<Payslip[]> & { pagination?: PaginationMeta }>(
+    `${PAYROLL_PREFIX}/me/payslips`,
+    { params },
+  );
+  return unwrapPaginated(response);
 }
 
 export async function fetchMySalary(): Promise<MySalarySummary> {
-  const compensations = await fetchCompensations({ pageSize: 1 });
-  const assignment = compensations.items[0];
+  const response = await apiClient.get<ApiSuccessResponse<CompensationAssignment | null>>(
+    `${PAYROLL_PREFIX}/me/compensation`,
+  );
+  const assignment = await unwrap(response);
   if (!assignment) {
     return { baseSalary: 0, currency: 'INR', isLocked: false };
   }

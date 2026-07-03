@@ -1,21 +1,24 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AtSign, Megaphone, MessageSquare } from 'lucide-react';
+import { AtSign, Megaphone, MessageSquare, Plus } from 'lucide-react';
 import { ConversationList } from '@/features/communication/components/conversation-list';
 import { MessageComposer } from '@/features/communication/components/message-composer';
 import { MessageThread } from '@/features/communication/components/message-thread';
 import {
   useAnnouncements,
   useChannels,
+  useCreateDirectConversation,
   useDirectConversations,
   useMessages,
   useSendMessage,
   useWorkspaceCommunicationDashboard,
 } from '@/features/communication/hooks/use-communication';
+import { useEmployees } from '@/features/employee/hooks/use-employees';
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { StatCard } from '@/shared/components/stat-card';
 import { Button } from '@/shared/components/ui/button';
+import { AsyncSearchSelect } from '@/shared/components/async-search-select';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
 import { ROUTES } from '@/config/app.config';
 import { useAuthStore } from '@/shared/stores/app.store';
@@ -26,16 +29,52 @@ const TABS = ['Direct Messages', 'Team Channels', 'Announcements', 'Mentions'] a
 export function CommunicationWorkspacePage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Direct Messages');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const user = useAuthStore((s) => s.user);
+  const [newMessageOpen, setNewMessageOpen] = useState(false);
+  const [targetEmployeeId, setTargetEmployeeId] = useState('');
+  const employee = useAuthStore((s) => s.employee);
+  const currentEmployeeId = employee?.id ?? '';
 
   const { data: dashboard, isLoading: dashboardLoading } = useWorkspaceCommunicationDashboard();
   const { data: directConversations, isLoading: dmLoading } = useDirectConversations({ pageSize: 50 });
   const { data: channels, isLoading: channelsLoading } = useChannels({ pageSize: 50 });
   const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({ pageSize: 20 });
+  const { data: employees } = useEmployees({ page: 1, pageSize: 500 });
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedConversation?.id ?? '', { pageSize: 100 });
   const sendMessage = useSendMessage();
+  const createConversation = useCreateDirectConversation();
+
+  const employeeNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of employees?.items ?? []) {
+      map.set(item.id, `${item.firstName} ${item.lastName}`.trim());
+    }
+    return map;
+  }, [employees?.items]);
+
+  const employeeOptions = useMemo(
+    () =>
+      (employees?.items ?? [])
+        .filter((e) => e.id !== currentEmployeeId)
+        .map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}`.trim() })),
+    [employees?.items, currentEmployeeId],
+  );
+
+  const getConversationLabel = (conversation: Conversation) => {
+    if (conversation.title) return conversation.title;
+    const peerId = conversation.participantIds.find((id) => id !== currentEmployeeId);
+    return peerId ? (employeeNameMap.get(peerId) ?? 'Direct Message') : 'Direct Message';
+  };
 
   const mentionMessages = (messages?.items ?? []).filter((m) => m.mentionIds && m.mentionIds.length > 0);
+
+  async function handleStartConversation() {
+    if (!targetEmployeeId) return;
+    const conversation = await createConversation.mutateAsync(targetEmployeeId);
+    setSelectedConversation(conversation);
+    setNewMessageOpen(false);
+    setTargetEmployeeId('');
+    setActiveTab('Direct Messages');
+  }
 
   if (dashboardLoading) {
     return <Loading message="Loading messages..." />;
@@ -55,22 +94,50 @@ export function CommunicationWorkspacePage() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-1 border-b">
-        {TABS.map((tab) => (
-          <Button
-            key={tab}
-            variant={activeTab === tab ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => {
-              setActiveTab(tab);
-              setSelectedConversation(null);
-            }}
-            className="rounded-b-none"
-          >
-            {tab}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+        <div className="flex flex-wrap gap-1">
+          {TABS.map((tab) => (
+            <Button
+              key={tab}
+              variant={activeTab === tab ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => {
+                setActiveTab(tab);
+                setSelectedConversation(null);
+              }}
+              className="rounded-b-none"
+            >
+              {tab}
+            </Button>
+          ))}
+        </div>
+        {activeTab === 'Direct Messages' ? (
+          <Button size="sm" onClick={() => setNewMessageOpen((v) => !v)}>
+            <Plus className="mr-1 h-4 w-4" />
+            New Message
           </Button>
-        ))}
+        ) : null}
       </div>
+
+      {newMessageOpen && activeTab === 'Direct Messages' ? (
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
+          <div className="min-w-[280px] flex-1">
+            <p className="mb-2 text-sm font-medium">Message a colleague</p>
+            <AsyncSearchSelect
+              value={targetEmployeeId}
+              options={employeeOptions}
+              placeholder="Search employee…"
+              onChange={setTargetEmployeeId}
+            />
+          </div>
+          <Button
+            disabled={!targetEmployeeId || createConversation.isPending}
+            onClick={() => void handleStartConversation()}
+          >
+            Start Conversation
+          </Button>
+        </div>
+      ) : null}
 
       {activeTab === 'Direct Messages' ? (
         <div className="grid gap-4 lg:grid-cols-3">
@@ -82,7 +149,8 @@ export function CommunicationWorkspacePage() {
                 conversations={directConversations?.items ?? []}
                 selectedId={selectedConversation?.id}
                 onSelect={setSelectedConversation}
-                emptyMessage="No direct messages"
+                emptyMessage="No direct messages — click New Message to start chatting"
+                getLabel={getConversationLabel}
               />
             )}
           </div>
@@ -90,11 +158,11 @@ export function CommunicationWorkspacePage() {
             {selectedConversation ? (
               <>
                 <div className="border-b px-4 py-3 font-medium">
-                  {selectedConversation.title ?? 'Direct Message'}
+                  {getConversationLabel(selectedConversation)}
                 </div>
                 <MessageThread
                   messages={messages?.items ?? []}
-                  currentUserId={user?.id}
+                  currentUserId={currentEmployeeId}
                   isLoading={messagesLoading}
                 />
                 <MessageComposer
@@ -108,7 +176,7 @@ export function CommunicationWorkspacePage() {
                 />
               </>
             ) : (
-              <EmptyState title="Select a conversation" description="Choose a direct message to view the thread." />
+              <EmptyState title="Select a conversation" description="Choose a direct message or start a new one." />
             )}
           </div>
         </div>
@@ -134,7 +202,7 @@ export function CommunicationWorkspacePage() {
                 <div className="border-b px-4 py-3 font-medium">{selectedConversation.title ?? 'Channel'}</div>
                 <MessageThread
                   messages={messages?.items ?? []}
-                  currentUserId={user?.id}
+                  currentUserId={currentEmployeeId}
                   isLoading={messagesLoading}
                 />
                 <MessageComposer
@@ -191,7 +259,7 @@ export function CommunicationWorkspacePage() {
             <h2 className="font-semibold">Mentions</h2>
           </div>
           {selectedConversation && mentionMessages.length > 0 ? (
-            <MessageThread messages={mentionMessages} currentUserId={user?.id} />
+            <MessageThread messages={mentionMessages} currentUserId={currentEmployeeId} />
           ) : (
             <EmptyState
               title="No mentions"

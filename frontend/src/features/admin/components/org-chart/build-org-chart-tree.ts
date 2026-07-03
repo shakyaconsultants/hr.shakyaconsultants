@@ -114,6 +114,35 @@ export function buildOrgChartTree(input: OrgChartBuildInput): OrgChartTree {
     });
   }
 
+  const unassignedEmployees = employees
+    .filter((e) => !e.departmentId)
+    .map((e) => mapEmployee(e, designationMap))
+    .sort((a, b) => b.hierarchyLevel - a.hierarchyLevel || a.lastName.localeCompare(b.lastName));
+
+  if (unassignedEmployees.length > 0) {
+    const unassignedDept: OrgChartDepartment = {
+      id: '__unassigned_dept__',
+      name: 'Unassigned Employees',
+      code: 'UNASSIGNED',
+      employeeCount: unassignedEmployees.length,
+      employees: unassignedEmployees,
+    };
+
+    const existingUnassignedBranch = chartBranches.find((b) => b.id === UNASSIGNED_BRANCH_ID);
+    if (existingUnassignedBranch) {
+      existingUnassignedBranch.departments.push(unassignedDept);
+      existingUnassignedBranch.employeeCount += unassignedEmployees.length;
+    } else {
+      chartBranches.push({
+        id: UNASSIGNED_BRANCH_ID,
+        name: 'Unassigned',
+        code: 'UNASSIGNED',
+        departments: [unassignedDept],
+        employeeCount: unassignedEmployees.length,
+      });
+    }
+  }
+
   const totalDepartments = chartBranches.reduce((sum, branch) => sum + branch.departments.length, 0);
 
   return {

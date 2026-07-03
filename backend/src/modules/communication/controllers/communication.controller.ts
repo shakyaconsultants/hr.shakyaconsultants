@@ -333,6 +333,19 @@ export const listDirectConversations: RequestHandler = async (req, res, next) =>
   }
 };
 
+export const listEmployeeDirectConversations: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { id: employeeId } = validateInput(idParamSchema, req.params);
+    const query = validateInput(listQuerySchema, req.query);
+    const data = await DirectMessageService.listForEmployee(authReq.user.companyId, employeeId, query);
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const createDirectConversation: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;

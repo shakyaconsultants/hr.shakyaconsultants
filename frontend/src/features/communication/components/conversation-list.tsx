@@ -7,6 +7,7 @@ interface ConversationListProps {
   selectedId?: string;
   onSelect: (conversation: Conversation) => void;
   emptyMessage?: string;
+  getLabel?: (conversation: Conversation) => string;
 }
 
 export function ConversationList({
@@ -14,6 +15,7 @@ export function ConversationList({
   selectedId,
   onSelect,
   emptyMessage = 'No conversations yet',
+  getLabel,
 }: ConversationListProps) {
   if (conversations.length === 0) {
     return <EmptyState title={emptyMessage} />;
@@ -31,7 +33,7 @@ export function ConversationList({
               selectedId === conversation.id && 'bg-primary/5',
             )}
           >
-            <span className="font-medium">{conversation.title ?? 'Direct Message'}</span>
+            <span className="font-medium">{getLabel ? getLabel(conversation) : (conversation.title ?? 'Direct Message')}</span>
             {conversation.channelSubtype ? (
               <span className="text-xs text-muted-foreground capitalize">{conversation.channelSubtype.replace(/_/g, ' ')}</span>
             ) : null}

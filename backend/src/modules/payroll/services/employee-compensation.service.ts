@@ -54,6 +54,15 @@ export const EmployeeCompensationService = {
     return result.items;
   },
 
+  async getMyCompensation(companyId: string, employeeId: string) {
+    const active = await this.getActiveForEmployee(companyId, employeeId);
+    if (!active) {
+      return null;
+    }
+    const structure = await SalaryStructureService.getById(companyId, active.salaryStructureId);
+    return { ...active, salaryStructure: structure };
+  },
+
   async assign(context: PayrollActorContext, payload: {
     employeeId: string;
     salaryStructureId: string;

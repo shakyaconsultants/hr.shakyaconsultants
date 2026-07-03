@@ -137,3 +137,23 @@ export async function restoreRole(id: string): Promise<RoleRecord> {
 export async function deleteRole(id: string): Promise<void> {
   await apiClient.delete(`${RBAC_PREFIX}/roles/${id}`);
 }
+
+export interface EmployeeRoleAssignment {
+  assignments: Array<{ id: string; roleId: string; employeeId: string; isPrimary?: boolean }>;
+  roles: RoleRecord[];
+}
+
+export async function fetchEmployeeRoles(employeeId: string): Promise<EmployeeRoleAssignment> {
+  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeRoleAssignment>>(
+    `${RBAC_PREFIX}/assignments/employees/${employeeId}`,
+  );
+  return data.data;
+}
+
+export async function assignRoleToEmployee(employeeId: string, roleId: string, isPrimary = false): Promise<void> {
+  await apiClient.post(`${RBAC_PREFIX}/assignments/roles`, { employeeId, roleId, isPrimary });
+}
+
+export async function revokeRoleFromEmployee(employeeId: string, roleId: string): Promise<void> {
+  await apiClient.delete(`${RBAC_PREFIX}/assignments/roles`, { data: { employeeId, roleId } });
+}
