@@ -15,6 +15,7 @@ import { StatCard } from '@/shared/components/stat-card';
 import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
+import { cn } from '@/shared/utils/cn';
 
 const TABS = ['Overview', 'Structures', 'Components', 'Policies', 'Calendar', 'Settings'] as const;
 
@@ -60,11 +61,56 @@ export function PayrollEnterprisePage() {
       </div>
 
       {activeTab === 'Overview' && dashboard ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={Layers} label="Active Structures" value={dashboard.activeStructures} />
-          <StatCard icon={FileText} label="Pending Runs" value={dashboard.pendingRuns} />
-          <StatCard icon={Banknote} label="Finalized Runs" value={dashboard.finalizedRuns} />
-          <StatCard icon={CalendarDays} label="Employees on Payroll" value={dashboard.totalEmployeesOnPayroll} />
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard icon={Layers} label="Active Structures" value={dashboard.activeStructures} />
+            <StatCard icon={FileText} label="Pending Runs" value={dashboard.pendingRuns} />
+            <StatCard icon={Banknote} label="Finalized Runs" value={dashboard.finalizedRuns} />
+            <StatCard icon={CalendarDays} label="Employees on Payroll" value={dashboard.totalEmployeesOnPayroll} />
+          </div>
+
+          <section className="rounded-xl border bg-gradient-to-br from-primary/5 via-card to-card p-6">
+            <h2 className="text-lg font-semibold">Standard India Payroll Structure</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Company template: Basic, HRA, Special Allowance, Conveyance, Meals, Attendance*, Performance
+              Incentive*, PF, Gratuity, Professional Tax, and net take-home calculation.
+            </p>
+            <div className="mt-4 overflow-hidden rounded-lg border bg-card">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="px-4 py-2">Component</th>
+                    <th className="px-4 py-2 text-right">Typical Rule</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['Basic Salary', '40–50% of monthly gross (wage base)'],
+                    ['House Rent Allowance (HRA)', '40% of basic (metro)'],
+                    ['Special Allowance', 'Balancing CTC component'],
+                    ['Conveyance Allowance', 'Fixed — tax exempt up to limit'],
+                    ['Meals Allowance', 'Fixed food / meal benefit'],
+                    ['Attendance Allowance *', 'Variable — attendance linked'],
+                    ['Performance Incentive *', 'Variable — KPI linked'],
+                    ['PF (Employee + Employer)', '12% each on basic'],
+                    ['Gratuity (Employer)', '~4.81% of basic accrual'],
+                    ['Professional Tax', 'State-specific deduction'],
+                    ['Total CTC', 'Gross + employer statutory costs × 12'],
+                  ].map(([component, rule]) => (
+                    <tr key={component} className="border-b last:border-b-0">
+                      <td className={cn('px-4 py-2.5', component === 'Total CTC' && 'font-bold')}>
+                        {component}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-muted-foreground">{rule}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Go to the Structures tab and click &ldquo;Load standard template&rdquo; to apply this breakdown.
+            </p>
+          </section>
         </div>
       ) : null}
 

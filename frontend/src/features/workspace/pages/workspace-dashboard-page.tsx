@@ -1,5 +1,6 @@
 import { useWorkspaceLayout } from '@/features/workspace/hooks/use-workspace';
 import { WorkspaceOnboardingBanner } from '@/features/workspace/components/workspace-onboarding-banner';
+import { WorkspaceOrgPositionCard } from '@/features/workspace/components/workspace-org-position-card';
 import { WidgetRenderer } from '@/features/workspace/components/widget-renderer';
 import { WidgetSkeleton } from '@/features/workspace/components/widget-primitives';
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
@@ -18,6 +19,7 @@ export function WorkspaceDashboardPage() {
         <WorkspacePageHeader title="My Workspace" description="Your daily employee portal — widgets load independently." />
       </div>
       <WorkspaceOnboardingBanner />
+      <WorkspaceOrgPositionCard />
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Building2, GitBranch, Layers, Network, Settings2 } from 'lucide-react';
 import { ENTITY_CATALOG } from '@/features/organization/constants/entity-catalog';
+import { OrganizationChartPreview } from '@/features/admin/components/org-chart/organization-chart-preview';
 import { ROUTES } from '@/config/app.config';
 import { useQuery } from '@tanstack/react-query';
 import { getCompany } from '@/features/organization/api/organization.api';
@@ -27,7 +28,7 @@ export function OrganizationDashboardPage() {
           <Button asChild variant="outline">
             <Link to={ROUTES.ORGANIZATION_CHART}>
               <Network className="mr-2 h-4 w-4" />
-              Org Chart
+              Full Org Chart
             </Link>
           </Button>
         }
@@ -60,6 +61,10 @@ export function OrganizationDashboardPage() {
           </Link>
         </div>
       </div>
+
+      <section className="rounded-xl border bg-card p-6 shadow-sm">
+        <OrganizationChartPreview compact maxScale={0.75} />
+      </section>
 
       <section>
         <h2 className="mb-4 text-lg font-semibold">Master Data Sections</h2>

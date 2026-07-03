@@ -1220,7 +1220,8 @@ export function isPathAllowedForPortal(
 
 export function getEnterpriseDashboardWidgets(ctx: NavigationFilterContext) {
   const widgets = [
-    { id: 'employee-stats', title: 'Organization Headcount', permission: 'employee.read', colSpan: 2 as const },
+    { id: 'employee-stats', title: 'Organization Headcount', permission: 'company.read', colSpan: 2 as const },
+    { id: 'org-chart-preview', title: 'Organization Chart', permission: 'company.read', colSpan: 2 as const },
     { id: 'recruitment-overview', title: 'Recruitment Pipeline', permission: 'candidate.read', colSpan: 2 as const },
     { id: 'project-overview', title: 'Project Portfolio', permission: 'project.read', colSpan: 2 as const },
     { id: 'attendance-today', title: 'Company Attendance Today', permission: 'attendance.read', featureFlag: 'attendance', colSpan: 2 as const },
@@ -1244,6 +1245,7 @@ export function getEnterpriseDashboardWidgets(ctx: NavigationFilterContext) {
 export function getManagerDashboardWidgets(ctx: NavigationFilterContext) {
   const widgets = [
     { id: 'employee-stats', title: 'Team Size', permission: 'employee.read', colSpan: 2 as const },
+    { id: 'org-chart-preview', title: 'Organization Chart', permission: 'company.read', colSpan: 2 as const },
     { id: 'pending-approvals', title: 'Pending Approvals', permission: 'approval.read', colSpan: 2 as const },
     { id: 'project-overview', title: 'Active Projects', permission: 'project.read', colSpan: 2 as const },
     { id: 'pending-interviews', title: 'Upcoming Interviews', permission: 'candidate.read', featureFlag: 'recruitment', colSpan: 2 as const },

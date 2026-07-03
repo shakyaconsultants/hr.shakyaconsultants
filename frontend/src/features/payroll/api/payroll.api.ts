@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { computeCtcBreakdown } from '@/features/payroll/utils/ctc-breakdown.util';
 
 const PAYROLL_PREFIX = '/api/v1/payroll';
 
@@ -9,6 +10,9 @@ export interface SalaryComponent {
   type: 'fixed' | 'percentage';
   amount: number;
   isTaxable: boolean;
+  category?: string;
+  isVariable?: boolean;
+  description?: string;
 }
 
 export interface SalaryStructure {
@@ -165,8 +169,13 @@ export interface MySalarySummary {
   baseSalary: number;
   currency: string;
   structureName?: string;
+  structureCode?: string;
   effectiveFrom?: string;
   isLocked: boolean;
+  components?: SalaryComponent[];
+  annualCtc?: number;
+  monthlyGross?: number;
+  monthlyNet?: number;
 }
 
 export interface PayrollReportRow {
@@ -424,12 +433,25 @@ export async function fetchMySalary(): Promise<MySalarySummary> {
   if (!assignment) {
     return { baseSalary: 0, currency: 'INR', isLocked: false };
   }
+
+  const components = assignment.salaryStructure?.components ?? [];
+  const breakdown = computeCtcBreakdown({
+    baseSalary: assignment.baseSalary,
+    components,
+    currency: assignment.currency,
+  });
+
   return {
     baseSalary: assignment.baseSalary,
     currency: assignment.currency,
     structureName: assignment.salaryStructure?.name,
+    structureCode: assignment.salaryStructure?.code,
     effectiveFrom: assignment.effectiveFrom,
     isLocked: assignment.isLocked,
+    components,
+    annualCtc: breakdown.annualCtc,
+    monthlyGross: breakdown.grossSalary,
+    monthlyNet: breakdown.netTakeHome,
   };
 }
 

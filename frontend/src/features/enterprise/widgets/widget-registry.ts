@@ -49,6 +49,11 @@ export const EnterpriseWidgetComponents = {
   'system-health': lazy(() =>
     import('@/features/enterprise/widgets/system-health-widget').then((m) => ({ default: m.SystemHealthWidget })),
   ),
+  'org-chart-preview': lazy(() =>
+    import('@/features/enterprise/widgets/org-chart-preview-widget').then((m) => ({
+      default: m.OrgChartPreviewWidget,
+    })),
+  ),
 } as const;
 
 export type EnterpriseWidgetId = keyof typeof EnterpriseWidgetComponents;
