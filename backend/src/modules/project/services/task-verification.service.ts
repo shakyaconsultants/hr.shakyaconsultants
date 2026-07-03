@@ -9,6 +9,7 @@ import { ProjectAuditService } from '@modules/project/services/project-audit.ser
 import { ProjectValidationService } from '@modules/project/services/project-validation.service.js';
 import { ProjectEventService, PROJECT_EVENT } from '@modules/project/services/project-event.service.js';
 import { ProjectActivityService } from '@modules/project/services/project-activity.service.js';
+import { resolveNotificationUserId } from '@modules/project/utils/project-notification.util.js';
 import type { ProjectActorContext } from '@modules/project/types/project.types.js';
 
 export const TaskVerificationService = {
@@ -89,6 +90,25 @@ export const TaskVerificationService = {
       entityId: verification.taskId,
     });
 
+    const task = await TaskRepository.findById(verification.taskId, { companyId: context.companyId });
+    if (task?.assigneeId) {
+      const assigneeUserId = await resolveNotificationUserId(context.companyId, task.assigneeId);
+      await ProjectEventService.emit(context, {
+        activityType: ProjectActivityService.TYPES.TASK_VERIFIED,
+        activityDescription: `Task "${task.title}" verification approved`,
+        entityType: 'task',
+        entityId: verification.taskId,
+        notification: {
+          userId: assigneeUserId,
+          title: 'Task Approved',
+          message: comment ? `Your task "${task.title}" was approved: ${comment}` : `Your task "${task.title}" was approved`,
+          entityType: 'task',
+          entityId: verification.taskId,
+          jobName: PROJECT_EVENT.TASK_COMPLETED,
+        },
+      });
+    }
+
     return updated;
   },
 
@@ -128,20 +148,45 @@ export const TaskVerificationService = {
       userAgent: context.userAgent,
     });
 
+    const task = await TaskRepository.findById(verification.taskId, { companyId: context.companyId });
+    const submitterUserId = verification.submittedBy;
+
     await ProjectEventService.emit(context, {
       activityType: ProjectActivityService.TYPES.TASK_REJECTED,
       activityDescription: `Task verification rejected`,
       entityType: 'task',
       entityId: verification.taskId,
       notification: {
-        userId: verification.submittedBy,
-        title: 'Task Rejected',
-        message: comment,
+        userId: submitterUserId,
+        title: 'Task Rejected — Revision Required',
+        message: revisionNotes
+          ? `${comment}\n\nRevision notes: ${revisionNotes}`
+          : comment,
         entityType: 'task',
         entityId: verification.taskId,
         jobName: PROJECT_EVENT.TASK_REJECTED,
       },
     });
+
+    if (task?.assigneeId) {
+      const assigneeUserId = await resolveNotificationUserId(context.companyId, task.assigneeId);
+      if (assigneeUserId !== submitterUserId) {
+        await ProjectEventService.emit(context, {
+          activityType: ProjectActivityService.TYPES.TASK_REJECTED,
+          activityDescription: `Task "${task.title}" sent back for revision`,
+          entityType: 'task',
+          entityId: verification.taskId,
+          notification: {
+            userId: assigneeUserId,
+            title: 'Task Sent Back for Revision',
+            message: revisionNotes ? `${comment}\n\n${revisionNotes}` : comment,
+            entityType: 'task',
+            entityId: verification.taskId,
+            jobName: PROJECT_EVENT.TASK_REJECTED,
+          },
+        });
+      }
+    }
 
     return updated;
   },

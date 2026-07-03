@@ -3,6 +3,7 @@ import { defineDomainModel } from '@infrastructure/database/model.factory.js';
 import { COLLECTIONS } from '@infrastructure/database/constants/collections.js';
 import type { BaseDocument } from '@infrastructure/database/types/base-document.types.js';
 import { PROJECT_STATUS } from '@shared/constants/status.constants.js';
+import { PROJECT_KIND } from '@shared/constants/status.constants.js';
 import {
   PROJECT_MEMBER_ROLE,
   PROJECT_PRIORITY,
@@ -39,15 +40,19 @@ export interface ProjectDocument extends BaseDocument {
   description?: string;
   status: string;
   priority: string;
+  projectKind?: string;
   categoryId?: string;
   branchId?: string;
   departmentId?: string;
-  startDate: Date;
+  startDate?: Date;
   targetDate?: Date;
   endDate?: Date;
   completedAt?: Date;
   projectManagerId: string;
   clientName?: string;
+  requirements?: string;
+  uiDocs?: string;
+  scalabilityNotes?: string;
   budget?: number;
   currency?: string;
   repositoryUrl?: string;
@@ -156,15 +161,19 @@ const projectFields: SchemaDefinition = {
   description: { type: String, trim: true },
   status: { type: String, enum: Object.values(PROJECT_STATUS), default: PROJECT_STATUS.PLANNING },
   priority: { type: String, enum: Object.values(PROJECT_PRIORITY), default: PROJECT_PRIORITY.MEDIUM },
+  projectKind: { type: String, enum: Object.values(PROJECT_KIND), default: PROJECT_KIND.INTERNAL },
   categoryId: { type: String, index: true },
   branchId: { type: String, index: true },
   departmentId: { type: String, index: true },
-  startDate: { type: Date, required: true },
+  startDate: { type: Date },
   targetDate: { type: Date },
   endDate: { type: Date },
   completedAt: { type: Date },
   projectManagerId: { type: String, required: true, index: true },
   clientName: { type: String, trim: true },
+  requirements: { type: String, trim: true },
+  uiDocs: { type: String, trim: true },
+  scalabilityNotes: { type: String, trim: true },
   budget: { type: Number, min: 0 },
   currency: { type: String, default: 'INR' },
   repositoryUrl: { type: String, trim: true },

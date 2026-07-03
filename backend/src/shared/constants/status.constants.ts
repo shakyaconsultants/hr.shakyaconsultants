@@ -53,9 +53,15 @@ export const PROJECT_STATUS = {
   DRAFT: 'draft',
   PLANNING: 'planning',
   ACTIVE: 'active',
+  INACTIVE: 'inactive',
   ON_HOLD: 'on_hold',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
+} as const;
+
+export const PROJECT_KIND = {
+  INTERNAL: 'internal',
+  EXTERNAL: 'external',
 } as const;
 
 export const SALES_STATUS = {

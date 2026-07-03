@@ -28,6 +28,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   quickUpdateMyTask,
+  submitMyTaskForVerification,
   search,
   updateProfile,
   updateWidgetConfig,
@@ -58,6 +59,7 @@ workspaceRoutes.get('/tasks/kanban', authorize(WORKSPACE_PERMISSIONS.READ), getM
 workspaceRoutes.get('/tasks/calendar', authorize(WORKSPACE_PERMISSIONS.READ), getMyTasksCalendar);
 workspaceRoutes.post('/tasks/bulk-status', authorize(WORKSPACE_PERMISSIONS.READ), bulkUpdateMyTasks);
 workspaceRoutes.patch('/tasks/:id', authorize(WORKSPACE_PERMISSIONS.READ), quickUpdateMyTask);
+workspaceRoutes.post('/tasks/:id/submit-verification', authorize(WORKSPACE_PERMISSIONS.READ), submitMyTaskForVerification);
 
 workspaceRoutes.get('/documents', authorize(WORKSPACE_PERMISSIONS.DOCUMENT_READ), listDocuments);
 workspaceRoutes.get('/documents/:id', authorize(WORKSPACE_PERMISSIONS.DOCUMENT_READ), getDocument);

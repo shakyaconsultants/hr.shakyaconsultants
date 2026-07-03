@@ -62,8 +62,13 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     ...BASE_FIELDS,
     { key: 'branchId', label: 'Branch', type: 'select', refEntity: 'branch' },
     { key: 'isRemote', label: 'Remote Location', type: 'boolean' },
-    { key: 'address.line1', label: 'Address Line 1', type: 'text' },
-    { key: 'address.city', label: 'City', type: 'text' },
+    { key: 'timezone', label: 'Timezone', type: 'text' },
+    { key: 'address.line1', label: 'Address Line 1', type: 'text', required: true },
+    { key: 'address.line2', label: 'Address Line 2', type: 'text' },
+    { key: 'address.city', label: 'City', type: 'text', required: true },
+    { key: 'address.state', label: 'State', type: 'text', required: true },
+    { key: 'address.country', label: 'Country', type: 'text', required: true },
+    { key: 'address.postalCode', label: 'Postal Code', type: 'text', required: true },
   ],
   'work-shift': [
     ...BASE_FIELDS,
@@ -99,7 +104,6 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     { key: 'maxDaysPerYear', label: 'Max Days/Year', type: 'duration' },
     { key: 'color', label: 'Color', type: 'text' },
   ],
-  'project-category': [...BASE_FIELDS],
 };
 
 export function getEntityFields(entityKey: MasterEntityKey): EntityFieldDefinition[] {

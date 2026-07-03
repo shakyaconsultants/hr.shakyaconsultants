@@ -19,6 +19,7 @@ import { ProjectWizardService } from '@modules/project/services/project-wizard.s
 import { ProjectAccessService } from '@modules/project/services/project-access.service.js';
 import { PermissionEngineService } from '@modules/auth/services/permission-engine.service.js';
 import { PROJECT_PERMISSIONS } from '@modules/project/constants/project-permissions.constants.js';
+import { TaskVerificationRepository } from '@domain/project/project-extended.schemas.js';
 import { ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import type { ProjectActorContext } from '@modules/project/types/project.types.js';
@@ -74,6 +75,27 @@ async function canViewAllProjects(req: AuthenticatedRequest): Promise<boolean> {
     || permissions.includes(PROJECT_PERMISSIONS.PROJECT_CREATE);
 }
 
+async function enforceProjectView(req: AuthenticatedRequest, projectId: string): Promise<void> {
+  const permissions = await resolvePermissions(req);
+  const unrestricted = permissions.includes(PROJECT_PERMISSIONS.PROJECT_VIEW_ALL)
+    || permissions.includes(PROJECT_PERMISSIONS.PROJECT_CREATE);
+  if (unrestricted) {
+    return;
+  }
+  await ProjectAccessService.assertProjectViewAccess(buildActor(req), projectId);
+}
+
+async function enforceProjectManagement(req: AuthenticatedRequest, projectId: string): Promise<void> {
+  const permissions = await resolvePermissions(req);
+  const unrestricted = permissions.includes(PROJECT_PERMISSIONS.PROJECT_VIEW_ALL)
+    || permissions.includes(PROJECT_PERMISSIONS.PROJECT_CREATE)
+    || permissions.includes(PROJECT_PERMISSIONS.PROJECT_UPDATE);
+  if (unrestricted) {
+    return;
+  }
+  await ProjectAccessService.assertProjectManagerAccess(buildActor(req), projectId);
+}
+
 async function applyProjectScope(req: AuthenticatedRequest, query: ProjectListQuery): Promise<ProjectListQuery> {
   const viewAll = await canViewAllProjects(req);
   if (viewAll && query.scope !== 'assigned') {
@@ -126,6 +148,7 @@ export const getProjectDashboard: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { projectId } = validateInput(projectIdParamSchema, req.params);
+    await enforceProjectView(authReq, projectId);
     const data = await ProjectDashboardService.getProjectDashboard(authReq.user.companyId, projectId);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
@@ -152,6 +175,7 @@ export const getProject: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
+    await enforceProjectView(authReq, id);
     const project = await ProjectService.getById(authReq.user.companyId, id);
     return ResponseService.success(res, authReq, project);
   } catch (error) {
@@ -265,6 +289,7 @@ export const createTask: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const payload = validateInput(createTaskSchema, req.body);
+    await enforceProjectManagement(authReq, payload.projectId);
     const task = await TaskService.create(buildActor(authReq), payload);
     return ResponseService.created(res, authReq, task);
   } catch (error) {
@@ -278,6 +303,8 @@ export const updateTask: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const payload = validateInput(updateTaskSchema, req.body);
+    const existing = await TaskService.getById(authReq.user.companyId, id);
+    await enforceProjectManagement(authReq, existing.projectId);
     const task = await TaskService.update(buildActor(authReq), id, payload);
     return ResponseService.success(res, authReq, task);
   } catch (error) {
@@ -392,6 +419,10 @@ export const approveVerification: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
+    const existing = await TaskVerificationRepository.findById(id, { companyId: authReq.user.companyId });
+    if (existing) {
+      await enforceProjectManagement(authReq, existing.projectId);
+    }
     const { comment } = validateInput(verificationDecisionSchema, req.body);
     const verification = await TaskVerificationService.approve(buildActor(authReq), id, comment);
     return ResponseService.success(res, authReq, verification);
@@ -405,6 +436,10 @@ export const rejectVerification: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
+    const existing = await TaskVerificationRepository.findById(id, { companyId: authReq.user.companyId });
+    if (existing) {
+      await enforceProjectManagement(authReq, existing.projectId);
+    }
     const { comment, revisionNotes } = validateInput(verificationDecisionSchema, req.body);
     const verification = await TaskVerificationService.reject(buildActor(authReq), id, comment ?? '', revisionNotes);
     return ResponseService.success(res, authReq, verification);
@@ -443,6 +478,7 @@ export const assignMember: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const payload = validateInput(createMemberSchema, req.body);
+    await enforceProjectManagement(authReq, payload.projectId);
     const member = await ProjectMemberService.assign(buildActor(authReq), payload);
     return ResponseService.created(res, authReq, member);
   } catch (error) {

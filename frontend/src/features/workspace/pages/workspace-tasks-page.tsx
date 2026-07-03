@@ -1,14 +1,23 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useMyTasks, useMyTasksKanban, useBulkUpdateTasks, useQuickUpdateTask } from '@/features/workspace/hooks/use-workspace';
+import { useMyTasks, useMyTasksKanban, useBulkUpdateTasks, useSubmitTaskForVerification } from '@/features/workspace/hooks/use-workspace';
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
+import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 
 type View = 'list' | 'kanban';
 type Filter = 'pending' | 'completed' | 'waiting_verification' | 'rejected' | '';
+
+function formatStatus(status: string): string {
+  return status.split('_').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
+function canSubmit(status: string): boolean {
+  return ['todo', 'assigned', 'in_progress', 'backlog', 'blocked', 'rejected'].includes(status);
+}
 
 export function WorkspaceTasksPage() {
   const [searchParams] = useSearchParams();
@@ -17,6 +26,7 @@ export function WorkspaceTasksPage() {
   const [filter, setFilter] = useState<Filter>('pending');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: tasks, isLoading } = useMyTasks({
     status: filter || undefined,
@@ -25,13 +35,22 @@ export function WorkspaceTasksPage() {
   });
   const { data: kanban, isLoading: kanbanLoading } = useMyTasksKanban(projectId);
   const bulkUpdate = useBulkUpdateTasks();
-  const quickUpdate = useQuickUpdateTask();
+  const submitMutation = useSubmitTaskForVerification();
+
+  async function handleSubmit(taskId: string) {
+    setError(null);
+    await runFormMutation({
+      setError,
+      successMessage: 'Task submitted for verification.',
+      mutation: () => submitMutation.mutateAsync(taskId),
+    });
+  }
 
   return (
     <div className="space-y-6">
       <WorkspacePageHeader
         title="My Tasks"
-        description={projectId ? 'Tasks for your selected project.' : 'Kanban, list views, filters, and bulk actions.'}
+        description={projectId ? 'Your tasks on this project — submit completed work for manager approval.' : 'View and submit your assigned tasks for verification.'}
       />
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-2">
@@ -47,9 +66,9 @@ export function WorkspaceTasksPage() {
         >
           <option value="">All</option>
           <option value="pending">Pending</option>
-          <option value="completed">Completed</option>
-          <option value="waiting_verification">Waiting Verification</option>
-          <option value="rejected">Rejected</option>
+          <option value="completed">Waiting Verification</option>
+          <option value="waiting_verification">Submitted</option>
+          <option value="rejected">Sent Back</option>
         </select>
         {selected.length > 0 && (
           <Button size="sm" onClick={() => bulkUpdate.mutate({ taskIds: selected, status: 'in_progress' })}>
@@ -58,25 +77,42 @@ export function WorkspaceTasksPage() {
         )}
       </div>
 
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
       {view === 'list' && (
         isLoading ? <Loading message="Loading tasks..." /> : (
           (tasks?.items.length ?? 0) === 0 ? <EmptyState title="No tasks found" /> : (
             <ul className="divide-y rounded-lg border bg-card">
               {tasks?.items.map((task) => (
-                <li key={task.id} className="flex items-center gap-3 px-4 py-3">
+                <li key={task.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selected.includes(task.id)}
                     onChange={(e) => setSelected(e.target.checked ? [...selected, task.id] : selected.filter((id) => id !== task.id))}
                     aria-label={`Select ${task.title}`}
                   />
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium">{task.title}</p>
-                    <p className="text-xs text-muted-foreground">{task.status} · {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatStatus(task.status)} · {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                    </p>
+                    {task.status === 'rejected' && (
+                      <p className="text-xs text-destructive">Revision required — resubmit when ready</p>
+                    )}
+                    {task.status === 'completed' && (
+                      <p className="text-xs text-amber-600">Awaiting manager approval</p>
+                    )}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => quickUpdate.mutate({ id: task.id, payload: { status: 'completed' } })}>
-                    Complete
-                  </Button>
+                  {canSubmit(task.status) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={submitMutation.isPending}
+                      onClick={() => void handleSubmit(task.id)}
+                    >
+                      Submit for Verification
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -89,7 +125,7 @@ export function WorkspaceTasksPage() {
           <div className="flex gap-4 overflow-x-auto pb-4">
             {Object.entries(kanban?.columns ?? {}).map(([status, items]) => (
               <div key={status} className="min-w-[240px] rounded-lg border bg-muted/30 p-3">
-                <h3 className="mb-2 text-sm font-semibold capitalize">{status.replace(/_/g, ' ')}</h3>
+                <h3 className="mb-2 text-sm font-semibold capitalize">{formatStatus(status)}</h3>
                 <ul className="space-y-2">
                   {items.map((task) => (
                     <li key={task.id} className="rounded border bg-card p-3 text-sm shadow-sm">
@@ -103,8 +139,6 @@ export function WorkspaceTasksPage() {
           </div>
         )
       )}
-
-      <p className="text-xs text-muted-foreground">Timer tracking — coming soon</p>
     </div>
   );
 }

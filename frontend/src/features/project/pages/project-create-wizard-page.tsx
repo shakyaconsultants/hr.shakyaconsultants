@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff, Save } from 'lucide-react';
 import {
   EMPTY_PROJECT_WIZARD_DRAFT,
   MEMBER_ROLE_OPTIONS,
+  PROJECT_KIND_OPTIONS,
+  PROJECT_STATUS_OPTIONS,
   PROJECT_WIZARD_STEPS,
   clearLocalWizardDraft,
   loadLocalWizardDraft,
   saveLocalWizardDraft,
   wizardStepIndex,
   type ProjectWizardDraft,
-  type WizardMilestone,
-  type WizardModule,
   type WizardTeamMember,
 } from '@/features/project/constants/project-wizard-steps';
 import {
@@ -31,60 +31,48 @@ import { cn } from '@/shared/utils/cn';
 
 function mergeDraft(local: ProjectWizardDraft, remote: Record<string, unknown> | undefined): ProjectWizardDraft {
   if (!remote || Object.keys(remote).length === 0) return local;
-  return { ...local, ...(remote as Partial<ProjectWizardDraft>) };
+  return {
+    ...local,
+    ...remote,
+    basicInfo: { ...local.basicInfo, ...(remote.basicInfo as ProjectWizardDraft['basicInfo'] | undefined) },
+    requirements: { ...local.requirements, ...(remote.requirements as ProjectWizardDraft['requirements'] | undefined) },
+    tech: { ...local.tech, ...(remote.tech as ProjectWizardDraft['tech'] | undefined) },
+    deployment: { ...local.deployment, ...(remote.deployment as ProjectWizardDraft['deployment'] | undefined) },
+  } as ProjectWizardDraft;
 }
 
 function buildFinalizePayload(draft: ProjectWizardDraft) {
-  const tags = draft.basicInfo.tags.split(',').map((t) => t.trim()).filter(Boolean);
-  const labels = draft.labels.split(',').map((t) => t.trim()).filter(Boolean);
-  const documentUrls = draft.documentUrls.split('\n').map((t) => t.trim()).filter(Boolean);
+  const tags = draft.tech.tags.split(',').map((t) => t.trim()).filter(Boolean);
+  const documentUrls = draft.requirements.documentUrls.split('\n').map((t) => t.trim()).filter(Boolean);
+  const requirements = [draft.requirements.goals, draft.requirements.functionality].filter(Boolean).join('\n\n');
 
   return {
     basicInfo: {
       name: draft.basicInfo.name,
       code: draft.basicInfo.code,
       description: draft.basicInfo.description || undefined,
+      projectKind: draft.basicInfo.projectKind,
       status: draft.basicInfo.status,
-      priority: draft.basicInfo.priority,
-      categoryId: draft.basicInfo.categoryId || undefined,
-      branchId: draft.basicInfo.branchId || undefined,
-      departmentId: draft.basicInfo.departmentId || undefined,
-      startDate: draft.basicInfo.startDate,
-      targetDate: draft.basicInfo.targetDate || undefined,
       projectManagerId: draft.basicInfo.projectManagerId,
-      clientName: draft.basicInfo.clientName || undefined,
-      budget: draft.basicInfo.budget ? Number(draft.basicInfo.budget) : undefined,
-      currency: draft.basicInfo.currency,
-      riskLevel: draft.basicInfo.riskLevel,
-      visibility: draft.basicInfo.visibility,
-      tags: [...tags, ...labels],
-      technologyIds: draft.technologyIds,
+      clientName: draft.basicInfo.projectKind === 'external' ? draft.basicInfo.clientName || undefined : undefined,
+      startDate: draft.basicInfo.startDate || undefined,
+      endDate: draft.basicInfo.endDate || undefined,
+      requirements: requirements || undefined,
+      uiDocs: draft.requirements.uiDocs || undefined,
+      scalabilityNotes: draft.tech.scalabilityNotes || undefined,
+      tags,
+      technologyIds: draft.tech.technologyIds,
     },
     repository: {
-      repositoryUrl: draft.repository.repositoryUrl || undefined,
-      defaultBranch: draft.repository.defaultBranch || undefined,
-      productionUrl: draft.repository.productionUrl || undefined,
-      stagingUrl: draft.repository.stagingUrl || undefined,
-      apiUrl: draft.repository.apiUrl || undefined,
-      swaggerUrl: draft.repository.swaggerUrl || undefined,
-      documentationUrl: draft.repository.documentationUrl || undefined,
-      deploymentUrl: draft.repository.deploymentUrl || undefined,
-      apiDocsUrl: draft.repository.apiDocsUrl || undefined,
-      envVariables: draft.environment.envVariables || undefined,
-      credentials: draft.environment.credentials || undefined,
-      deploymentGuide: draft.environment.deploymentGuide || undefined,
-      architectureNotes: draft.environment.architectureNotes || undefined,
+      repositoryUrl: draft.deployment.repositoryUrl || undefined,
+      productionUrl: draft.deployment.deploymentUrl || undefined,
+      envVariables: draft.deployment.envVariables || undefined,
+      deploymentGuide: draft.deployment.deploymentGuide || undefined,
       documentUrls: documentUrls.length > 0 ? documentUrls : undefined,
     },
-    technologyIds: draft.technologyIds,
+    technologyIds: draft.tech.technologyIds,
     documentUrls,
-    modules: draft.modules.map((m) => ({ name: m.name, description: m.description })),
-    milestones: draft.milestones.map((m) => ({ name: m.name, description: m.description, dueDate: m.dueDate })),
-    sprint: draft.sprint.name ? draft.sprint : undefined,
-    assistantManagerIds: draft.assistantManagerIds,
-    teamMembers: draft.teamMembers,
-    labels,
-    taskCategories: draft.taskCategories.split(',').map((t) => t.trim()).filter(Boolean),
+    teamMembers: draft.teamMembers.filter((m) => m.employeeId),
   };
 }
 
@@ -94,14 +82,12 @@ export function ProjectCreateWizardPage() {
   const [draft, setDraft] = useState<ProjectWizardDraft>(() => loadLocalWizardDraft() ?? EMPTY_PROJECT_WIZARD_DRAFT);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showEnv, setShowEnv] = useState(false);
 
   const { data: remoteDraft } = useProjectWizardDraft();
   const saveDraftMutation = useSaveProjectWizardDraft();
   const finalizeMutation = useFinalizeProjectWizard();
   const { data: employees } = useEmployees({ pageSize: 300, status: 'active' });
-  const { data: branches } = useMasterDataList('branch', { pageSize: 100 });
-  const { data: departments } = useMasterDataList('department', { pageSize: 100 });
-  const { data: categories } = useMasterDataList('project-category', { pageSize: 100 });
   const { data: technologies } = useMasterDataList('technology', { pageSize: 100 });
 
   const step = PROJECT_WIZARD_STEPS[draft.currentStepIndex];
@@ -137,9 +123,7 @@ export function ProjectCreateWizardPage() {
   }, [employeeOptions]);
 
   async function persistDraft(nextIndex = draft.currentStepIndex) {
-    if (saveDraftMutation.isPending) {
-      return;
-    }
+    if (saveDraftMutation.isPending) return;
     const currentStep = PROJECT_WIZARD_STEPS[nextIndex]?.id ?? step.id;
     setSaving(true);
     setError(null);
@@ -150,9 +134,7 @@ export function ProjectCreateWizardPage() {
         saveDraftMutation.mutateAsync({ currentStep, payload: draft as unknown as Record<string, unknown> }),
     });
     setSaving(false);
-    if (!saved) {
-      return;
-    }
+    if (!saved) return;
   }
 
   function nextStep() {
@@ -170,9 +152,7 @@ export function ProjectCreateWizardPage() {
       setError('Name, code, and project manager are required.');
       return;
     }
-    if (finalizeMutation.isPending) {
-      return;
-    }
+    if (finalizeMutation.isPending) return;
     setSaving(true);
     setError(null);
     const created = await runFormMutation({
@@ -185,46 +165,23 @@ export function ProjectCreateWizardPage() {
       },
     });
     setSaving(false);
-    if (!created) {
-      return;
-    }
+    if (!created) return;
   }
 
   function updateBasic(field: keyof ProjectWizardDraft['basicInfo'], value: string) {
     setDraft((prev) => ({ ...prev, basicInfo: { ...prev.basicInfo, [field]: value } }));
   }
 
-  function updateRepository(field: keyof ProjectWizardDraft['repository'], value: string) {
-    setDraft((prev) => ({ ...prev, repository: { ...prev.repository, [field]: value } }));
+  function updateRequirements(field: keyof ProjectWizardDraft['requirements'], value: string) {
+    setDraft((prev) => ({ ...prev, requirements: { ...prev.requirements, [field]: value } }));
   }
 
-  function updateEnvironment(field: keyof ProjectWizardDraft['environment'], value: string) {
-    setDraft((prev) => ({ ...prev, environment: { ...prev.environment, [field]: value } }));
+  function updateTech(field: keyof ProjectWizardDraft['tech'], value: string | string[]) {
+    setDraft((prev) => ({ ...prev, tech: { ...prev.tech, [field]: value } }));
   }
 
-  function addModule() {
-    setDraft((prev) => ({ ...prev, modules: [...prev.modules, { name: '', description: '' }] }));
-  }
-
-  function updateModule(index: number, field: keyof WizardModule, value: string) {
-    setDraft((prev) => ({
-      ...prev,
-      modules: prev.modules.map((m, i) => (i === index ? { ...m, [field]: value } : m)),
-    }));
-  }
-
-  function addMilestone() {
-    setDraft((prev) => ({
-      ...prev,
-      milestones: [...prev.milestones, { name: '', description: '', dueDate: new Date().toISOString().slice(0, 10) }],
-    }));
-  }
-
-  function updateMilestone(index: number, field: keyof WizardMilestone, value: string) {
-    setDraft((prev) => ({
-      ...prev,
-      milestones: prev.milestones.map((m, i) => (i === index ? { ...m, [field]: value } : m)),
-    }));
+  function updateDeployment(field: keyof ProjectWizardDraft['deployment'], value: string) {
+    setDraft((prev) => ({ ...prev, deployment: { ...prev.deployment, [field]: value } }));
   }
 
   function addTeamMember() {
@@ -244,27 +201,31 @@ export function ProjectCreateWizardPage() {
   function toggleTechnology(id: string) {
     setDraft((prev) => ({
       ...prev,
-      technologyIds: prev.technologyIds.includes(id)
-        ? prev.technologyIds.filter((t) => t !== id)
-        : [...prev.technologyIds, id],
+      tech: {
+        ...prev.tech,
+        technologyIds: prev.tech.technologyIds.includes(id)
+          ? prev.tech.technologyIds.filter((t) => t !== id)
+          : [...prev.tech.technologyIds, id],
+      },
     }));
   }
 
-  function toggleAssistantManager(id: string) {
-    setDraft((prev) => ({
-      ...prev,
-      assistantManagerIds: prev.assistantManagerIds.includes(id)
-        ? prev.assistantManagerIds.filter((m) => m !== id)
-        : [...prev.assistantManagerIds, id],
-    }));
+  function exportEnvFile() {
+    const blob = new Blob([draft.deployment.envVariables], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${draft.basicInfo.code || 'project'}-env.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
         icon={<Briefcase className="h-6 w-6 text-primary" />}
-        title="Create Company Project"
-        description="Enterprise project creation wizard with draft saving at every step."
+        title="Create Project"
+        description="Set up a new project with requirements, tech stack, deployment, and team."
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to={ROUTES.PROJECTS_LIST}>Back to Projects</Link>
@@ -290,9 +251,7 @@ export function ProjectCreateWizardPage() {
               ) : (
                 <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-xs">{index + 1}</span>
               )}
-              <span>
-                <span className="block font-medium">{s.title}</span>
-              </span>
+              <span className="block font-medium">{s.title}</span>
             </button>
           ))}
         </nav>
@@ -307,82 +266,43 @@ export function ProjectCreateWizardPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Project Name *"><Input value={draft.basicInfo.name} onChange={(e) => updateBasic('name', e.target.value)} /></Field>
               <Field label="Project Code *"><Input value={draft.basicInfo.code} onChange={(e) => updateBasic('code', e.target.value.toUpperCase())} /></Field>
-              <Field label="Client"><Input value={draft.basicInfo.clientName} onChange={(e) => updateBasic('clientName', e.target.value)} /></Field>
+              <Field label="Project Type *">
+                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.projectKind} onChange={(e) => updateBasic('projectKind', e.target.value)}>
+                  {PROJECT_KIND_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </Field>
               <Field label="Status">
                 <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.status} onChange={(e) => updateBasic('status', e.target.value)}>
-                  {['planning', 'active', 'on_hold'].map((s) => <option key={s} value={s}>{s}</option>)}
+                  {PROJECT_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </Field>
-              <Field label="Priority">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.priority} onChange={(e) => updateBasic('priority', e.target.value)}>
-                  {['low', 'medium', 'high', 'critical'].map((s) => <option key={s} value={s}>{s}</option>)}
+              <Field label="Project Manager *">
+                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.projectManagerId} onChange={(e) => updateBasic('projectManagerId', e.target.value)}>
+                  <option value="">Select manager</option>
+                  {employeeOptions.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
                 </select>
               </Field>
-              <Field label="Risk Level">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.riskLevel} onChange={(e) => updateBasic('riskLevel', e.target.value)}>
-                  {['low', 'medium', 'high', 'critical'].map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </Field>
-              <Field label="Visibility">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.visibility} onChange={(e) => updateBasic('visibility', e.target.value)}>
-                  {['internal', 'private', 'public'].map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </Field>
-              <Field label="Branch">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.branchId} onChange={(e) => updateBasic('branchId', e.target.value)}>
-                  <option value="">Select branch</option>
-                  {(branches?.items ?? []).map((b) => <option key={b.id} value={b.id}>{String(b.name)}</option>)}
-                </select>
-              </Field>
-              <Field label="Department">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.departmentId} onChange={(e) => updateBasic('departmentId', e.target.value)}>
-                  <option value="">Select department</option>
-                  {(departments?.items ?? []).map((d) => <option key={d.id} value={d.id}>{String(d.name)}</option>)}
-                </select>
-              </Field>
-              <Field label="Category">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.categoryId} onChange={(e) => updateBasic('categoryId', e.target.value)}>
-                  <option value="">Select category</option>
-                  {(categories?.items ?? []).map((c) => <option key={c.id} value={c.id}>{String(c.name)}</option>)}
-                </select>
-              </Field>
-              <Field label="Start Date *"><DatePicker value={draft.basicInfo.startDate} onChange={(value) => updateBasic('startDate', value)} required /></Field>
-              <Field label="Expected Completion"><DatePicker value={draft.basicInfo.targetDate} onChange={(value) => updateBasic('targetDate', value)} min={draft.basicInfo.startDate || undefined} /></Field>
-              <Field label="Budget"><Input type="number" min={0} value={draft.basicInfo.budget} onChange={(e) => updateBasic('budget', e.target.value)} /></Field>
-              <Field label="Tags (comma-separated)"><Input value={draft.basicInfo.tags} onChange={(e) => updateBasic('tags', e.target.value)} /></Field>
+              {draft.basicInfo.projectKind === 'external' && (
+                <Field label="Client Name"><Input value={draft.basicInfo.clientName} onChange={(e) => updateBasic('clientName', e.target.value)} /></Field>
+              )}
+              <Field label="Start Date (optional)"><DatePicker value={draft.basicInfo.startDate} onChange={(value) => updateBasic('startDate', value)} /></Field>
+              <Field label="End Date (optional)"><DatePicker value={draft.basicInfo.endDate} onChange={(value) => updateBasic('endDate', value)} min={draft.basicInfo.startDate || undefined} /></Field>
               <div className="sm:col-span-2">
-                <Field label="Description"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.basicInfo.description} onChange={(e) => updateBasic('description', e.target.value)} /></Field>
+                <Field label="Summary"><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.basicInfo.description} onChange={(e) => updateBasic('description', e.target.value)} /></Field>
               </div>
             </div>
           )}
 
-          {step.id === 'repository' && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Git Repository"><Input value={draft.repository.repositoryUrl} onChange={(e) => updateRepository('repositoryUrl', e.target.value)} placeholder="https://github.com/org/repo" /></Field>
-              <Field label="Default Branch"><Input value={draft.repository.defaultBranch} onChange={(e) => updateRepository('defaultBranch', e.target.value)} /></Field>
-              <Field label="Production URL"><Input value={draft.repository.productionUrl} onChange={(e) => updateRepository('productionUrl', e.target.value)} /></Field>
-              <Field label="Staging URL"><Input value={draft.repository.stagingUrl} onChange={(e) => updateRepository('stagingUrl', e.target.value)} /></Field>
-              <Field label="API URL"><Input value={draft.repository.apiUrl} onChange={(e) => updateRepository('apiUrl', e.target.value)} /></Field>
-              <Field label="Swagger URL"><Input value={draft.repository.swaggerUrl} onChange={(e) => updateRepository('swaggerUrl', e.target.value)} /></Field>
-              <Field label="Documentation URL"><Input value={draft.repository.documentationUrl} onChange={(e) => updateRepository('documentationUrl', e.target.value)} /></Field>
-              <Field label="Deployment URL"><Input value={draft.repository.deploymentUrl} onChange={(e) => updateRepository('deploymentUrl', e.target.value)} /></Field>
-            </div>
-          )}
-
-          {step.id === 'environment' && (
+          {step.id === 'requirements' && (
             <div className="space-y-4">
-              <Field label="Environment Variables (encrypted at rest)">
-                <textarea className="min-h-32 w-full rounded-md border bg-background px-3 py-2 font-mono text-sm" value={draft.environment.envVariables} onChange={(e) => updateEnvironment('envVariables', e.target.value)} placeholder="KEY=value&#10;DB_URL=..." />
-              </Field>
-              <Field label="Credentials (encrypted at rest)">
-                <textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 font-mono text-sm" value={draft.environment.credentials} onChange={(e) => updateEnvironment('credentials', e.target.value)} />
-              </Field>
-              <Field label="Deployment Notes"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.environment.deploymentGuide} onChange={(e) => updateEnvironment('deploymentGuide', e.target.value)} /></Field>
-              <Field label="Architecture Notes"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.environment.architectureNotes} onChange={(e) => updateEnvironment('architectureNotes', e.target.value)} /></Field>
+              <Field label="Project Goals"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.requirements.goals} onChange={(e) => updateRequirements('goals', e.target.value)} placeholder="What should this project achieve?" /></Field>
+              <Field label="Functionality & Scope"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.requirements.functionality} onChange={(e) => updateRequirements('functionality', e.target.value)} placeholder="Core features and user flows" /></Field>
+              <Field label="UI / Design Docs"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.requirements.uiDocs} onChange={(e) => updateRequirements('uiDocs', e.target.value)} placeholder="Wireframes, Figma links, design notes" /></Field>
+              <Field label="Reference Document URLs (one per line)"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.requirements.documentUrls} onChange={(e) => updateRequirements('documentUrls', e.target.value)} /></Field>
             </div>
           )}
 
-          {step.id === 'technology' && (
+          {step.id === 'tech' && (
             <div className="space-y-4">
               <Field label="Technologies">
                 <div className="flex flex-wrap gap-2">
@@ -393,7 +313,7 @@ export function ProjectCreateWizardPage() {
                       onClick={() => toggleTechnology(tech.id)}
                       className={cn(
                         'rounded-full border px-3 py-1 text-sm',
-                        draft.technologyIds.includes(tech.id) ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground',
+                        draft.tech.technologyIds.includes(tech.id) ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground',
                       )}
                     >
                       {String(tech.name)}
@@ -401,69 +321,36 @@ export function ProjectCreateWizardPage() {
                   ))}
                 </div>
               </Field>
-              <Field label="Labels"><Input value={draft.labels} onChange={(e) => setDraft((prev) => ({ ...prev, labels: e.target.value }))} placeholder="backend, mobile, api" /></Field>
-              <Field label="Task Categories"><Input value={draft.taskCategories} onChange={(e) => setDraft((prev) => ({ ...prev, taskCategories: e.target.value }))} placeholder="feature, bug, chore" /></Field>
+              <Field label="Scalability & Tech Stack Notes"><textarea className="min-h-32 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.tech.scalabilityNotes} onChange={(e) => updateTech('scalabilityNotes', e.target.value)} placeholder="Architecture, scaling strategy, infra choices..." /></Field>
+              <Field label="Tags (comma-separated)"><Input value={draft.tech.tags} onChange={(e) => updateTech('tags', e.target.value)} placeholder="backend, mobile, api" /></Field>
             </div>
           )}
 
-          {step.id === 'documents' && (
-            <Field label="Document URLs (one per line)">
-              <textarea className="min-h-40 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.documentUrls} onChange={(e) => setDraft((prev) => ({ ...prev, documentUrls: e.target.value }))} placeholder="https://docs.example.com/architecture.pdf" />
-            </Field>
-          )}
-
-          {step.id === 'modules' && (
+          {step.id === 'deployment' && (
             <div className="space-y-4">
-              {draft.modules.map((mod, index) => (
-                <div key={index} className="grid gap-3 rounded border p-4 sm:grid-cols-2">
-                  <Field label="Module Name"><Input value={mod.name} onChange={(e) => updateModule(index, 'name', e.target.value)} /></Field>
-                  <Field label="Description"><Input value={mod.description ?? ''} onChange={(e) => updateModule(index, 'description', e.target.value)} /></Field>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={addModule}>Add Module</Button>
-            </div>
-          )}
-
-          {step.id === 'milestones' && (
-            <div className="space-y-4">
-              {draft.milestones.map((ms, index) => (
-                <div key={index} className="grid gap-3 rounded border p-4 sm:grid-cols-3">
-                  <Field label="Name"><Input value={ms.name} onChange={(e) => updateMilestone(index, 'name', e.target.value)} /></Field>
-                  <Field label="Due Date"><DatePicker value={ms.dueDate} onChange={(value) => updateMilestone(index, 'dueDate', value)} min={draft.basicInfo.startDate || undefined} /></Field>
-                  <Field label="Description"><Input value={ms.description ?? ''} onChange={(e) => updateMilestone(index, 'description', e.target.value)} /></Field>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={addMilestone}>Add Milestone</Button>
-            </div>
-          )}
-
-          {step.id === 'sprint' && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Sprint Name"><Input value={draft.sprint.name} onChange={(e) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, name: e.target.value } }))} /></Field>
-              <Field label="Goal"><Input value={draft.sprint.goal ?? ''} onChange={(e) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, goal: e.target.value } }))} /></Field>
-              <Field label="Start Date"><DatePicker value={draft.sprint.startDate} onChange={(value) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, startDate: value } }))} max={draft.sprint.endDate || undefined} /></Field>
-              <Field label="End Date"><DatePicker value={draft.sprint.endDate} onChange={(value) => setDraft((prev) => ({ ...prev, sprint: { ...prev.sprint, endDate: value } }))} min={draft.sprint.startDate || undefined} /></Field>
-            </div>
-          )}
-
-          {step.id === 'manager' && (
-            <div className="space-y-4">
-              <Field label="Primary Project Manager *">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.projectManagerId} onChange={(e) => updateBasic('projectManagerId', e.target.value)}>
-                  <option value="">Select manager</option>
-                  {employeeOptions.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
-                </select>
-              </Field>
-              <Field label="Assistant Project Managers">
-                <div className="max-h-48 space-y-2 overflow-y-auto rounded border p-3">
-                  {employeeOptions.filter((e) => e.id !== draft.basicInfo.projectManagerId).map((e) => (
-                    <label key={e.id} className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={draft.assistantManagerIds.includes(e.id)} onChange={() => toggleAssistantManager(e.id)} />
-                      {e.firstName} {e.lastName}
-                    </label>
-                  ))}
+              <Field label="GitHub / Repository URL"><Input value={draft.deployment.repositoryUrl} onChange={(e) => updateDeployment('repositoryUrl', e.target.value)} placeholder="https://github.com/org/repo" /></Field>
+              <Field label="Deployment URL"><Input value={draft.deployment.deploymentUrl} onChange={(e) => updateDeployment('deploymentUrl', e.target.value)} placeholder="https://app.example.com" /></Field>
+              <Field label="Environment Variables (encrypted at rest)">
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowEnv((v) => !v)}>
+                      {showEnv ? <EyeOff className="mr-1 h-4 w-4" /> : <Eye className="mr-1 h-4 w-4" />}
+                      {showEnv ? 'Hide' : 'View'}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={exportEnvFile} disabled={!draft.deployment.envVariables}>
+                      Export .env file
+                    </Button>
+                  </div>
+                  <textarea
+                    className={cn('min-h-32 w-full rounded-md border bg-background px-3 py-2 font-mono text-sm', !showEnv && 'text-security-disc')}
+                    style={!showEnv ? { WebkitTextSecurity: 'disc' } as React.CSSProperties : undefined}
+                    value={draft.deployment.envVariables}
+                    onChange={(e) => updateDeployment('envVariables', e.target.value)}
+                    placeholder="KEY=value&#10;DB_URL=..."
+                  />
                 </div>
               </Field>
+              <Field label="Deployment Notes"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={draft.deployment.deploymentGuide} onChange={(e) => updateDeployment('deploymentGuide', e.target.value)} /></Field>
             </div>
           )}
 
@@ -474,12 +361,14 @@ export function ProjectCreateWizardPage() {
                   <Field label="Employee">
                     <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={member.employeeId} onChange={(e) => updateTeamMember(index, 'employeeId', e.target.value)}>
                       <option value="">Select</option>
-                      {employeeOptions.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
+                      {employeeOptions.filter((e) => e.id !== draft.basicInfo.projectManagerId).map((e) => (
+                        <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
+                      ))}
                     </select>
                   </Field>
                   <Field label="Role">
                     <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={member.role} onChange={(e) => updateTeamMember(index, 'role', e.target.value)}>
-                      {MEMBER_ROLE_OPTIONS.filter((r) => r.value !== 'project_manager').map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      {MEMBER_ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                   </Field>
                   <Field label="Allocation %"><Input type="number" min={0} max={100} value={member.allocationPercent ?? 100} onChange={(e) => updateTeamMember(index, 'allocationPercent', Number(e.target.value))} /></Field>
@@ -492,14 +381,14 @@ export function ProjectCreateWizardPage() {
           {step.id === 'review' && (
             <div className="space-y-3 text-sm">
               <ReviewRow label="Project" value={`${draft.basicInfo.name} (${draft.basicInfo.code})`} />
+              <ReviewRow label="Type" value={draft.basicInfo.projectKind} />
+              <ReviewRow label="Status" value={draft.basicInfo.status} />
               <ReviewRow label="Manager" value={employeeName(draft.basicInfo.projectManagerId)} />
-              <ReviewRow label="Client" value={draft.basicInfo.clientName || '—'} />
-              <ReviewRow label="Repository" value={draft.repository.repositoryUrl || '—'} />
-              <ReviewRow label="Modules" value={String(draft.modules.length)} />
-              <ReviewRow label="Milestones" value={String(draft.milestones.length)} />
+              <ReviewRow label="Repository" value={draft.deployment.repositoryUrl || '—'} />
+              <ReviewRow label="Deployment" value={draft.deployment.deploymentUrl || '—'} />
               <ReviewRow label="Team Members" value={String(draft.teamMembers.filter((m) => m.employeeId).length)} />
-              <ReviewRow label="Technologies" value={String(draft.technologyIds.length)} />
-              <ReviewRow label="Env Variables" value={draft.environment.envVariables ? 'Configured (encrypted)' : 'None'} />
+              <ReviewRow label="Technologies" value={String(draft.tech.technologyIds.length)} />
+              <ReviewRow label="Env Variables" value={draft.deployment.envVariables ? 'Configured (encrypted)' : 'None'} />
             </div>
           )}
 

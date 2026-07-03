@@ -2,8 +2,9 @@ import { EmployeeRepository, ReportingHierarchyRepository } from '@domain/employ
 import { REPORTING_RELATIONSHIP_TYPE } from '@domain/employee/employee.schemas.js';
 import { AnnouncementRepository, NotificationRepository, ANNOUNCEMENT_AUDIENCE } from '@domain/communication/communication.schemas.js';
 import { WORKSPACE_WIDGET } from '@domain/workspace/workspace-extended.schemas.js';
-import { TaskRepository, ProjectRepository, ProjectMemberRepository } from '@domain/project/project.schemas.js';
+import { ProjectRepository, ProjectMemberRepository, TaskRepository } from '@domain/project/project.schemas.js';
 import { PROJECT_TASK_STATUS } from '@domain/project/project-extended.schemas.js';
+import { ProjectAccessService } from '@modules/project/services/project-access.service.js';
 import { ActivityLogRepository } from '@domain/audit/audit.schemas.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { WORKSPACE_QUICK_LINKS } from '@modules/workspace/constants/workspace.constants.js';
@@ -36,9 +37,12 @@ async function getEmployeeContext(companyId: string, employeeId: string) {
   return employee;
 }
 
-async function getMyProjectIds(companyId: string, employeeId: string): Promise<string[]> {
-  const memberships = await ProjectMemberRepository.findMany({ employeeId }, { companyId });
-  return memberships.map((m) => m.projectId);
+async function getMyProjectIds(context: WorkspaceActorContext): Promise<string[]> {
+  return ProjectAccessService.resolveAssignedProjectIds({
+    companyId: context.companyId,
+    userId: context.userId,
+    employeeId: context.employeeId,
+  });
 }
 
 export const WorkspaceWidgetDataService = {
@@ -102,8 +106,7 @@ export const WorkspaceWidgetDataService = {
   },
 
   async getMyProjects(context: WorkspaceActorContext) {
-    const memberships = await ProjectMemberRepository.findMany({ employeeId: context.employeeId }, { companyId: context.companyId });
-    const projectIds = memberships.map((m) => m.projectId);
+    const projectIds = await getMyProjectIds(context);
     if (projectIds.length === 0) {
       return { projects: [], total: 0 };
     }
@@ -113,19 +116,24 @@ export const WorkspaceWidgetDataService = {
       { companyId: context.companyId },
     );
 
-    const enriched = memberships.slice(0, 6).map((membership) => {
-      const project = projects.find((p) => p.id === membership.projectId);
+    const memberships = await ProjectMemberRepository.findMany(
+      { employeeId: context.employeeId, projectId: { $in: projectIds } },
+      { companyId: context.companyId },
+    );
+
+    const enriched = projects.slice(0, 6).map((project) => {
+      const membership = memberships.find((m) => m.projectId === project.id && !m.leftAt);
       return {
-        ...WorkspaceAuditService.toRecord(membership),
-        project: project ? WorkspaceAuditService.toRecord(project) : null,
+        role: membership?.role ?? (project.projectManagerId === context.employeeId ? 'project_manager' : 'member'),
+        project: WorkspaceAuditService.toRecord(project),
       };
     });
 
-    return { projects: enriched, total: memberships.length };
+    return { projects: enriched, total: projectIds.length };
   },
 
   async getProjectProgress(context: WorkspaceActorContext) {
-    const projectIds = await getMyProjectIds(context.companyId, context.employeeId);
+    const projectIds = await getMyProjectIds(context);
     if (projectIds.length === 0) {
       return { items: [], averageProgress: 0 };
     }

@@ -55,6 +55,7 @@ export interface DeveloperDashboardData {
   completedThisWeek: number;
   overdueTasks: number;
   upcomingDeadlines: { id: string; title: string; dueDate: string; projectId: string }[];
+  assignedProjects: { id: string; name: string; code: string; status: string; role: string; myOpenTasks: number }[];
 }
 
 export interface ManagerDashboardData extends ProjectDashboardData {

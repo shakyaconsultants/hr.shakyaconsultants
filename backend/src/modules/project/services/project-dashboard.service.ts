@@ -7,6 +7,7 @@ import { TaskVerificationRepository, VERIFICATION_STATUS, PROJECT_RISK_LEVEL } f
 import { ActivityLogRepository } from '@domain/audit/audit.schemas.js';
 import { PROJECT_STATUS } from '@shared/constants/status.constants.js';
 import { PROJECT_TASK_STATUS } from '@domain/project/project-extended.schemas.js';
+import { ProjectAccessService } from '@modules/project/services/project-access.service.js';
 import type { ProjectDashboardData, DeveloperDashboardData, ManagerDashboardData, EnterpriseDashboardData } from '@modules/project/types/project.types.js';
 
 const COMPLETED_STATUSES = new Set<string>(['completed', 'verified', 'closed']);
@@ -71,6 +72,41 @@ export const ProjectDashboardService = {
     const weekStart = new Date(now);
     weekStart.setDate(weekStart.getDate() - 7);
 
+    const projectIds = await ProjectAccessService.resolveAssignedProjectIds({
+      companyId,
+      userId: employeeId,
+      employeeId,
+    });
+    const projects = projectIds.length > 0
+      ? await ProjectRepository.findMany({ id: { $in: projectIds }, isArchived: false }, { companyId })
+      : [];
+    const memberships = projectIds.length > 0
+      ? await ProjectMemberRepository.findMany({ employeeId, projectId: { $in: projectIds } }, { companyId })
+      : [];
+
+    const openStatuses = new Set<string>([
+      PROJECT_TASK_STATUS.BACKLOG,
+      PROJECT_TASK_STATUS.TODO,
+      PROJECT_TASK_STATUS.ASSIGNED,
+      PROJECT_TASK_STATUS.IN_PROGRESS,
+      PROJECT_TASK_STATUS.BLOCKED,
+      PROJECT_TASK_STATUS.REJECTED,
+    ]);
+
+    const assignedProjects = projects.map((project) => {
+      const membership = memberships.find((m) => m.projectId === project.id && !m.leftAt);
+      const role = membership?.role ?? (project.projectManagerId === employeeId ? 'project_manager' : 'member');
+      const myOpenTasks = tasks.filter((t) => t.projectId === project.id && openStatuses.has(t.status)).length;
+      return {
+        id: project.id,
+        name: project.name,
+        code: project.code,
+        status: project.status,
+        role,
+        myOpenTasks,
+      };
+    });
+
     return {
       assignedTasks: tasks.length,
       inProgressTasks: tasks.filter((t) => t.status === PROJECT_TASK_STATUS.IN_PROGRESS).length,
@@ -88,6 +124,7 @@ export const ProjectDashboardService = {
           dueDate: t.dueDate?.toISOString() ?? '',
           projectId: t.projectId,
         })),
+      assignedProjects,
     };
   },
 

@@ -1,12 +1,30 @@
 import { ProjectMemberRepository, ProjectRepository, MilestoneRepository, SprintRepository, TaskRepository } from '@domain/project/project.schemas.js';
+import { ProjectKnowledgeBaseRepository } from '@domain/project/project-extended.schemas.js';
 import { PROJECT_TASK_STATUS } from '@domain/project/project-extended.schemas.js';
+import { ProjectAccessService } from '@modules/project/services/project-access.service.js';
 import { WorkspaceAuditService } from '@modules/workspace/services/workspace-audit.service.js';
 import type { WorkspaceActorContext, WorkspaceListQuery } from '@modules/workspace/types/workspace.types.js';
+import type { ProjectActorContext } from '@modules/project/types/project.types.js';
+
+function toProjectActor(context: WorkspaceActorContext): ProjectActorContext {
+  return {
+    companyId: context.companyId,
+    userId: context.userId,
+    employeeId: context.employeeId,
+    ip: context.ip,
+    userAgent: context.userAgent,
+  };
+}
+
+const COMPLETED_STATUSES = new Set<string>([
+  PROJECT_TASK_STATUS.COMPLETED,
+  PROJECT_TASK_STATUS.VERIFIED,
+  PROJECT_TASK_STATUS.CLOSED,
+]);
 
 export const WorkspaceMyProjectsService = {
   async list(context: WorkspaceActorContext, query: WorkspaceListQuery) {
-    const memberships = await ProjectMemberRepository.findMany({ employeeId: context.employeeId }, { companyId: context.companyId });
-    const projectIds = memberships.map((m) => m.projectId);
+    const projectIds = await ProjectAccessService.resolveAssignedProjectIds(toProjectActor(context));
 
     if (projectIds.length === 0) {
       return { items: [], total: 0 };
@@ -24,6 +42,11 @@ export const WorkspaceMyProjectsService = {
       );
     }
 
+    const memberships = await ProjectMemberRepository.findMany(
+      { employeeId: context.employeeId, projectId: { $in: projectIds } },
+      { companyId: context.companyId },
+    );
+
     const [tasks, milestones, sprints] = await Promise.all([
       TaskRepository.findMany({ projectId: { $in: projectIds } }, { companyId: context.companyId }),
       MilestoneRepository.findMany({ projectId: { $in: projectIds } }, { companyId: context.companyId }),
@@ -34,13 +57,13 @@ export const WorkspaceMyProjectsService = {
     const horizon = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
     const items = projects.map((project) => {
-      const membership = memberships.find((m) => m.projectId === project.id);
+      const membership = memberships.find((m) => m.projectId === project.id && !m.leftAt);
+      const role = membership?.role ?? (project.projectManagerId === context.employeeId ? 'project_manager' : 'member');
       const projectTasks = tasks.filter((t) => t.projectId === project.id);
-      const completed = projectTasks.filter((t) =>
-        [PROJECT_TASK_STATUS.COMPLETED, PROJECT_TASK_STATUS.VERIFIED, PROJECT_TASK_STATUS.CLOSED].includes(t.status as typeof PROJECT_TASK_STATUS.COMPLETED),
-      ).length;
+      const myTasks = projectTasks.filter((t) => t.assigneeId === context.employeeId);
+      const completed = projectTasks.filter((t) => COMPLETED_STATUSES.has(t.status)).length;
       const progress = projectTasks.length > 0 ? Math.round((completed / projectTasks.length) * 100) : 0;
-      const upcomingDeadlines = projectTasks
+      const upcomingDeadlines = myTasks
         .filter((t) => t.dueDate && new Date(t.dueDate) >= now && new Date(t.dueDate) <= horizon)
         .sort((a, b) => {
           const aDate = a.dueDate ? new Date(a.dueDate).getTime() : 0;
@@ -51,9 +74,10 @@ export const WorkspaceMyProjectsService = {
 
       return {
         project: WorkspaceAuditService.toRecord(project),
-        role: membership?.role,
+        role,
         progress,
         totalTasks: projectTasks.length,
+        myTaskCount: myTasks.length,
         completedTasks: completed,
         upcomingDeadlines: upcomingDeadlines.map(WorkspaceAuditService.toRecord),
         milestones: milestones.filter((m) => m.projectId === project.id).map(WorkspaceAuditService.toRecord),
@@ -70,31 +94,51 @@ export const WorkspaceMyProjectsService = {
   },
 
   async getById(context: WorkspaceActorContext, projectId: string) {
-    const membership = await ProjectMemberRepository.findOne(
-      { employeeId: context.employeeId, projectId },
-      { companyId: context.companyId },
-    );
-    if (!membership) {
+    const assignedIds = await ProjectAccessService.resolveAssignedProjectIds(toProjectActor(context));
+    if (!assignedIds.includes(projectId)) {
       return null;
     }
 
     const project = await ProjectRepository.findById(projectId, { companyId: context.companyId });
-    if (!project) {
+    if (!project || project.isArchived) {
       return null;
     }
 
-    const [tasks, milestones, sprints] = await Promise.all([
+    const membership = await ProjectMemberRepository.findOne(
+      { employeeId: context.employeeId, projectId },
+      { companyId: context.companyId },
+    );
+
+    const role = membership && !membership.leftAt
+      ? membership.role
+      : project.projectManagerId === context.employeeId
+        ? 'project_manager'
+        : 'member';
+
+    const [myTasks, milestones, sprints, members, knowledgeBase] = await Promise.all([
       TaskRepository.findMany({ projectId, assigneeId: context.employeeId }, { companyId: context.companyId }),
       MilestoneRepository.findMany({ projectId }, { companyId: context.companyId }),
       SprintRepository.findMany({ projectId }, { companyId: context.companyId }),
+      ProjectMemberRepository.findMany({ projectId }, { companyId: context.companyId }),
+      ProjectKnowledgeBaseRepository.findOne({ projectId }, { companyId: context.companyId }),
     ]);
+
+    const activeMembers = members.filter((m) => !m.leftAt);
 
     return {
       project: WorkspaceAuditService.toRecord(project),
-      role: membership.role,
-      myTasks: tasks.map(WorkspaceAuditService.toRecord),
+      role,
+      canManage: project.projectManagerId === context.employeeId,
+      myTasks: myTasks.map(WorkspaceAuditService.toRecord),
       milestones: milestones.map(WorkspaceAuditService.toRecord),
       sprints: sprints.map(WorkspaceAuditService.toRecord),
+      members: activeMembers.map(WorkspaceAuditService.toRecord),
+      deployment: {
+        repositoryUrl: knowledgeBase?.repositoryUrl ?? project.repositoryUrl,
+        productionUrl: project.productionUrl,
+        deploymentGuide: knowledgeBase?.deploymentGuide,
+        documentUrls: knowledgeBase?.documentUrls ?? [],
+      },
     };
   },
 };

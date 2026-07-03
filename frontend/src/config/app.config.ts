@@ -39,6 +39,7 @@ export const ROUTES = {
   WORKSPACE_PROFILE: '/workspace/profile',
   WORKSPACE_HIERARCHY: '/workspace/hierarchy',
   WORKSPACE_PROJECTS: '/workspace/projects',
+  workspaceProjectDetail: (id: string) => `/workspace/projects/${id}`,
   WORKSPACE_TASKS: '/workspace/tasks',
   WORKSPACE_DOCUMENTS: '/workspace/documents',
   WORKSPACE_NOTIFICATIONS: '/workspace/notifications',

@@ -11,6 +11,7 @@ import { DepartmentService } from '@modules/organization/services/department.ser
 import { DepartmentValidationService } from '@modules/organization/services/department-validation.service.js';
 import { DesignationService } from '@modules/organization/services/designation.service.js';
 import { DesignationValidationService } from '@modules/organization/services/designation-validation.service.js';
+import { OfficeLocationValidationService } from '@modules/organization/services/office-location-validation.service.js';
 import { DependencyValidatorService } from '@modules/organization/shared/dependency-validator.service.js';
 import { MasterDataAuditService } from '@modules/organization/shared/master-data-audit.service.js';
 import { MasterDataCacheService } from '@modules/organization/shared/master-data-cache.service.js';
@@ -222,6 +223,10 @@ export const MasterDataService = {
       );
     }
 
+    if (entityKey === MASTER_DATA_ENTITY.OFFICE_LOCATION) {
+      finalPayload = await OfficeLocationValidationService.validateWrite(context.companyId, payload);
+    }
+
     finalPayload = await ensureAutoCode(entityKey, context.companyId, context.userId, finalPayload);
 
     const { name, code } = extractNameCode(finalPayload);
@@ -334,6 +339,11 @@ export const MasterDataService = {
         typeof finalPayload.departmentId === 'string' ? finalPayload.departmentId : undefined,
         id,
       );
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.OFFICE_LOCATION) {
+      const merged = { ...before, ...payload };
+      finalPayload = await OfficeLocationValidationService.validateWrite(context.companyId, merged, before);
     }
 
     finalPayload = stripImmutableCode(finalPayload);

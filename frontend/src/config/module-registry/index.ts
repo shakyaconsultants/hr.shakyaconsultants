@@ -1029,6 +1029,7 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.WORKSPACE_PROFILE, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_HIERARCHY, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_PROJECTS, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
+  { path: `${ROUTES.WORKSPACE_PROJECTS}/:id`, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_TASKS, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_DOCUMENTS, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_NOTIFICATIONS, portals: WORKSPACE_ONLY, permission: 'workspace.read' },

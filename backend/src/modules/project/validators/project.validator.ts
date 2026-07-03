@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PROJECT_STATUS } from '@shared/constants/status.constants.js';
+import { PROJECT_STATUS, PROJECT_KIND } from '@shared/constants/status.constants.js';
 import {
   PROJECT_MEMBER_ROLE,
   PROJECT_PRIORITY,
@@ -40,13 +40,18 @@ export const createProjectSchema = z.object({
   description: z.string().optional(),
   status: z.enum(Object.values(PROJECT_STATUS) as [string, ...string[]]).optional(),
   priority: z.enum(Object.values(PROJECT_PRIORITY) as [string, ...string[]]).optional(),
+  projectKind: z.enum(Object.values(PROJECT_KIND) as [string, ...string[]]).optional(),
   categoryId: z.uuid().optional(),
   branchId: z.uuid().optional(),
   departmentId: z.uuid().optional(),
-  startDate: z.coerce.date(),
+  startDate: z.coerce.date().optional(),
   targetDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
   projectManagerId: z.uuid(),
   clientName: z.string().optional(),
+  requirements: z.string().optional(),
+  uiDocs: z.string().optional(),
+  scalabilityNotes: z.string().optional(),
   budget: z.coerce.number().min(0).optional(),
   currency: z.string().optional(),
   repositoryUrl: z.string().optional(),

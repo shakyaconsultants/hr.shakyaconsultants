@@ -12,6 +12,7 @@ import { ProjectValidationService } from '@modules/project/services/project-vali
 import { TaskAssignmentService } from '@modules/project/services/task-assignment.service.js';
 import { ProjectEventService, PROJECT_EVENT } from '@modules/project/services/project-event.service.js';
 import { ProjectActivityService } from '@modules/project/services/project-activity.service.js';
+import { resolveNotificationUserId } from '@modules/project/utils/project-notification.util.js';
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
 import type { CreateTaskInput, UpdateTaskInput } from '@modules/project/validators/project.validator.js';
@@ -115,6 +116,23 @@ export const TaskService = {
         assignedTo: task.assigneeId,
         reason: 'Initial assignment',
       });
+
+      const recipientUserId = await resolveNotificationUserId(context.companyId, task.assigneeId);
+      await ProjectEventService.emit(context, {
+        activityType: ProjectActivityService.TYPES.TASK_ASSIGNED,
+        activityDescription: `Task "${task.title}" assigned`,
+        entityType: 'task',
+        entityId: id,
+        metadata: { assigneeId: task.assigneeId },
+        notification: {
+          userId: recipientUserId,
+          title: 'Task Assigned',
+          message: `You have been assigned: ${task.title}${task.dueDate ? ` (due ${task.dueDate.toLocaleDateString()})` : ''}`,
+          entityType: 'task',
+          entityId: id,
+          jobName: PROJECT_EVENT.TASK_ASSIGNED,
+        },
+      });
     }
 
     await ProjectAuditService.log({
@@ -158,6 +176,7 @@ export const TaskService = {
         isReassignment: Boolean(previousAssignee),
       });
 
+      const recipientUserId = await resolveNotificationUserId(context.companyId, payload.assigneeId);
       await ProjectEventService.emit(context, {
         activityType: ProjectActivityService.TYPES.TASK_ASSIGNED,
         activityDescription: `Task "${updated.title}" assigned`,
@@ -165,9 +184,9 @@ export const TaskService = {
         entityId: id,
         metadata: { assigneeId: payload.assigneeId },
         notification: {
-          userId: payload.assigneeId,
+          userId: recipientUserId,
           title: 'Task Assigned',
-          message: `You have been assigned: ${updated.title}`,
+          message: `You have been assigned: ${updated.title}${updated.dueDate ? ` (due ${updated.dueDate.toLocaleDateString()})` : ''}`,
           entityType: 'task',
           entityId: id,
           jobName: PROJECT_EVENT.TASK_ASSIGNED,
@@ -176,21 +195,27 @@ export const TaskService = {
     }
 
     if (payload.status === PROJECT_TASK_STATUS.COMPLETED && before.status !== PROJECT_TASK_STATUS.COMPLETED) {
+      let verifierNotification;
+      if (updated.verifierId) {
+        const verifierUserId = await resolveNotificationUserId(context.companyId, updated.verifierId);
+        verifierNotification = {
+          userId: verifierUserId,
+          title: 'Task Ready for Verification',
+          message: `Task "${updated.title}" is ready for verification`,
+          entityType: 'task',
+          entityId: id,
+          jobName: PROJECT_EVENT.TASK_COMPLETED,
+        };
+
+        const { TaskVerificationService } = await import('@modules/project/services/task-verification.service.js');
+        await TaskVerificationService.submit(context, id, updated.verifierId);
+      }
       await ProjectEventService.emit(context, {
         activityType: ProjectActivityService.TYPES.TASK_COMPLETED,
         activityDescription: `Task "${updated.title}" marked completed`,
         entityType: 'task',
         entityId: id,
-        notification: updated.verifierId
-          ? {
-              userId: updated.verifierId,
-              title: 'Task Ready for Verification',
-              message: `Task "${updated.title}" is ready for verification`,
-              entityType: 'task',
-              entityId: id,
-              jobName: PROJECT_EVENT.TASK_COMPLETED,
-            }
-          : undefined,
+        notification: verifierNotification,
       });
     }
 

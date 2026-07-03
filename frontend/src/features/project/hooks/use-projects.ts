@@ -16,6 +16,9 @@ import {
   fetchManagerDashboard,
   fetchProject,
   fetchProjectDashboard,
+  approveTaskVerification,
+  rejectTaskVerification,
+  fetchTaskVerifications,
   fetchProjectKanban,
   fetchProjectKnowledgeBase,
   fetchProjectMembers,
@@ -348,6 +351,42 @@ export function useUpdateTask() {
       void queryClient.invalidateQueries({ queryKey: ['tasks'] });
       void queryClient.invalidateQueries({ queryKey: ['task', variables.id] });
       void queryClient.invalidateQueries({ queryKey: ['project'] });
+    },
+  });
+}
+
+export function useTaskVerifications(taskId: string) {
+  return useQuery({
+    queryKey: ['task', taskId, 'verifications'],
+    queryFn: () => fetchTaskVerifications(taskId),
+    enabled: Boolean(taskId),
+  });
+}
+
+export function useApproveTaskVerification() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: ({ verificationId, comment }: { verificationId: string; comment?: string }) =>
+      approveTaskVerification(verificationId, comment),
+    errorToast: false,
+    successMessage: false,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['task'] });
+    },
+  });
+}
+
+export function useRejectTaskVerification() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: ({ verificationId, comment, revisionNotes }: { verificationId: string; comment: string; revisionNotes?: string }) =>
+      rejectTaskVerification(verificationId, comment, revisionNotes),
+    errorToast: false,
+    successMessage: false,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['task'] });
     },
   });
 }

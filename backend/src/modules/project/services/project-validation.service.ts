@@ -15,12 +15,15 @@ export const ProjectValidationService = {
     }
   },
 
-  assertValidDates(startDate: Date, targetDate?: Date, endDate?: Date): void {
-    if (targetDate && targetDate < startDate) {
+  assertValidDates(startDate?: Date, targetDate?: Date, endDate?: Date): void {
+    if (startDate && targetDate && targetDate < startDate) {
       throw new ValidationError('Target date cannot be before start date', [], { code: ERROR_CODES.VALIDATION_FAILED });
     }
-    if (endDate && endDate < startDate) {
+    if (startDate && endDate && endDate < startDate) {
       throw new ValidationError('End date cannot be before start date', [], { code: ERROR_CODES.VALIDATION_FAILED });
+    }
+    if (targetDate && endDate && endDate < targetDate) {
+      throw new ValidationError('End date cannot be before target date', [], { code: ERROR_CODES.VALIDATION_FAILED });
     }
   },
 
@@ -94,12 +97,17 @@ export const ProjectValidationService = {
   },
 
   async assertValidVerifier(companyId: string, projectId: string, verifierId: string): Promise<void> {
+    const project = await ProjectRepository.findById(projectId, { companyId });
+    if (project?.projectManagerId === verifierId) {
+      return;
+    }
+
     const member = await ProjectMemberRepository.findOne(
       { projectId, employeeId: verifierId },
       { companyId },
     );
     if (!member) {
-      throw new ValidationError('Verifier must be a project member', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Verifier must be a project manager or member', [], { code: ERROR_CODES.VALIDATION_FAILED });
     }
   },
 

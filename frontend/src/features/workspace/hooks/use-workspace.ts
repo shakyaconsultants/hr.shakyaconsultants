@@ -11,6 +11,7 @@ import {
   fetchDocuments,
   fetchHierarchy,
   fetchMyProjects,
+  fetchMyProject,
   fetchMyTasks,
   fetchMyTasksKanban,
   fetchNotifications,
@@ -21,6 +22,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   quickUpdateTask,
+  submitTaskForVerification,
   requestOnboardingPortalLink,
   updateProfile,
   updateWidgetConfig,
@@ -33,6 +35,7 @@ const KEYS = {
   widget: (slug: string) => ['workspace', 'widget', slug] as const,
   profile: ['workspace', 'profile'] as const,
   hierarchy: ['workspace', 'hierarchy'] as const,
+  project: (id: string) => ['workspace', 'project', id] as const,
   projects: (params: ListParams) => ['workspace', 'projects', params] as const,
   tasks: (params: ListParams & { status?: string; projectId?: string }) => ['workspace', 'tasks', params] as const,
   kanban: (projectId?: string) => ['workspace', 'tasks', 'kanban', projectId] as const,
@@ -89,6 +92,14 @@ export function useMyProjects(params: ListParams = {}) {
   return useQuery({ queryKey: KEYS.projects(params), queryFn: () => fetchMyProjects(params) });
 }
 
+export function useMyProject(id: string) {
+  return useQuery({
+    queryKey: KEYS.project(id),
+    queryFn: () => fetchMyProject(id),
+    enabled: Boolean(id),
+  });
+}
+
 export function useMyTasks(params: ListParams & { status?: string; projectId?: string } = {}) {
   return useQuery({ queryKey: KEYS.tasks(params), queryFn: () => fetchMyTasks(params) });
 }
@@ -104,6 +115,19 @@ export function useBulkUpdateTasks() {
     successMessage: 'Updated successfully',
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['workspace', 'tasks'] });
+      qc.invalidateQueries({ queryKey: ['workspace', 'widget'] });
+    },
+  });
+}
+
+export function useSubmitTaskForVerification() {
+  const qc = useQueryClient();
+  return useAppMutation({
+    mutationFn: submitTaskForVerification,
+    successMessage: 'Task submitted for verification',
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workspace', 'tasks'] });
+      qc.invalidateQueries({ queryKey: ['workspace', 'project'] });
       qc.invalidateQueries({ queryKey: ['workspace', 'widget'] });
     },
   });

@@ -1,11 +1,11 @@
 import { TaskRepository, ProjectRepository } from '@domain/project/project.schemas.js';
-import { ProjectMemberRepository } from '@domain/project/project.schemas.js';
 import { EmployeeDocumentFileRepository } from '@domain/employee/employee.schemas.js';
 import { AnnouncementRepository } from '@domain/communication/communication.schemas.js';
 import { ANNOUNCEMENT_AUDIENCE } from '@domain/communication/communication.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import type { SearchQuery, WorkspaceActorContext } from '@modules/workspace/types/workspace.types.js';
+import { ProjectAccessService } from '@modules/project/services/project-access.service.js';
 import { WorkspaceAuditService } from '@modules/workspace/services/workspace-audit.service.js';
 
 export const WorkspaceSearchService = {
@@ -16,10 +16,13 @@ export const WorkspaceSearchService = {
     const results: Record<string, unknown>[] = [];
 
     if (types.includes('projects')) {
-      const memberships = await ProjectMemberRepository.findMany({ employeeId: context.employeeId }, { companyId: context.companyId });
-      const projectIds = memberships.map((m) => m.projectId);
+      const projectIds = await ProjectAccessService.resolveAssignedProjectIds({
+        companyId: context.companyId,
+        userId: context.userId,
+        employeeId: context.employeeId,
+      });
       if (projectIds.length > 0) {
-        const projects = await ProjectRepository.findMany({ id: { $in: projectIds } }, { companyId: context.companyId });
+        const projects = await ProjectRepository.findMany({ id: { $in: projectIds }, isArchived: false }, { companyId: context.companyId });
         for (const project of projects) {
           if (project.name.toLowerCase().includes(term) || project.code.toLowerCase().includes(term)) {
             results.push({ type: 'project', id: project.id, title: project.name, subtitle: project.code, data: WorkspaceAuditService.toRecord(project) });

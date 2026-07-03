@@ -78,7 +78,7 @@ export const ProjectService = {
   async create(context: ProjectActorContext, payload: CreateProjectInput): Promise<ProjectDocument> {
     const code = payload.code.toUpperCase();
     await ProjectValidationService.assertUniqueCode(context.companyId, code);
-    ProjectValidationService.assertValidDates(payload.startDate, payload.targetDate);
+    ProjectValidationService.assertValidDates(payload.startDate, payload.targetDate, payload.endDate);
 
     const id = generateUuid();
     const project = await ProjectRepository.create(
@@ -90,13 +90,18 @@ export const ProjectService = {
         description: payload.description,
         status: payload.status ?? PROJECT_STATUS.PLANNING,
         priority: payload.priority ?? 'medium',
+        projectKind: payload.projectKind ?? 'internal',
         categoryId: payload.categoryId,
         branchId: payload.branchId,
         departmentId: payload.departmentId,
         startDate: payload.startDate,
         targetDate: payload.targetDate,
+        endDate: payload.endDate,
         projectManagerId: payload.projectManagerId,
         clientName: payload.clientName,
+        requirements: payload.requirements,
+        uiDocs: payload.uiDocs,
+        scalabilityNotes: payload.scalabilityNotes,
         budget: payload.budget,
         currency: payload.currency ?? 'INR',
         repositoryUrl: payload.repositoryUrl,

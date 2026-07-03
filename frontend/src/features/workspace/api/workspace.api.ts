@@ -57,6 +57,7 @@ export interface MyProjectItem {
   role?: string;
   progress: number;
   totalTasks: number;
+  myTaskCount?: number;
   completedTasks: number;
   upcomingDeadlines: Record<string, unknown>[];
   milestones: Record<string, unknown>[];
@@ -160,6 +161,27 @@ export async function fetchMyProjects(params: ListParams = {}): Promise<{ items:
   return { items: normalized.items, total: normalized.pagination.total };
 }
 
+export interface MyProjectDetail {
+  project: Record<string, unknown>;
+  role: string;
+  canManage: boolean;
+  myTasks: TaskRecord[];
+  milestones: Record<string, unknown>[];
+  sprints: Record<string, unknown>[];
+  members: Record<string, unknown>[];
+  deployment: {
+    repositoryUrl?: string;
+    productionUrl?: string;
+    deploymentGuide?: string;
+    documentUrls?: string[];
+  };
+}
+
+export async function fetchMyProject(id: string): Promise<MyProjectDetail> {
+  const { data } = await apiClient.get<ApiSuccessResponse<MyProjectDetail>>(`${WORKSPACE_PREFIX}/projects/${id}`);
+  return data.data;
+}
+
 export async function fetchMyTasks(params: ListParams & { status?: string; projectId?: string } = {}): Promise<PaginatedResult<TaskRecord>> {
   const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/tasks`, { params });
   return normalizePaginatedItems<TaskRecord>(data.data);
@@ -177,6 +199,11 @@ export async function bulkUpdateTaskStatus(taskIds: string[], status: string): P
 
 export async function quickUpdateTask(id: string, payload: { status?: string; progressPercent?: number }): Promise<TaskRecord> {
   const { data } = await apiClient.patch<ApiSuccessResponse<TaskRecord>>(`${WORKSPACE_PREFIX}/tasks/${id}`, payload);
+  return data.data;
+}
+
+export async function submitTaskForVerification(id: string): Promise<TaskRecord> {
+  const { data } = await apiClient.post<ApiSuccessResponse<TaskRecord>>(`${WORKSPACE_PREFIX}/tasks/${id}/submit-verification`);
   return data.data;
 }
 

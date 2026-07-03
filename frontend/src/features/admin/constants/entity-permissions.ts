@@ -75,12 +75,6 @@ export const ENTITY_PERMISSIONS: Record<MasterEntityKey, EntityPermissionSet> = 
     update: 'leave-type.update',
     delete: 'leave-type.delete',
   },
-  'project-category': {
-    read: 'project-category.read',
-    create: 'project-category.create',
-    update: 'project-category.update',
-    delete: 'project-category.delete',
-  },
 };
 
 export const ORG_BULK_PERMISSION = 'organization.bulk';

@@ -33,7 +33,7 @@ export function WorkspaceSearchPage() {
             <li key={`${result.type}-${result.id}`} className="px-4 py-3">
               <Link
                 to={
-                  result.type === 'project' ? ROUTES.projectDetail(result.id)
+                  result.type === 'project' ? ROUTES.workspaceProjectDetail(result.id)
                   : result.type === 'task' ? ROUTES.WORKSPACE_TASKS
                   : result.type === 'document' ? ROUTES.WORKSPACE_DOCUMENTS
                   : result.type === 'announcement' ? ROUTES.WORKSPACE_ANNOUNCEMENTS

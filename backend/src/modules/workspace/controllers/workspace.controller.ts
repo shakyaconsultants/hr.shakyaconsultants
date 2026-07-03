@@ -218,6 +218,18 @@ export const quickUpdateMyTask: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const submitMyTaskForVerification: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { id } = validateInput(idParamSchema, req.params);
+    const data = await WorkspaceMyTasksService.submitForVerification(actor(authReq), id);
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const listDocuments: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;

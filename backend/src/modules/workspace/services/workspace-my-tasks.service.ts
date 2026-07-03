@@ -6,7 +6,9 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
 import { WorkspaceAuditService } from '@modules/workspace/services/workspace-audit.service.js';
+import { TaskService } from '@modules/project/services/task.service.js';
 import type { MyTasksQuery, WorkspaceActorContext } from '@modules/workspace/types/workspace.types.js';
+import type { ProjectActorContext } from '@modules/project/types/project.types.js';
 
 const PENDING_STATUSES = [
   PROJECT_TASK_STATUS.BACKLOG,
@@ -14,9 +16,20 @@ const PENDING_STATUSES = [
   PROJECT_TASK_STATUS.ASSIGNED,
   PROJECT_TASK_STATUS.IN_PROGRESS,
   PROJECT_TASK_STATUS.BLOCKED,
+  PROJECT_TASK_STATUS.REJECTED,
 ];
 
 const COMPLETED_STATUSES = [PROJECT_TASK_STATUS.COMPLETED, PROJECT_TASK_STATUS.VERIFIED, PROJECT_TASK_STATUS.CLOSED];
+
+function toProjectActor(context: WorkspaceActorContext): ProjectActorContext {
+  return {
+    companyId: context.companyId,
+    userId: context.userId,
+    employeeId: context.employeeId,
+    ip: context.ip,
+    userAgent: context.userAgent,
+  };
+}
 
 export const WorkspaceMyTasksService = {
   async list(context: WorkspaceActorContext, query: MyTasksQuery) {
@@ -86,16 +99,15 @@ export const WorkspaceMyTasksService = {
   },
 
   async bulkUpdateStatus(context: WorkspaceActorContext, taskIds: string[], status: string) {
+    const actor = toProjectActor(context);
     const results = [];
     for (const taskId of taskIds) {
       const task = await TaskRepository.findById(taskId, { companyId: context.companyId });
       if (!task || task.assigneeId !== context.employeeId) {
         continue;
       }
-      const updated = await TaskRepository.update(taskId, { status, updatedBy: context.userId }, { companyId: context.companyId });
-      if (updated) {
-        results.push(updated);
-      }
+      const updated = await TaskService.update(actor, taskId, { status });
+      results.push(updated);
     }
     return { updated: results.map(WorkspaceAuditService.toRecord), count: results.length };
   },
@@ -106,12 +118,17 @@ export const WorkspaceMyTasksService = {
       throw new NotFoundError('Task not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const updated = await TaskRepository.update(
-      taskId,
-      { ...payload, updatedBy: context.userId },
-      { companyId: context.companyId },
-    );
+    const updated = await TaskService.update(toProjectActor(context), taskId, payload);
+    return WorkspaceAuditService.toRecord(updated);
+  },
 
+  async submitForVerification(context: WorkspaceActorContext, taskId: string) {
+    const task = await TaskRepository.findById(taskId, { companyId: context.companyId });
+    if (!task || task.assigneeId !== context.employeeId) {
+      throw new NotFoundError('Task not found', ERROR_CODES.NOT_FOUND);
+    }
+
+    const updated = await TaskService.update(toProjectActor(context), taskId, { status: PROJECT_TASK_STATUS.COMPLETED });
     return WorkspaceAuditService.toRecord(updated);
   },
 };

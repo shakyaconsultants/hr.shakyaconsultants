@@ -53,12 +53,24 @@ export const DEFAULT_ROLE_CATALOG: DefaultRoleDefinition[] = [
     description: 'Project and task management access',
     priority: 30,
     isSystem: true,
-    permissionFilter: (code, module) =>
-      (
+    permissionFilter: (code, module) => {
+      if (
         module === PERMISSION_MODULE.PROJECTS
         || module === PERMISSION_MODULE.TASKS
         || module === PERMISSION_MODULE.EMPLOYEE
-      ) && (code.endsWith('.read') || code.endsWith('.create') || code.endsWith('.update')),
+      ) {
+        if (code.endsWith('.read') || code.endsWith('.create') || code.endsWith('.update')) {
+          return true;
+        }
+        if (code.startsWith('verification.')) {
+          return true;
+        }
+        if (code === 'project.assign_members' || code === 'project.view_assigned') {
+          return true;
+        }
+      }
+      return false;
+    },
   },
   {
     slug: SYSTEM_ROLE_SLUG.SALES_MANAGER,

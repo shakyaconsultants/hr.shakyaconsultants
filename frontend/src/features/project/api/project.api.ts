@@ -11,10 +11,15 @@ export interface ProjectRecord {
   description?: string;
   status: string;
   priority: string;
-  startDate: string;
+  projectKind?: string;
+  startDate?: string;
+  endDate?: string;
   targetDate?: string;
   projectManagerId: string;
   clientName?: string;
+  requirements?: string;
+  uiDocs?: string;
+  scalabilityNotes?: string;
   isArchived: boolean;
   logoUrl?: string;
   tags: string[];
@@ -254,6 +259,36 @@ export async function updateTask(id: string, payload: Record<string, unknown>): 
 
 export async function fetchTask(id: string): Promise<TaskRecord> {
   const { data } = await apiClient.get<ApiSuccessResponse<TaskRecord>>(`${PROJECT_PREFIX}/tasks/${id}`);
+  return data.data;
+}
+
+export interface TaskVerificationRecord {
+  id: string;
+  taskId: string;
+  projectId: string;
+  status: string;
+  comment?: string;
+  revisionNotes?: string;
+  createdAt: string;
+}
+
+export async function fetchTaskVerifications(taskId: string): Promise<TaskVerificationRecord[]> {
+  const { data } = await apiClient.get<ApiSuccessResponse<TaskVerificationRecord[]>>(`${PROJECT_PREFIX}/tasks/${taskId}/verifications`);
+  return data.data;
+}
+
+export async function submitTaskVerification(taskId: string, verifierId: string): Promise<TaskVerificationRecord> {
+  const { data } = await apiClient.post<ApiSuccessResponse<TaskVerificationRecord>>(`${PROJECT_PREFIX}/tasks/${taskId}/verify`, { verifierId });
+  return data.data;
+}
+
+export async function approveTaskVerification(verificationId: string, comment?: string): Promise<TaskVerificationRecord> {
+  const { data } = await apiClient.post<ApiSuccessResponse<TaskVerificationRecord>>(`${PROJECT_PREFIX}/verifications/${verificationId}/approve`, { comment });
+  return data.data;
+}
+
+export async function rejectTaskVerification(verificationId: string, comment: string, revisionNotes?: string): Promise<TaskVerificationRecord> {
+  const { data } = await apiClient.post<ApiSuccessResponse<TaskVerificationRecord>>(`${PROJECT_PREFIX}/verifications/${verificationId}/reject`, { comment, revisionNotes });
   return data.data;
 }
 
