@@ -1,5 +1,6 @@
 import { CacheEntryRepository } from '@infrastructure/cache/cache-entry.schema.js';
 import { getRedisClient, isRedisAvailable } from '@infrastructure/redis/redis.client.js';
+import { MongoServerError } from 'mongodb';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 
 const SYSTEM_ACTOR = 'system';
@@ -24,15 +25,28 @@ async function setMongoCacheValue(key: string, value: string, ttlSeconds?: numbe
     return;
   }
 
-  await CacheEntryRepository.create({
-    id: generateUuid(),
-    companyId: SYSTEM_ACTOR,
-    cacheKey: key,
-    value,
-    expiresAt,
-    createdBy: SYSTEM_ACTOR,
-    updatedBy: SYSTEM_ACTOR,
-  });
+  try {
+    await CacheEntryRepository.create({
+      id: generateUuid(),
+      companyId: SYSTEM_ACTOR,
+      cacheKey: key,
+      value,
+      expiresAt,
+      createdBy: SYSTEM_ACTOR,
+      updatedBy: SYSTEM_ACTOR,
+    });
+  } catch (error) {
+    if (error instanceof MongoServerError && error.code === 11000) {
+      const raced = await CacheEntryRepository.findOne({ cacheKey: key });
+      if (raced) {
+        await CacheEntryRepository.update(raced.id, {
+          $set: { value, expiresAt, updatedBy: SYSTEM_ACTOR },
+        });
+        return;
+      }
+    }
+    throw error;
+  }
 }
 
 const REDIS_TIMEOUT_MS = 150;

@@ -9,7 +9,11 @@ export const PermissionEngineService = {
     }
 
     const result = await EffectivePermissionService.calculateForEmployee(companyId, employeeId);
-    await PermissionCacheService.set(companyId, employeeId, result.permissions);
+    try {
+      await PermissionCacheService.set(companyId, employeeId, result.permissions);
+    } catch {
+      // Cache write failures must not block auth/session shell.
+    }
     return result.permissions;
   },
 

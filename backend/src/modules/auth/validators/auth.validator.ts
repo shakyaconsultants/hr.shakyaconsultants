@@ -4,7 +4,7 @@ import { emailSchema } from '@shared/validators/common.validators.js';
 export const loginSchema = z
   .object({
     companyCode: z.string().trim().min(1, { message: 'Company code is required' }).toUpperCase(),
-    email: emailSchema,
+    email: emailSchema.transform((value) => value.trim().toLowerCase()),
     password: z.string().min(1, { message: 'Password is required' }),
     rememberMe: z.boolean().optional().default(false),
     deviceId: z.string().trim().min(1).optional(),

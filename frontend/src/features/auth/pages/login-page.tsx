@@ -38,7 +38,8 @@ export function LoginPage() {
       await login({ companyCode, email, password, rememberMe });
       navigate(useAuthStore.getState().homeRoute ?? portalHome, { replace: true });
     } catch (e) {
-      setError(parseMutationError(e).message);
+      const parsed = parseMutationError(e);
+      setError(parsed.description ? `${parsed.message} ${parsed.description}` : parsed.message);
     } finally {
       setSubmitting(false);
     }
