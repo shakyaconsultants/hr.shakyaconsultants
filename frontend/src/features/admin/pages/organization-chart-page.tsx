@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useMasterDataList } from '@/features/organization/hooks/use-master-data';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { getCompany } from '@/features/organization/api/organization.api';
 import {
   buildOrgChartTree,
@@ -56,18 +56,15 @@ export function OrganizationChartPage() {
   });
   const { data: departments, isLoading: departmentsLoading } = useMasterDataList('department', {
     page: 1,
-    pageSize: 200,
+    pageSize: 100,
     status: 'active',
   });
   const { data: designations, isLoading: designationsLoading } = useMasterDataList('designation', {
     page: 1,
-    pageSize: 200,
+    pageSize: 100,
     status: 'active',
   });
-  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useEmployees({
-    page: 1,
-    pageSize: 500,
-  });
+  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useAllEmployees();
 
   const { data: reportingTree, isLoading: reportingLoading } = useQuery({
     queryKey: ['employees', 'reporting-tree'],
@@ -81,9 +78,9 @@ export function OrganizationChartPage() {
         branches: branches?.items ?? [],
         departments: departments?.items ?? [],
         designations: designations?.items ?? [],
-        employees: employees?.items ?? [],
+        employees: employees ?? [],
       }),
-    [company, branches?.items, departments?.items, designations?.items, employees?.items],
+    [company, branches?.items, departments?.items, designations?.items, employees],
   );
 
   const displayTree = useMemo(() => filterOrgChartTree(tree, search), [tree, search]);

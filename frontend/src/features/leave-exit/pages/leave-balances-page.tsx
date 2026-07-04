@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LeaveExitNav, LeaveExitPageHeader } from '@/features/leave-exit/components/leave-exit-nav';
 import { useAdjustLeaveBalance, useLeaveBalances, useLeavePolicies } from '@/features/leave-exit/hooks/use-leave-exit';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
@@ -9,7 +9,7 @@ import { Input } from '@/shared/components/ui/input';
 
 export function LeaveBalancesPage() {
   const canManage = useAuthStore((s) => s.hasPermission('leave.balance.manage'));
-  const { data: employees, isLoading: employeesLoading } = useEmployees({ pageSize: 500, status: 'active' });
+  const { data: employees, isLoading: employeesLoading } = useAllEmployees({ status: 'active' });
   const [employeeId, setEmployeeId] = useState('');
   const [adjustPolicyId, setAdjustPolicyId] = useState('');
   const [adjustAmount, setAdjustAmount] = useState('');
@@ -21,7 +21,7 @@ export function LeaveBalancesPage() {
 
   if (employeesLoading) return <Loading message="Loading employees..." />;
 
-  const selectedEmployee = employees?.items.find((e) => e.id === employeeId);
+  const selectedEmployee = employees?.find((e) => e.id === employeeId);
 
   return (
     <div className="space-y-6">
@@ -40,7 +40,7 @@ export function LeaveBalancesPage() {
             onChange={(e) => setEmployeeId(e.target.value)}
           >
             <option value="">Select employee...</option>
-            {(employees?.items ?? []).map((employee) => (
+            {(employees ?? []).map((employee) => (
               <option key={employee.id} value={employee.id}>
                 {employee.firstName} {employee.lastName} ({employee.employeeNumber})
               </option>

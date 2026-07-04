@@ -13,7 +13,7 @@ import {
   useSendMessage,
   useWorkspaceCommunicationDashboard,
 } from '@/features/communication/hooks/use-communication';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
 import { StatCard } from '@/shared/components/stat-card';
@@ -38,25 +38,25 @@ export function CommunicationWorkspacePage() {
   const { data: directConversations, isLoading: dmLoading } = useDirectConversations({ pageSize: 50 });
   const { data: channels, isLoading: channelsLoading } = useChannels({ pageSize: 50 });
   const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({ pageSize: 20 });
-  const { data: employees } = useEmployees({ page: 1, pageSize: 500 });
+  const { data: employees } = useAllEmployees();
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedConversation?.id ?? '', { pageSize: 100 });
   const sendMessage = useSendMessage();
   const createConversation = useCreateDirectConversation();
 
   const employeeNameMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const item of employees?.items ?? []) {
+    for (const item of employees ?? []) {
       map.set(item.id, `${item.firstName} ${item.lastName}`.trim());
     }
     return map;
-  }, [employees?.items]);
+  }, [employees]);
 
   const employeeOptions = useMemo(
     () =>
-      (employees?.items ?? [])
+      (employees ?? [])
         .filter((e) => e.id !== currentEmployeeId)
         .map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}`.trim() })),
-    [employees?.items, currentEmployeeId],
+    [employees, currentEmployeeId],
   );
 
   const getConversationLabel = (conversation: Conversation) => {

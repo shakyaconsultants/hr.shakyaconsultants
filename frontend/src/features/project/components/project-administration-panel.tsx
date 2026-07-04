@@ -20,7 +20,7 @@ import {
   useUpsertProjectKnowledgeBase,
 } from '@/features/project/hooks/use-projects';
 import type { ProjectRecord } from '@/features/project/api/project.api';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -43,7 +43,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
   const canUpdate = hasPermission('project.update');
   const canDelete = hasPermission('project.delete');
 
-  const { data: employees } = useEmployees({ pageSize: 200 });
+  const { data: employees } = useAllEmployees({ status: 'active' });
   const { data: members = [], refetch: refetchMembers } = useProjectMembers(project.id);
   const { data: modules = [], refetch: refetchModules } = useProjectModules(project.id);
   const { data: milestones = [], refetch: refetchMilestones } = useProjectMilestones(project.id);
@@ -338,7 +338,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               </select>
               <select className="h-10 rounded-md border px-3 text-sm" value={settingsForm.projectManagerId} onChange={(e) => setSettingsForm((p) => ({ ...p, projectManagerId: e.target.value }))}>
                 <option value="">Select project manager</option>
-                {(employees?.items ?? []).map((employee) => (
+                {(employees ?? []).map((employee) => (
                   <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName} ({employee.employeeNumber})</option>
                 ))}
               </select>
@@ -354,7 +354,7 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             <div className="grid gap-2 md:grid-cols-3">
               <select className="h-10 rounded-md border px-3 text-sm" value={memberForm.employeeId} onChange={(e) => setMemberForm((p) => ({ ...p, employeeId: e.target.value }))}>
                 <option value="">Select employee</option>
-                {(employees?.items ?? []).map((employee) => (
+                {(employees ?? []).map((employee) => (
                   <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName}</option>
                 ))}
               </select>

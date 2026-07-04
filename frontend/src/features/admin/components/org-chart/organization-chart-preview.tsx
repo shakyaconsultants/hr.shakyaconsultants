@@ -6,7 +6,7 @@ import { fetchReportingTree } from '@/features/employee/api/employee.api';
 import { ReportingChartTreeView } from '@/features/admin/components/org-chart/reporting-chart-tree-view';
 import { buildOrgChartTree } from '@/features/admin/components/org-chart/build-org-chart-tree';
 import { OrgChartTreeView } from '@/features/admin/components/org-chart/org-chart-tree';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { getCompany } from '@/features/organization/api/organization.api';
 import { useMasterDataList } from '@/features/organization/hooks/use-master-data';
 import { ROUTES } from '@/config/app.config';
@@ -46,10 +46,7 @@ export function OrganizationChartPreview({
     pageSize: 100,
     status: 'active',
   });
-  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useEmployees({
-    page: 1,
-    pageSize: 300,
-  });
+  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useAllEmployees();
 
   const { data: reportingTree } = useQuery({
     queryKey: ['employees', 'reporting-tree'],
@@ -63,9 +60,9 @@ export function OrganizationChartPreview({
         branches: branches?.items ?? [],
         departments: departments?.items ?? [],
         designations: designations?.items ?? [],
-        employees: employees?.items ?? [],
+        employees: employees ?? [],
       }),
-    [company, branches?.items, departments?.items, designations?.items, employees?.items],
+    [company, branches?.items, departments?.items, designations?.items, employees],
   );
 
   const isLoading =

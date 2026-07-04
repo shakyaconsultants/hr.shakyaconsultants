@@ -7,7 +7,7 @@ import {
   useTaskVerifications,
   useUpdateTask,
 } from '@/features/project/hooks/use-projects';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import type { TaskRecord } from '@/features/project/api/project.api';
 import { Button } from '@/shared/components/ui/button';
 import { DatePicker } from '@/shared/components/date-picker';
@@ -47,10 +47,10 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
   const updateTaskMutation = useUpdateTask();
   const approveMutation = useApproveTaskVerification();
   const rejectMutation = useRejectTaskVerification();
-  const { data: employees } = useEmployees({ pageSize: 300, status: 'active' });
+  const { data: employees } = useAllEmployees({ status: 'active' });
 
   const employeeMap = new Map(
-    (employees?.items ?? []).map((e) => [e.id, `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim()]),
+    (employees ?? []).map((e) => [e.id, `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim()]),
   );
 
   async function handleCreateTask() {
@@ -119,7 +119,7 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
               <span className="font-medium">Assign To</span>
               <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
                 <option value="">Unassigned</option>
-                {(employees?.items ?? []).map((e) => (
+                {(employees ?? []).map((e) => (
                   <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
                 ))}
               </select>

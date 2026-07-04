@@ -19,7 +19,7 @@ import {
   useProjectWizardDraft,
   useSaveProjectWizardDraft,
 } from '@/features/project/hooks/use-projects';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { PageHeader } from '@/shared/components/page-header';
 import { Button } from '@/shared/components/ui/button';
 import { DatePicker } from '@/shared/components/date-picker';
@@ -84,10 +84,10 @@ export function ProjectCreateWizardPage() {
   const { data: remoteDraft } = useProjectWizardDraft();
   const saveDraftMutation = useSaveProjectWizardDraft();
   const finalizeMutation = useFinalizeProjectWizard();
-  const { data: employees } = useEmployees({ pageSize: 300, status: 'active' });
+  const { data: employees } = useAllEmployees({ status: 'active' });
 
   const step = PROJECT_WIZARD_STEPS[draft.currentStepIndex];
-  const employeeOptions = employees?.items ?? [];
+  const employeeOptions = employees ?? [];
 
   useEffect(() => {
     if (remoteDraft?.payload) {

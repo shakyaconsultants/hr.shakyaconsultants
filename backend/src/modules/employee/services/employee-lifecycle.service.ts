@@ -17,6 +17,7 @@ import { randomBytes } from 'node:crypto';
 import { hashRefreshToken } from '@modules/auth/services/token.service.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import type { EmployeeActorContext } from '@modules/employee/types/employee.types.js';
+import { toUserFacingErrorMessage } from '@shared/utils/user-facing-error.util.js';
 
 export const EMPLOYEE_LIFECYCLE_EMAIL = {
   ACCOUNT_ACTIVATION: 'accountActivation',
@@ -56,7 +57,9 @@ export interface EmployeeLifecycleProfileView {
 function toEmailView(snapshot?: EmployeeLifecycleEmails[keyof EmployeeLifecycleEmails]): EmployeeEmailDeliveryView {
   const sendCount = snapshot?.sendCount ?? 0;
   const lastSentAt = snapshot?.lastSentAt ? new Date(snapshot.lastSentAt).toISOString() : null;
-  const lastError = snapshot?.lastError ?? null;
+  const lastError = snapshot?.lastError
+    ? toUserFacingErrorMessage(snapshot.lastError, 'Delivery failed. Please try again.')
+    : null;
 
   let deliveryStatus: EmailDeliveryStatus = 'never_sent';
   if (lastSentAt) {
@@ -117,7 +120,7 @@ export const EmployeeLifecycleService = {
       return;
     }
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message = toUserFacingErrorMessage(error, 'Email could not be sent. Please try again later.');
     const prefix = lifecycleEmailPath(type);
     const current = employee.lifecycleEmails?.[type];
 

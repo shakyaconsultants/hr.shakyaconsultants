@@ -1,6 +1,7 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
 import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import { API_MAX_PAGE_SIZE } from '@/shared/constants/pagination.constants';
 
 const EMPLOYEE_PREFIX = '/api/v1/employees';
 
@@ -73,11 +74,28 @@ export interface ListEmployeesParams {
 }
 
 export async function fetchEmployees(params: ListEmployeesParams = {}): Promise<PaginatedResult<EmployeeRecord>> {
-  const { data } = await apiClient.get<any>(
-    EMPLOYEE_PREFIX,
-    { params },
-  );
+  const pageSize = params.pageSize ? Math.min(params.pageSize, API_MAX_PAGE_SIZE) : undefined;
+  const { data } = await apiClient.get<any>(EMPLOYEE_PREFIX, {
+    params: { ...params, pageSize },
+  });
   return normalizePaginatedItems<EmployeeRecord>(data.data);
+}
+
+export async function fetchAllEmployees(
+  params: Omit<ListEmployeesParams, 'page' | 'pageSize'> = {},
+): Promise<EmployeeRecord[]> {
+  const items: EmployeeRecord[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const result = await fetchEmployees({ ...params, page, pageSize: API_MAX_PAGE_SIZE });
+    items.push(...result.items);
+    totalPages = result.pagination?.totalPages ?? 1;
+    page += 1;
+  }
+
+  return items;
 }
 
 export async function fetchEmployee(id: string): Promise<EmployeeRecord> {

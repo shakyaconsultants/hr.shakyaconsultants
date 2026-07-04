@@ -10,7 +10,7 @@ import {
   type DirectReport,
   type ReportingRelationship,
 } from '@/features/employee/api/employee.api';
-import { useEmployees } from '@/features/employee/hooks/use-employees';
+import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import { AsyncSearchSelect } from '@/shared/components/async-search-select';
 import { Button } from '@/shared/components/ui/button';
@@ -43,17 +43,17 @@ export function EmployeeReportingPanel({ employeeId, employeeName }: EmployeeRep
     enabled: Boolean(employeeId),
   });
 
-  const { data: allEmployees } = useEmployees({ page: 1, pageSize: 500 });
+  const { data: allEmployees } = useAllEmployees();
 
   const employeeOptions = useMemo(
     () =>
-      (allEmployees?.items ?? [])
+      (allEmployees ?? [])
         .filter((e) => e.id !== employeeId)
         .map((e) => ({
           value: e.id,
           label: `${e.firstName} ${e.lastName}`.trim(),
         })),
-    [allEmployees?.items, employeeId],
+    [allEmployees, employeeId],
   );
 
   const invalidate = () => {

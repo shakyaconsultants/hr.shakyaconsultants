@@ -3,6 +3,7 @@ import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   createEmployee,
   exportEmployees,
+  fetchAllEmployees,
   fetchEmployee,
   fetchEmployeeDashboard,
   fetchEmployees,
@@ -26,6 +27,14 @@ export function useEmployees(params: ListEmployeesParams = {}) {
   return useQuery({
     queryKey: employeeQueryKeys.list(params),
     queryFn: () => fetchEmployees(params),
+    refetchOnMount: true,
+  });
+}
+
+export function useAllEmployees(params: Omit<ListEmployeesParams, 'page' | 'pageSize'> = {}) {
+  return useQuery({
+    queryKey: [...employeeQueryKeys.all, 'all', params] as const,
+    queryFn: () => fetchAllEmployees(params),
     refetchOnMount: true,
   });
 }

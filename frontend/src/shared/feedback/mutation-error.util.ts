@@ -1,4 +1,5 @@
 import type { ApiErrorResponse } from '@/shared/types/api.types';
+import { toUserFacingErrorMessage } from '@/shared/utils/user-facing-error.util';
 
 export interface DependencyBlocker {
   label: string;
@@ -128,7 +129,8 @@ export function parseMutationError(error: unknown): ParsedMutationError {
 
   const statusCode = resolveStatusCode(error, apiError);
   const code = apiError?.error?.code ?? 'UNKNOWN';
-  const backendMessage = apiError?.error?.message?.trim() ?? '';
+  const backendMessageRaw = apiError?.error?.message?.trim() ?? '';
+  const backendMessage = toUserFacingErrorMessage(backendMessageRaw || error);
   const validationMessages = extractValidationMessages(apiError?.error?.details ?? []);
   const metadata = apiError?.error?.metadata;
   const dependencies = extractDependencies(metadata);
@@ -159,8 +161,8 @@ export function parseMutationError(error: unknown): ParsedMutationError {
           Boolean(entry && typeof entry === 'object' && typeof (entry as { message?: string }).message === 'string'),
       )?.message ?? '';
     description =
-      import.meta.env.DEV && (backendMessage || detailFromDetails)
-        ? backendMessage || detailFromDetails
+      import.meta.env.DEV && (backendMessageRaw || detailFromDetails)
+        ? toUserFacingErrorMessage(backendMessageRaw || detailFromDetails)
         : undefined;
     preferInline = false;
   } else if (isValidation) {
@@ -181,7 +183,7 @@ export function parseMutationError(error: unknown): ParsedMutationError {
     description = formatDependencyDescription(dependencies);
     preferInline = false;
   } else if (!title) {
-    title = error instanceof Error ? error.message : 'Request failed';
+    title = toUserFacingErrorMessage(error);
   }
 
   return {

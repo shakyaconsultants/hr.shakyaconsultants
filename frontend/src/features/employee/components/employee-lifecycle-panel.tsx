@@ -1,6 +1,7 @@
 import { Mail, RefreshCw } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import type { EmployeeLifecycleProfile } from '@/features/employee/api/employee.api';
+import { toUserFacingErrorMessage } from '@/shared/utils/user-facing-error.util';
 
 function formatSentAt(value: string | null): string {
   if (!value) {
@@ -73,7 +74,9 @@ export function EmployeeLifecyclePanel({
               {lifecycle.account.email.sendCount > 0 ? ` · ${lifecycle.account.email.sendCount} time(s)` : ''}
             </p>
             {lifecycle.account.email.lastError ? (
-              <p className="text-xs text-destructive">Last error: {lifecycle.account.email.lastError}</p>
+              <p className="text-xs text-destructive">
+                {toUserFacingErrorMessage(lifecycle.account.email.lastError, 'Activation email could not be sent.')}
+              </p>
             ) : null}
           </div>
           <Button
@@ -100,7 +103,9 @@ export function EmployeeLifecyclePanel({
               {lifecycle.onboarding.email.sendCount > 0 ? ` · ${lifecycle.onboarding.email.sendCount} time(s)` : ''}
             </p>
             {lifecycle.onboarding.email.lastError ? (
-              <p className="text-xs text-destructive">Last error: {lifecycle.onboarding.email.lastError}</p>
+              <p className="text-xs text-destructive">
+                {toUserFacingErrorMessage(lifecycle.onboarding.email.lastError, 'Onboarding email could not be sent.')}
+              </p>
             ) : null}
           </div>
           <Button
@@ -126,7 +131,9 @@ export function EmployeeLifecyclePanel({
               {lifecycle.passwordReset.email.sendCount > 0 ? ` · ${lifecycle.passwordReset.email.sendCount} time(s)` : ''}
             </p>
             {lifecycle.passwordReset.email.lastError ? (
-              <p className="text-xs text-destructive">Last error: {lifecycle.passwordReset.email.lastError}</p>
+              <p className="text-xs text-destructive">
+                {toUserFacingErrorMessage(lifecycle.passwordReset.email.lastError, 'Password reset email could not be sent.')}
+              </p>
             ) : null}
           </div>
           <Button

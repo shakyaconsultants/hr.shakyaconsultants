@@ -4,6 +4,7 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { PageSkeleton } from '@/shared/components/page-skeleton';
 import { Button } from '@/shared/components/ui/button';
 import { logClientError } from '@/shared/utils/error-logger';
+import { toUserFacingErrorMessage } from '@/shared/utils/user-facing-error.util';
 import { useEffect } from 'react';
 
 export interface PageDataBoundaryProps {
@@ -23,12 +24,13 @@ export interface PageDataBoundaryProps {
 }
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
   if (typeof error === 'object' && error !== null && 'error' in error) {
     const apiError = error as { error?: { message?: string } };
-    return apiError.error?.message ?? 'Something went wrong while loading data.';
+    if (apiError.error?.message) {
+      return toUserFacingErrorMessage(apiError.error.message);
+    }
   }
-  return 'Something went wrong while loading data.';
+  return toUserFacingErrorMessage(error, 'Something went wrong while loading data.');
 }
 
 export function PageDataBoundary({

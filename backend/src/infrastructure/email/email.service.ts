@@ -3,6 +3,7 @@ import { getEnv } from '@config/env.js';
 import type { EmailTemplateType } from '@shared/constants/email.constants.js';
 import type { EmailJobPayload } from '@shared/types/api.types.js';
 import { ExternalServiceError } from '@shared/errors/app.error.js';
+import { toUserFacingErrorMessage } from '@shared/utils/user-facing-error.util.js';
 import { getCorrelationId } from '@shared/context/request.context.js';
 import { queueLogger } from '@logging/winston.logger.js';
 
@@ -72,7 +73,10 @@ export const EmailService = {
       });
       return { messageId };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Email send failed';
+      const message = toUserFacingErrorMessage(
+        error,
+        'Email could not be sent. The mail server is unreachable. Check SMTP configuration.',
+      );
       throw new ExternalServiceError(message, { service: 'smtp', to: input.to }, correlationId);
     }
   },
