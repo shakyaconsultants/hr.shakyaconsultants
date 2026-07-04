@@ -71,7 +71,7 @@ export const ROUTES = {
   LEAVE_CALENDAR: '/leave-exit/calendar',
   LEAVE_BALANCES: '/leave-exit/balances',
   LEAVE_POLICIES: '/leave-exit/policies',
-  RESIGNATION: '/leave-exit/resignation',
+  RESIGNATION: '/leave-exit/resignations',
   EXIT: '/leave-exit/exit',
   APPROVAL_INBOX: '/approvals/inbox',
   APPROVAL_HISTORY: '/approvals/history',

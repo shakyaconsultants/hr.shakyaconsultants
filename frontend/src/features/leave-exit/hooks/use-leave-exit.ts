@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   applyLeave,
+  adjustLeaveBalance,
   completeExitItem,
   fetchCompanyCalendar,
   fetchExitProcess,
@@ -10,6 +11,7 @@ import {
   fetchLeavePolicies,
   fetchLeaveRequests,
   fetchResignations,
+  seedLeaveDefaults,
   submitResignation,
   withdrawLeave,
   withdrawResignation,
@@ -127,6 +129,28 @@ export function useCompleteExitItem() {
     successMessage: 'Completed successfully',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['leave-exit'] });
+    },
+  });
+}
+
+export function useAdjustLeaveBalance() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: adjustLeaveBalance,
+    successMessage: 'Balance adjusted successfully',
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['leave-exit', 'balances'] });
+    },
+  });
+}
+
+export function useSeedLeaveDefaults() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: seedLeaveDefaults,
+    successMessage: 'Default policies seeded',
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['leave-exit', 'policies'] });
     },
   });
 }

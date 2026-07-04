@@ -99,6 +99,12 @@ export function LeaveExitDashboardPage() {
                 <Button variant="outline" size="sm" asChild>
                   <Link to={ROUTES.EXIT}>Exit Management</Link>
                 </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={ROUTES.RESIGNATION}>Resignations</Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={ROUTES.APPROVAL_INBOX}>Approval Inbox</Link>
+                </Button>
               </>
             ) : (
               <Button variant="outline" size="sm" asChild>

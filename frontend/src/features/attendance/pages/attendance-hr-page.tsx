@@ -7,6 +7,7 @@ import {
   useHrAttendanceDashboard,
 } from '@/features/attendance/hooks/use-attendance';
 import { useApprovalInbox, useBulkApprove } from '@/features/approval/hooks/use-approval';
+import { ApprovalActionButtons } from '@/features/approval/components/approval-action-buttons';
 import { Loading } from '@/shared/components/loading';
 import { StatCard } from '@/shared/components/stat-card';
 import { DataTable } from '@/shared/components/data-table';
@@ -131,6 +132,14 @@ export function AttendanceHrPage() {
               header: 'Status',
               render: (row) => <StatusBadge status={row.status} />,
             },
+            {
+              key: 'actions',
+              header: 'Actions',
+              render: (row) =>
+                row.status === 'pending' && row.approvalRequestId ? (
+                  <ApprovalActionButtons approvalRequestId={row.approvalRequestId} />
+                ) : null,
+            },
           ]}
           data={corrections?.items ?? []}
           isLoading={correctionsLoading}
@@ -174,6 +183,11 @@ export function AttendanceHrPage() {
                 key: 'submittedAt',
                 header: 'Submitted',
                 render: (row) => (row.submittedAt ? new Date(row.submittedAt).toLocaleDateString() : '—'),
+              },
+              {
+                key: 'actions',
+                header: 'Actions',
+                render: (row) => <ApprovalActionButtons approvalRequestId={row.id} />,
               },
             ]}
             data={pendingRows}

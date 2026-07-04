@@ -15,9 +15,11 @@ type NavItem = {
 const ADMIN_NAV: NavItem[] = [
   { label: 'Leave Management', path: ROUTES.LEAVE_EXIT, permissionsAny: ['leave.read', 'resignation.read'] },
   { label: 'All Requests', path: ROUTES.LEAVE_REQUESTS, permission: 'leave.read' },
+  { label: 'Resignations', path: ROUTES.RESIGNATION, permission: 'resignation.read' },
   { label: 'Leave Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.read' },
   { label: 'All Balances', path: ROUTES.LEAVE_BALANCES, permission: 'leave.read' },
   { label: 'Policies & Rules', path: ROUTES.LEAVE_POLICIES, permission: 'leave.read' },
+  { label: 'Approval Inbox', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read' },
   { label: 'Exit Management', path: ROUTES.EXIT, permission: 'exit.read' },
 ];
 

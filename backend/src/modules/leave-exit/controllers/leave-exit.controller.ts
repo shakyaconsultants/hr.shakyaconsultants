@@ -29,7 +29,7 @@ function actor(req: AuthenticatedRequest) {
   return buildLeaveExitActor(req);
 }
 
-const LEAVE_TEAM_VIEW_PERMISSIONS = ['leave.update', 'leave.approve', 'leave.policy.manage', 'leave.balance.manage'] as const;
+const LEAVE_TEAM_VIEW_PERMISSIONS = ['leave.read', 'leave.update', 'leave.approve', 'leave.policy.manage', 'leave.balance.manage'] as const;
 
 async function resolveLinkedEmployeeId(authReq: AuthenticatedRequest): Promise<string | undefined> {
   if (authReq.user.employeeId) {

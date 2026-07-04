@@ -134,8 +134,23 @@ export async function fetchLeavePolicies(): Promise<LeavePolicy[]> {
 
 export async function fetchLeaveBalances(employeeId?: string, year?: number): Promise<LeaveBalance[]> {
   const response = await apiClient.get<ApiSuccessResponse<LeaveBalance[]>>(`${LEAVE_EXIT_PREFIX}/balances`, {
-    params: { employeeId, year },
+    params: cleanParams({ employeeId, year }),
   });
+  return unwrap(response);
+}
+
+export async function adjustLeaveBalance(payload: {
+  employeeId: string;
+  leavePolicyId: string;
+  amount: number;
+  notes: string;
+}): Promise<LeaveBalance> {
+  const response = await apiClient.post<ApiSuccessResponse<LeaveBalance>>(`${LEAVE_EXIT_PREFIX}/balances/adjust`, payload);
+  return unwrap(response);
+}
+
+export async function seedLeaveDefaults(): Promise<{ seeded: boolean }> {
+  const response = await apiClient.post<ApiSuccessResponse<{ seeded: boolean }>>(`${LEAVE_EXIT_PREFIX}/seed-defaults`);
   return unwrap(response);
 }
 

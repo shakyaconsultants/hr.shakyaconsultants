@@ -1,22 +1,49 @@
+import { useState } from 'react';
 import { LeaveExitNav, LeaveExitPageHeader } from '@/features/leave-exit/components/leave-exit-nav';
-import { useLeavePolicies } from '@/features/leave-exit/hooks/use-leave-exit';
+import { useLeavePolicies, useSeedLeaveDefaults } from '@/features/leave-exit/hooks/use-leave-exit';
+import { useAuthStore } from '@/shared/stores/app.store';
 import { Loading } from '@/shared/components/loading';
+import { Button } from '@/shared/components/ui/button';
 
 export function LeavePoliciesPage() {
+  const canManage = useAuthStore((s) => s.hasPermission('leave.policy.manage'));
   const { data, isLoading } = useLeavePolicies();
+  const seedDefaults = useSeedLeaveDefaults();
+  const [message, setMessage] = useState<string | null>(null);
 
   if (isLoading) return <Loading message="Loading leave policies..." />;
 
+  const policies = data ?? [];
+
   return (
     <div className="space-y-6">
-      <LeaveExitPageHeader title="Leave Policies" description="Configurable leave types, quotas, and rules." />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <LeaveExitPageHeader title="Leave Policies" description="Configurable leave types, quotas, and rules." />
+        {canManage ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={seedDefaults.isPending}
+            onClick={() => {
+              setMessage(null);
+              void seedDefaults.mutateAsync().then(() => setMessage('Default policies seeded successfully.'));
+            }}
+          >
+            {seedDefaults.isPending ? 'Seeding...' : 'Seed Default Policies'}
+          </Button>
+        ) : null}
+      </div>
       <LeaveExitNav />
 
+      {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {(data ?? []).length === 0 ? (
-          <p className="text-muted-foreground">No policies configured.</p>
+        {policies.length === 0 ? (
+          <p className="text-muted-foreground">
+            No policies configured.{canManage ? ' Use "Seed Default Policies" to create standard leave types.' : ''}
+          </p>
         ) : (
-          (data ?? []).map((policy) => (
+          policies.map((policy) => (
             <article key={policy.id} className="rounded-lg border bg-card p-4">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
