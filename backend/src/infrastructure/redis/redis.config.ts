@@ -2,7 +2,7 @@ import type { RedisOptions } from 'ioredis';
 import type { ConnectionOptions } from 'bullmq';
 import { getEnv } from '@config/env.js';
 
-const REDIS_CONNECT_TIMEOUT_MS = 10_000;
+const REDIS_CONNECT_TIMEOUT_MS = 5_000;
 
 export function isRedisConfigured(): boolean {
   return sanitizeRedisUrlInput(getEnv().REDIS_URL).length > 0;

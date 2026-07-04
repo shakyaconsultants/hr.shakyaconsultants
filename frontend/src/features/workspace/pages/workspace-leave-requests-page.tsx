@@ -2,16 +2,45 @@ import { WorkspaceLeaveNav } from '@/features/workspace/components/workspace-lea
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { StatusBadge } from '@/features/leave-exit/components/leave-exit-nav';
 import { useLeaveRequests, useWithdrawLeave } from '@/features/leave-exit/hooks/use-leave-exit';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
-import { useAuthStore } from '@/shared/stores/app.store';
+import { useAuthStore, selectLinkedEmployeeId } from '@/shared/stores/app.store';
 
 export function WorkspaceLeaveRequestsPage() {
-  const employeeId = useAuthStore((s) => s.user?.employeeId ?? s.employee?.id);
-  const { data, isLoading } = useLeaveRequests({ pageSize: 50, employeeId });
+  const employeeId = useAuthStore(selectLinkedEmployeeId);
+  const { data, isLoading, isError, error, refetch } = useLeaveRequests({ pageSize: 50, scope: 'mine' });
   const withdraw = useWithdrawLeave();
 
   if (isLoading) return <Loading message="Loading your leave requests..." />;
+
+  if (!employeeId) {
+    return (
+      <div className="space-y-6">
+        <WorkspacePageHeader title="My Leave Requests" description="Track status and withdraw pending requests." />
+        <WorkspaceLeaveNav />
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Your account is not linked to an employee record. Contact HR to view leave requests.
+        </p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    const message = parseMutationError(error).message;
+    return (
+      <div className="space-y-6">
+        <WorkspacePageHeader title="My Leave Requests" description="Track status and withdraw pending requests." />
+        <WorkspaceLeaveNav />
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          <p>{message}</p>
+          <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetch()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

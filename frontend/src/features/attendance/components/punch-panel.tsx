@@ -1,6 +1,7 @@
 import { Clock, Coffee, LogIn, LogOut } from 'lucide-react';
 import { usePunch, useTodayAttendance } from '@/features/attendance/hooks/use-attendance';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
 import { Button } from '@/shared/components/ui/button';
 import { Loading } from '@/shared/components/loading';
 import { cn } from '@/shared/utils/cn';
@@ -18,9 +19,17 @@ function formatMinutes(minutes?: number): string {
 }
 
 export function PunchPanel() {
-  const employeeId = useAuthStore((s) => s.user?.employeeId);
-  const { data: today, isLoading } = useTodayAttendance(employeeId);
+  const employeeId = useAuthStore((s) => s.user?.employeeId ?? s.employee?.id ?? '');
+  const { data: today, isLoading } = useTodayAttendance(employeeId || undefined);
   const punchMutation = usePunch();
+
+  if (!employeeId) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
+        Your account is not linked to an employee record. Contact HR to enable attendance punch.
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <Loading message="Loading today's attendance..." />;
@@ -28,10 +37,14 @@ export function PunchPanel() {
 
   const hasCheckedIn = Boolean(today?.checkIn);
   const hasCheckedOut = Boolean(today?.checkOut);
+  const isSessionOpen = hasCheckedIn && !hasCheckedOut;
+  const onBreak = Boolean(today?.onBreak);
 
   const handlePunch = (type: 'check_in' | 'check_out' | 'break_start' | 'break_end') => {
-    punchMutation.mutate({ type });
+    punchMutation.mutate({ type, employeeId });
   };
+
+  const punchError = punchMutation.isError ? parseMutationError(punchMutation.error).message : null;
 
   return (
     <div className="rounded-lg border bg-card p-6">
@@ -51,32 +64,30 @@ export function PunchPanel() {
         <PunchButton
           icon={LogIn}
           label="Check In"
-          disabled={hasCheckedIn || punchMutation.isPending}
+          disabled={isSessionOpen || hasCheckedOut || punchMutation.isPending}
           onClick={() => handlePunch('check_in')}
         />
         <PunchButton
           icon={LogOut}
           label="Check Out"
-          disabled={!hasCheckedIn || hasCheckedOut || punchMutation.isPending}
+          disabled={!isSessionOpen || onBreak || punchMutation.isPending}
           onClick={() => handlePunch('check_out')}
         />
         <PunchButton
           icon={Coffee}
           label="Break Start"
-          disabled={!hasCheckedIn || hasCheckedOut || punchMutation.isPending}
+          disabled={!isSessionOpen || onBreak || punchMutation.isPending}
           onClick={() => handlePunch('break_start')}
         />
         <PunchButton
           icon={Coffee}
           label="Break End"
-          disabled={!hasCheckedIn || hasCheckedOut || punchMutation.isPending}
+          disabled={!onBreak || hasCheckedOut || punchMutation.isPending}
           onClick={() => handlePunch('break_end')}
         />
       </div>
 
-      {punchMutation.isError ? (
-        <p className="mt-3 text-sm text-destructive">Failed to record punch. Please try again.</p>
-      ) : null}
+      {punchError ? <p className="mt-3 text-sm text-destructive">{punchError}</p> : null}
     </div>
   );
 }

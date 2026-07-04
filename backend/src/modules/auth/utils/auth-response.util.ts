@@ -10,6 +10,7 @@ export function sanitizeAuthLoginResponse(response: LoginResponse): LoginRespons
   return {
     user: response.user,
     sessionId: response.sessionId,
+    profile: response.profile,
     tokens: {
       accessToken: '',
       refreshToken: '',

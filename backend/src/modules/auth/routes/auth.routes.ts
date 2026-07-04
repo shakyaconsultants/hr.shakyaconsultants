@@ -10,7 +10,10 @@ import {
   resetPassword,
 } from '@modules/auth/controllers/auth.controller.js';
 import { bootstrap, getSystemStatus } from '@modules/auth/controllers/bootstrap.controller.js';
-import { authenticateMiddleware } from '@modules/auth/middleware/authenticate.middleware.js';
+import {
+  authenticateMiddleware,
+  optionalAuthenticateMiddleware,
+} from '@modules/auth/middleware/authenticate.middleware.js';
 import { createLoginRateLimitMiddleware } from '@modules/auth/middleware/login-rate-limit.middleware.js';
 import {
   bootstrapRateLimitMiddleware,
@@ -130,13 +133,7 @@ authRoutes.post(AUTH_ROUTES.REFRESH, refreshRateLimitMiddleware, refresh);
  *       200:
  *         description: Logged out
  */
-authRoutes.post(AUTH_ROUTES.LOGOUT, (req, res, next) => {
-  authenticateMiddleware(req, res, () => {}).then(() => {
-    logout(req, res, next);
-  }).catch(() => {
-    logout(req, res, next);
-  });
-});
+authRoutes.post(AUTH_ROUTES.LOGOUT, optionalAuthenticateMiddleware, logout);
 
 /**
  * @swagger

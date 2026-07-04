@@ -5,18 +5,68 @@ import {
 import { BadRequestError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
+import { logger } from '@logging/winston.logger.js';
 import { AttendanceCalculatorService } from '@modules/attendance/services/attendance-calculator.service.js';
 import { AttendanceAuditService } from '@modules/attendance/services/attendance-audit.service.js';
 import { AttendanceEventService, ATTENDANCE_NOTIFICATION_JOB } from '@modules/attendance/services/attendance-event.service.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import type { AttendanceActorContext } from '@modules/approval/types/approval.types.js';
 
-const PUNCH_SEQUENCE: Record<string, string[]> = {
-  [ATTENDANCE_LOG_TYPE.CHECK_IN]: [],
-  [ATTENDANCE_LOG_TYPE.BREAK_START]: [ATTENDANCE_LOG_TYPE.CHECK_IN],
-  [ATTENDANCE_LOG_TYPE.BREAK_END]: [ATTENDANCE_LOG_TYPE.BREAK_START],
-  [ATTENDANCE_LOG_TYPE.CHECK_OUT]: [ATTENDANCE_LOG_TYPE.CHECK_IN],
-};
+type AttendanceLogDocument = Awaited<ReturnType<typeof AttendanceLogRepository.findMany>>[number];
+
+function sortLogsAsc(logs: AttendanceLogDocument[]) {
+  return [...logs].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+}
+
+function hasOpenCheckIn(logs: AttendanceLogDocument[]): boolean {
+  let open = false;
+  for (const log of sortLogsAsc(logs)) {
+    if (log.type === ATTENDANCE_LOG_TYPE.CHECK_IN) {
+      open = true;
+    }
+    if (log.type === ATTENDANCE_LOG_TYPE.CHECK_OUT) {
+      open = false;
+    }
+  }
+  return open;
+}
+
+function assertValidPunchSequence(type: string, logs: AttendanceLogDocument[]) {
+  const sorted = sortLogsAsc(logs);
+  const last = sorted.at(-1);
+  const openCheckIn = hasOpenCheckIn(logs);
+
+  switch (type) {
+    case ATTENDANCE_LOG_TYPE.CHECK_IN:
+      if (openCheckIn) {
+        throw new ConflictError('Already checked in', ERROR_CODES.CONFLICT);
+      }
+      break;
+    case ATTENDANCE_LOG_TYPE.CHECK_OUT:
+      if (!openCheckIn) {
+        throw new ConflictError('Check-in required before check-out', ERROR_CODES.CONFLICT);
+      }
+      if (last?.type === ATTENDANCE_LOG_TYPE.BREAK_START) {
+        throw new ConflictError('End your break before checking out', ERROR_CODES.CONFLICT);
+      }
+      break;
+    case ATTENDANCE_LOG_TYPE.BREAK_START:
+      if (!openCheckIn) {
+        throw new ConflictError('Check-in required before starting a break', ERROR_CODES.CONFLICT);
+      }
+      if (last?.type === ATTENDANCE_LOG_TYPE.BREAK_START) {
+        throw new ConflictError('Break already in progress', ERROR_CODES.CONFLICT);
+      }
+      break;
+    case ATTENDANCE_LOG_TYPE.BREAK_END:
+      if (last?.type !== ATTENDANCE_LOG_TYPE.BREAK_START) {
+        throw new ConflictError('No active break to end', ERROR_CODES.CONFLICT);
+      }
+      break;
+    default:
+      throw new BadRequestError(`Unsupported punch type: ${type}`);
+  }
+}
 
 export const PunchService = {
   async punch(context: AttendanceActorContext, payload: {
@@ -43,24 +93,8 @@ export const PunchService = {
       { attendanceId: record.id },
       { companyId: context.companyId },
     );
-    existingLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-    const lastLog = existingLogs[0];
 
-    if (payload.type === ATTENDANCE_LOG_TYPE.CHECK_IN && existingLogs.some((l) => l.type === ATTENDANCE_LOG_TYPE.CHECK_IN && !existingLogs.some((o) => o.type === ATTENDANCE_LOG_TYPE.CHECK_OUT && o.timestamp > l.timestamp))) {
-      throw new ConflictError('Already checked in', ERROR_CODES.CONFLICT);
-    }
-
-    const requiredPrevious = PUNCH_SEQUENCE[payload.type] ?? [];
-    if (requiredPrevious.length > 0 && (!lastLog || !requiredPrevious.includes(lastLog.type))) {
-      throw new ConflictError(`Invalid punch sequence for ${payload.type}`, ERROR_CODES.CONFLICT);
-    }
-
-    if (payload.type === ATTENDANCE_LOG_TYPE.CHECK_OUT) {
-      const hasCheckIn = existingLogs.some((l) => l.type === ATTENDANCE_LOG_TYPE.CHECK_IN);
-      if (!hasCheckIn) {
-        throw new ConflictError('Check-in required before check-out', ERROR_CODES.CONFLICT);
-      }
-    }
+    assertValidPunchSequence(payload.type, existingLogs);
 
     const logId = generateUuid();
     const log = await AttendanceLogRepository.create(
@@ -80,7 +114,7 @@ export const PunchService = {
       { companyId: context.companyId },
     );
 
-    const updated = await AttendanceCalculatorService.recalculate(context.companyId, record.id, context.userId);
+    const recordAfterPunch = await AttendanceCalculatorService.recalculate(context.companyId, record.id, context.userId);
 
     await AttendanceAuditService.log({
       companyId: context.companyId,
@@ -93,26 +127,42 @@ export const PunchService = {
       userAgent: context.userAgent,
     });
 
-    await AttendanceEventService.publishActivity(context, {
-      activityType: 'attendance_punch',
-      description: `${payload.type.replace('_', ' ')} recorded`,
-      entityType: 'attendance',
-      entityId: record.id,
-      metadata: { type: payload.type, timestamp },
-    });
-
-    const employee = await EmployeeRepository.findById(employeeId, { companyId: context.companyId });
-    if (employee?.userId && employee.userId !== context.userId) {
-      await AttendanceEventService.notify(context, {
-        recipientUserId: employee.userId,
-        title: 'Attendance punch recorded',
-        body: `${payload.type.replace('_', ' ')} at ${timestamp.toISOString()}`,
+    try {
+      await AttendanceEventService.publishActivity(context, {
+        activityType: 'attendance_punch',
+        description: `${payload.type.replace(/_/g, ' ')} recorded`,
         entityType: 'attendance',
         entityId: record.id,
-        jobName: ATTENDANCE_NOTIFICATION_JOB.PUNCH_RECORDED,
+        metadata: { type: payload.type, timestamp },
+      });
+    } catch (error) {
+      logger.warn('Attendance activity publish failed — punch still recorded', {
+        companyId: context.companyId,
+        employeeId,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
 
-    return { log, attendance: updated };
+    try {
+      const employee = await EmployeeRepository.findById(employeeId, { companyId: context.companyId });
+      if (employee?.userId && employee.userId !== context.userId) {
+        await AttendanceEventService.notify(context, {
+          recipientUserId: employee.userId,
+          title: 'Attendance punch recorded',
+          body: `${payload.type.replace(/_/g, ' ')} at ${timestamp.toISOString()}`,
+          entityType: 'attendance',
+          entityId: record.id,
+          jobName: ATTENDANCE_NOTIFICATION_JOB.PUNCH_RECORDED,
+        });
+      }
+    } catch (error) {
+      logger.warn('Attendance notification failed — punch still recorded', {
+        companyId: context.companyId,
+        employeeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    return { record: recordAfterPunch, log };
   },
 };

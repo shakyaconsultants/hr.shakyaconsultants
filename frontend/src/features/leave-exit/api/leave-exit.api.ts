@@ -102,10 +102,29 @@ export interface ListLeaveParams {
   pageSize?: number;
   status?: string;
   employeeId?: string;
+  scope?: 'mine' | 'all';
 }
 
 async function unwrap<T>(response: { data: ApiSuccessResponse<T> }): Promise<T> {
   return response.data.data;
+}
+
+async function unwrapPaginated<T>(response: {
+  data: ApiSuccessResponse<T[]> | ApiSuccessResponse<PaginatedResult<T>> & { pagination?: PaginatedResult<T>['pagination'] };
+}): Promise<PaginatedResult<T>> {
+  const data = response.data?.data as PaginatedResult<T> | T[] | undefined;
+  if (data && typeof data === 'object' && 'items' in data && 'pagination' in data) {
+    return data as PaginatedResult<T>;
+  }
+  const items = Array.isArray(data) ? data : [];
+  const pagination =
+    (response.data as { pagination?: PaginatedResult<T>['pagination'] }).pagination ??
+    { page: 1, pageSize: items.length || 20, total: items.length, totalPages: 1 };
+  return { items, pagination };
+}
+
+function cleanParams(params: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== ''));
 }
 
 export async function fetchLeavePolicies(): Promise<LeavePolicy[]> {
@@ -121,8 +140,10 @@ export async function fetchLeaveBalances(employeeId?: string, year?: number): Pr
 }
 
 export async function fetchLeaveRequests(params: ListLeaveParams = {}): Promise<PaginatedResult<LeaveRequest>> {
-  const response = await apiClient.get<ApiSuccessResponse<PaginatedResult<LeaveRequest>>>(`${LEAVE_EXIT_PREFIX}/leave-requests`, { params });
-  return unwrap(response);
+  const response = await apiClient.get<
+    ApiSuccessResponse<LeaveRequest[]> | ApiSuccessResponse<PaginatedResult<LeaveRequest>>
+  >(`${LEAVE_EXIT_PREFIX}/leave-requests`, { params: cleanParams(params as Record<string, unknown>) });
+  return unwrapPaginated(response);
 }
 
 export async function applyLeave(payload: ApplyLeavePayload): Promise<LeaveRequest> {

@@ -4,7 +4,7 @@ import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.a
 import { applyLoginSession, runAuthBootstrap } from '@/shared/auth/auth-bootstrap';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
-import { clearStoredTokens, getRefreshToken, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
+import { clearStoredTokens, getRefreshToken, hasStoredAuth, hasSessionHint, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { BootstrapSplash } from '@/app/components/bootstrap-splash';
 
@@ -43,9 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     authDiag.log('session_cleared', { reason: result.reason ?? 'unknown', status: result.status });
+    const shouldRevokeRemoteSession = hasStoredAuth() || hasSessionHint();
     clearStoredTokens();
     clearAuth();
-    void logoutRequest().catch(() => {});
+    if (shouldRevokeRemoteSession) {
+      void logoutRequest().catch(() => {});
+    }
   }, [clearAuth, setAuthStatus]);
 
   useEffect(() => {
@@ -63,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const result = await loginRequest(payload);
           setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
 
-          const me = await fetchMe();
+          const me = result.profile ?? (await fetchMe());
           applyLoginSession(me);
           setAuthStatus(AUTH_STATUS.AUTHENTICATED);
         } catch (error) {

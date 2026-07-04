@@ -27,13 +27,8 @@ export async function startServer(): Promise<HttpServer> {
   registerDomainModels();
   await syncDomainIndexes();
 
-  const redisConnected = await connectRedis();
   initializeCloudinary();
   initializeNotificationHandlers();
-  initializeQueues();
-  if (redisConnected) {
-    initializeWorkers();
-  }
 
   if (env.SMTP_HOST.includes('example.com') || env.SMTP_PASSWORD === 'not-configured') {
     logger.warn('SMTP is not fully configured — transactional emails will fail', {
@@ -84,11 +79,28 @@ export async function startServer(): Promise<HttpServer> {
         port: env.PORT,
         env: env.NODE_ENV,
         apiPrefix: env.API_PREFIX,
-        redis: redisConnected ? 'connected' : 'disabled',
+        redis: 'connecting',
       });
       resolve();
     });
   });
+
+  void connectRedis()
+    .then((redisConnected) => {
+      initializeQueues();
+      if (redisConnected) {
+        initializeWorkers();
+      }
+      logger.info('Background services ready', {
+        redis: redisConnected ? 'connected' : 'disabled',
+        queues: redisConnected ? 'enabled' : 'disabled',
+      });
+    })
+    .catch((error: unknown) => {
+      logger.warn('Background Redis/queue init failed — API remains available', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 
   return httpServer;
 }

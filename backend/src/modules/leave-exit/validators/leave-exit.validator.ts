@@ -7,7 +7,11 @@ export const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
   status: z.string().optional(),
-  employeeId: z.uuid().optional(),
+  scope: z.enum(['mine', 'all']).optional(),
+  employeeId: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.uuid().optional(),
+  ),
 });
 
 export const calendarQuerySchema = z.object({

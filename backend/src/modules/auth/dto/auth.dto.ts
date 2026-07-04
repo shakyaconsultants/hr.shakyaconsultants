@@ -20,6 +20,7 @@ export interface LoginResponse {
   user: AuthUserResponse;
   tokens: AuthTokenResponse;
   sessionId: string;
+  profile?: CurrentUserResponse;
 }
 
 export interface RefreshResponse {

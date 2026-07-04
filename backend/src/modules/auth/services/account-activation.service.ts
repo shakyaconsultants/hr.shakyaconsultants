@@ -1,4 +1,4 @@
-import { getEnv } from '@config/env.js';
+import { getEnv, isProduction } from '@config/env.js';
 import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
 import { AuthUserRepository } from '@modules/auth/repositories/user.repository.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
@@ -20,6 +20,7 @@ import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
 import { EmployeeLifecycleService, EMPLOYEE_LIFECYCLE_EMAIL } from '@modules/employee/services/employee-lifecycle.service.js';
 import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
+import { logger } from '@logging/winston.logger.js';
 
 export interface AccountActivationActor {
   companyId: string;
@@ -60,6 +61,14 @@ export const AccountActivationService = {
     });
 
     const activationUrl = `${env.FRONTEND_URL.split(',')[0]}/account-activation/${token}`;
+
+    if (!isProduction()) {
+      logger.info('Account activation link issued (dev)', {
+        email: user.email,
+        employeeId,
+        activationUrl,
+      });
+    }
 
     await QueueProducer.addEmailJob(AUTH_EMAIL_JOBS.ACCOUNT_ACTIVATION, {
       tenantId: actor.companyId,

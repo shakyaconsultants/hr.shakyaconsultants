@@ -22,6 +22,8 @@ export interface AttendanceRecord {
   isHoliday?: boolean;
   notes?: string;
   payrollSnapshot?: Record<string, unknown>;
+  lastPunchType?: 'check_in' | 'check_out' | 'break_start' | 'break_end';
+  onBreak?: boolean;
 }
 
 export interface AttendanceLog {
@@ -137,6 +139,7 @@ export interface ReportParams {
 
 export interface PunchPayload {
   type: 'check_in' | 'check_out' | 'break_start' | 'break_end';
+  employeeId?: string;
   location?: string;
   notes?: string;
 }

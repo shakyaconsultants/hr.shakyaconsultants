@@ -156,6 +156,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isSuperAdmin: () => get().roles.some((role) => role.slug === SUPER_ADMIN_ROLE_SLUG),
 }));
 
+export function selectLinkedEmployeeId(state: Pick<AuthState, 'employee' | 'user'>): string | undefined {
+  return state.employee?.id ?? state.user?.employeeId ?? undefined;
+}
+
 interface ThemeState {
   theme: 'light' | 'dark' | 'system';
   setTheme: (theme: 'light' | 'dark' | 'system') => void;

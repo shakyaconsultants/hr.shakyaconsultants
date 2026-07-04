@@ -8,6 +8,7 @@ import { useAuthStore } from '@/shared/stores/app.store';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { PasswordInput } from '@/shared/components/ui/password-input';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -37,8 +38,7 @@ export function LoginPage() {
       await login({ companyCode, email, password, rememberMe });
       navigate(useAuthStore.getState().homeRoute ?? portalHome, { replace: true });
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Invalid credentials';
-      setError(message);
+      setError(parseMutationError(e).message);
     } finally {
       setSubmitting(false);
     }

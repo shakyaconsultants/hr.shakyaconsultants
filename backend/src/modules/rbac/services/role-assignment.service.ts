@@ -4,6 +4,7 @@ import {
   RolePermissionRepository,
   RoleRepository,
 } from '@domain/permission/permission.schemas.js';
+import { MongoServerError } from 'mongodb';
 import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
@@ -26,30 +27,72 @@ export const RoleAssignmentService = {
       throw new NotFoundError('Role not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const existing = await EmployeeRoleRepository.findOne(
-      { employeeId, roleId, effectiveTo: null },
-      { companyId },
-    );
+    const existing = await EmployeeRoleRepository.findOne({ employeeId, roleId }, { companyId });
+
     if (existing) {
-      throw new ConflictError('Role already assigned to employee', ERROR_CODES.CONFLICT);
+      const isActive = existing.effectiveTo === null || existing.effectiveTo === undefined;
+      if (isActive) {
+        return;
+      }
+
+      await EmployeeRoleRepository.update(
+        existing.id,
+        {
+          $set: {
+            effectiveTo: null,
+            effectiveFrom: new Date(),
+            assignedBy: actor.userId,
+            assignedAt: new Date(),
+            isPrimary: options?.isPrimary ?? existing.isPrimary,
+            updatedBy: actor.userId,
+          },
+        },
+        { companyId },
+      );
+
+      await PermissionCacheService.invalidate(companyId, employeeId);
+      await RbacAuditService.log({
+        companyId,
+        userId: actor.userId,
+        entityType: 'employee_role',
+        entityId: employeeId,
+        action: 'assign',
+        after: { roleId, employeeId, reactivated: true },
+        ip: actor.ip,
+        userAgent: actor.userAgent,
+      });
+      return;
     }
 
-    await EmployeeRoleRepository.create(
-      {
-        id: generateUuid(),
-        companyId,
-        employeeId,
-        roleId,
-        assignedBy: actor.userId,
-        assignedAt: new Date(),
-        isPrimary: options?.isPrimary ?? false,
-        effectiveFrom: new Date(),
-        effectiveTo: null,
-        createdBy: actor.userId,
-        updatedBy: actor.userId,
-      },
-      { companyId },
-    );
+    try {
+      await EmployeeRoleRepository.create(
+        {
+          id: generateUuid(),
+          companyId,
+          employeeId,
+          roleId,
+          assignedBy: actor.userId,
+          assignedAt: new Date(),
+          isPrimary: options?.isPrimary ?? false,
+          effectiveFrom: new Date(),
+          effectiveTo: null,
+          createdBy: actor.userId,
+          updatedBy: actor.userId,
+        },
+        { companyId },
+      );
+    } catch (error) {
+      if (error instanceof MongoServerError && error.code === 11000) {
+        const active = await EmployeeRoleRepository.findOne(
+          { employeeId, roleId, effectiveTo: null },
+          { companyId },
+        );
+        if (active) {
+          return;
+        }
+      }
+      throw error;
+    }
 
     await PermissionCacheService.invalidate(companyId, employeeId);
     await RbacAuditService.log({

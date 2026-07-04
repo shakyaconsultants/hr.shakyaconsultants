@@ -16,6 +16,7 @@ export interface LoginResult {
   user: AuthUser;
   tokens: { accessToken: string; refreshToken: string; expiresIn: number; tokenType: string };
   sessionId: string;
+  profile?: MeResult;
 }
 
 export interface MeResult {
@@ -54,7 +55,7 @@ export async function refreshTokens(refreshToken?: string): Promise<{ tokens: { 
 }
 
 export async function logoutRequest(refreshToken?: string): Promise<void> {
-  await apiClient.post(`${AUTH_PREFIX}/logout`, { refreshToken });
+  await apiClient.post(`${AUTH_PREFIX}/logout`, refreshToken ? { refreshToken } : {});
 }
 
 export async function forgotPasswordRequest(companyCode: string, email: string): Promise<{ message: string }> {

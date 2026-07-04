@@ -72,6 +72,20 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  select,
+  textarea {
+    @apply bg-background text-foreground;
+  }
+
+  .dark select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
 }
 
 @layer utilities {

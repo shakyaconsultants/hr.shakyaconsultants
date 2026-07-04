@@ -36,6 +36,7 @@ export function useLeaveRequests(params: ListLeaveParams = {}) {
   return useQuery({
     queryKey: ['leave-exit', 'leave-requests', params],
     queryFn: () => fetchLeaveRequests(params),
+    enabled: params.scope === 'mine' ? true : params.employeeId !== undefined ? Boolean(params.employeeId) : true,
   });
 }
 

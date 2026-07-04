@@ -56,6 +56,7 @@ import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import type { UserDocument } from '@domain/auth/user.schema.js';
 import { AuthPerfTimer } from '@modules/auth/utils/auth-perf.util.js';
+import { logger } from '@logging/winston.logger.js';
 
 export interface AuthRequestMeta {
   ipAddress: string;
@@ -121,7 +122,12 @@ export const AuthService = {
     }
 
     if (user.status === USER_STATUS.INACTIVE || user.status === USER_STATUS.PENDING) {
-      throw new AuthenticationError('Account is not active', ERROR_CODES.AUTH_ACCOUNT_INACTIVE);
+      throw new AuthenticationError(
+        user.status === USER_STATUS.INACTIVE
+          ? 'Account is not activated. Check your email for the activation link or contact your administrator.'
+          : 'Account is not active',
+        ERROR_CODES.AUTH_ACCOUNT_INACTIVE,
+      );
     }
 
     const roleIds = await this.getRoleIdsForUser(company.id, user.employeeId);
@@ -199,6 +205,27 @@ export const AuthService = {
       expiresIn: getJwtConfig().accessExpiresIn,
       sessionId: session.sessionId,
     });
+
+    const authenticatedUser: AuthenticatedUser = {
+      userId: user.id,
+      companyId: company.id,
+      sessionId: session.sessionId,
+      employeeId: user.employeeId,
+      roleIds,
+      tokenVersion: user.tokenVersion,
+      email: user.email,
+    };
+
+    try {
+      response.profile = await this.getCurrentUser(authenticatedUser, user);
+    } catch (error) {
+      logger.warn('Failed to build login session profile — client may retry /auth/me', {
+        companyId: company.id,
+        userId: user.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     perf.finish({ companyId: company.id, userId: user.id });
     return response;
   },
@@ -455,7 +482,15 @@ export const AuthService = {
     }
 
     if (user.employeeId) {
-      await EmployeeProvisioningService.refreshEmployeePortalAccess(user.companyId, user.employeeId);
+      try {
+        await EmployeeProvisioningService.refreshEmployeePortalAccess(user.companyId, user.employeeId);
+      } catch (error) {
+        logger.warn('Employee portal permission sync failed during auth/me — continuing', {
+          companyId: user.companyId,
+          employeeId: user.employeeId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     const [company, permissionsResult, employee, navigationItems, featureFlagList] =
@@ -493,18 +528,27 @@ export const AuthService = {
 
     let resolvedRoleIds = roleIdsForLookup;
     if (user.employeeId && resolvedRoleIds.length === 0) {
-      const provisioned = await EmployeeProvisioningService.ensureDefaultEmployeeRole(
-        user.companyId,
-        user.employeeId,
-        { companyId: user.companyId, userId: user.userId },
-      );
-      if (provisioned) {
-        resolvedRoleIds = (
-          await EmployeeRoleRepository.findMany(
-            { employeeId: user.employeeId, effectiveTo: null },
-            { companyId: user.companyId },
-          )
-        ).map((entry) => entry.roleId);
+      try {
+        const provisioned = await EmployeeProvisioningService.ensureDefaultEmployeeRole(
+          user.companyId,
+          user.employeeId,
+          { companyId: user.companyId, userId: user.userId },
+        );
+        if (provisioned) {
+          resolvedRoleIds = (
+            await EmployeeRoleRepository.findMany(
+              { employeeId: user.employeeId, effectiveTo: null },
+              { companyId: user.companyId },
+            )
+          ).map((entry) => entry.roleId);
+        }
+      } catch (error) {
+        logger.warn('Default employee role provisioning failed during auth/me — continuing login', {
+          companyId: user.companyId,
+          employeeId: user.employeeId,
+          userId: user.userId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

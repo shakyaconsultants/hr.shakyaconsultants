@@ -8,12 +8,14 @@ import { DatePicker } from '@/shared/components/date-picker';
 import { compareDates } from '@/shared/utils/datetime';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
+import { Select } from '@/shared/components/ui/select';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { ROUTES } from '@/config/app.config';
-import { useAuthStore } from '@/shared/stores/app.store';
+import { useAuthStore, selectLinkedEmployeeId } from '@/shared/stores/app.store';
 
 export function WorkspaceApplyLeavePage() {
   const navigate = useNavigate();
-  const employeeId = useAuthStore((s) => s.user?.employeeId ?? s.employee?.id ?? '');
+  const employeeId = useAuthStore(selectLinkedEmployeeId) ?? '';
   const { data: policies, isLoading } = useLeavePolicies();
   const applyLeave = useApplyLeave();
 
@@ -77,21 +79,16 @@ export function WorkspaceApplyLeavePage() {
           Your account is not linked to an employee record. Contact HR to apply for leave.
         </p>
       ) : (
-        <form onSubmit={(e) => void onSubmit(e)} className="max-w-xl space-y-4 rounded-lg border p-6">
+        <form onSubmit={(e) => void onSubmit(e)} className="max-w-xl space-y-4 rounded-lg border bg-card p-6">
           <Field label="Leave Policy" required>
-            <select
-              className="w-full rounded-md border p-2 text-sm"
-              value={leavePolicyId}
-              onChange={(e) => setLeavePolicyId(e.target.value)}
-              required
-            >
+            <Select value={leavePolicyId} onChange={(e) => setLeavePolicyId(e.target.value)} required>
               <option value="">Select policy</option>
               {(policies ?? []).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.code})
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -110,25 +107,15 @@ export function WorkspaceApplyLeavePage() {
           </div>
 
           <Field label="Duration Type" required>
-            <select
-              className="w-full rounded-md border p-2 text-sm"
-              value={durationType}
-              onChange={(e) => setDurationType(e.target.value)}
-            >
+            <Select value={durationType} onChange={(e) => setDurationType(e.target.value)}>
               <option value="full_day">Full Day</option>
               <option value="half_day">Half Day</option>
               <option value="multi_day">Multi Day</option>
-            </select>
+            </Select>
           </Field>
 
           <Field label="Reason" required>
-            <textarea
-              className="w-full rounded-md border p-2 text-sm"
-              rows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              required
-            />
+            <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} required />
           </Field>
 
           <label className="flex items-center gap-2 text-sm">

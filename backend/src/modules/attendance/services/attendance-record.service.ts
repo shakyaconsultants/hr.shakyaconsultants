@@ -1,4 +1,8 @@
-import { AttendanceRepository } from '@domain/attendance/attendance.schemas.js';
+import {
+  ATTENDANCE_LOG_TYPE,
+  AttendanceLogRepository,
+  AttendanceRepository,
+} from '@domain/attendance/attendance.schemas.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { startOfDay, endOfDay } from '@shared/utils/date.util.js';
@@ -51,7 +55,19 @@ export const AttendanceRecordService = {
     if (!record) {
       record = await AttendanceCalculatorService.getOrCreateRecord(companyId, employeeId, today, 'system');
     }
-    return record;
+
+    const logs = await AttendanceLogRepository.findMany(
+      { attendanceId: record.id },
+      { companyId },
+    );
+    logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    const lastPunchType = logs[0]?.type;
+
+    return {
+      ...record,
+      lastPunchType,
+      onBreak: lastPunchType === ATTENDANCE_LOG_TYPE.BREAK_START,
+    };
   },
 
   async getCalendar(companyId: string, startDate: string, endDate: string, employeeId?: string) {

@@ -8,6 +8,7 @@ import { DatePicker } from '@/shared/components/date-picker';
 import { DurationInput } from '@/shared/components/duration-input';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { toDateInputValue } from '@/shared/utils/datetime';
 import { useAuthStore } from '@/shared/stores/app.store';
 
@@ -51,10 +52,10 @@ export function WorkspaceResignationPage() {
           Your account is not linked to an employee record. Contact HR to submit resignation.
         </p>
       ) : (
-        <form onSubmit={(e) => void onSubmit(e)} className="max-w-xl space-y-4 rounded-lg border p-6">
+        <form onSubmit={(e) => void onSubmit(e)} className="max-w-xl space-y-4 rounded-lg border bg-card p-6">
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Reason *</span>
-            <textarea className="w-full rounded-md border p-2" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} required />
+            <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} required />
           </label>
           <label className="block space-y-1 text-sm">
             <span className="font-medium">Notice Period (days) *</span>

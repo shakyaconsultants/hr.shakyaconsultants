@@ -9,6 +9,7 @@ import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
 import { RoleAssignmentService } from '@modules/rbac/services/role-assignment.service.js';
 import { PermissionCacheService } from '@modules/rbac/services/permission-cache.service.js';
 import type { RbacActorContext } from '@modules/rbac/types/rbac.types.js';
+import { MongoServerError } from 'mongodb';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { logger } from '@logging/winston.logger.js';
 
@@ -33,17 +34,24 @@ async function syncEmployeeRolePermissions(companyId: string): Promise<void> {
     if (assigned.has(permission.id)) {
       continue;
     }
-    await RolePermissionRepository.create(
-      {
-        id: generateUuid(),
-        companyId,
-        roleId: role.id,
-        permissionId: permission.id,
-        createdBy: SYSTEM_ACTOR,
-        updatedBy: SYSTEM_ACTOR,
-      },
-      { companyId },
-    );
+    try {
+      await RolePermissionRepository.create(
+        {
+          id: generateUuid(),
+          companyId,
+          roleId: role.id,
+          permissionId: permission.id,
+          createdBy: SYSTEM_ACTOR,
+          updatedBy: SYSTEM_ACTOR,
+        },
+        { companyId },
+      );
+    } catch (error) {
+      if (error instanceof MongoServerError && error.code === 11000) {
+        continue;
+      }
+      throw error;
+    }
   }
 }
 

@@ -109,36 +109,6 @@ export const AttendanceCalculatorService = {
     );
     const isHoliday = Boolean(holiday);
 
-    if (isHoliday) {
-      const updated = await AttendanceRepository.update(
-        attendanceId,
-        {
-          status: ATTENDANCE_STATUS.HOLIDAY,
-          isHoliday: true,
-          isWeekend,
-          payrollSnapshot: this.buildPayrollSnapshot(record, ATTENDANCE_STATUS.HOLIDAY, 0, 0, 0, 0, 0),
-          updatedBy: userId,
-        },
-        { companyId },
-      );
-      return updated!;
-    }
-
-    if (isWeekend) {
-      const updated = await AttendanceRepository.update(
-        attendanceId,
-        {
-          status: ATTENDANCE_STATUS.WEEKEND,
-          isWeekend: true,
-          isHoliday: false,
-          payrollSnapshot: this.buildPayrollSnapshot(record, ATTENDANCE_STATUS.WEEKEND, 0, 0, 0, 0, 0),
-          updatedBy: userId,
-        },
-        { companyId },
-      );
-      return updated!;
-    }
-
     const logs = await AttendanceLogRepository.findMany(
       { attendanceId },
       { companyId },
@@ -206,6 +176,12 @@ export const AttendanceCalculatorService = {
       status = ATTENDANCE_STATUS.HALF_DAY;
     }
 
+    if (!checkIn && isHoliday) {
+      status = ATTENDANCE_STATUS.HOLIDAY;
+    } else if (!checkIn && isWeekend) {
+      status = ATTENDANCE_STATUS.WEEKEND;
+    }
+
     const updated = await AttendanceRepository.update(
       attendanceId,
       {
@@ -217,8 +193,8 @@ export const AttendanceCalculatorService = {
         lateMinutes,
         earlyExitMinutes,
         overtimeMinutes,
-        isWeekend: false,
-        isHoliday: false,
+        isWeekend,
+        isHoliday,
         status,
         payrollSnapshot: this.buildPayrollSnapshot(record, status, workedMinutes, lateMinutes, earlyExitMinutes, overtimeMinutes, breakMinutes),
         updatedBy: userId,

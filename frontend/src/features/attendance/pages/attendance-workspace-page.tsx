@@ -10,7 +10,7 @@ import { DataTable } from '@/shared/components/data-table';
 import { cn } from '@/shared/utils/cn';
 
 export function AttendanceWorkspacePage() {
-  const employeeId = useAuthStore((s) => s.user?.employeeId);
+  const employeeId = useAuthStore((s) => s.user?.employeeId ?? s.employee?.id ?? '');
   const { data: today } = useTodayAttendance(employeeId);
   const { data: history, isLoading: historyLoading } = useAttendanceRecords({
     employeeId,

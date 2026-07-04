@@ -1,5 +1,8 @@
 import type { RequestHandler } from 'express';
 import type { AuthenticatedRequest } from '@modules/auth/interfaces/auth-request.interface.js';
+import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
+import { AuthorizationError } from '@shared/errors/app.error.js';
+import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { ResponseService } from '@shared/services/response.service.js';
 import { validateInput } from '@modules/auth/validators/validate.util.js';
 import { buildLeaveExitActor } from '@modules/approval/types/approval.types.js';
@@ -24,6 +27,21 @@ import {
 
 function actor(req: AuthenticatedRequest) {
   return buildLeaveExitActor(req);
+}
+
+const LEAVE_TEAM_VIEW_PERMISSIONS = ['leave.update', 'leave.approve', 'leave.policy.manage', 'leave.balance.manage'] as const;
+
+async function resolveLinkedEmployeeId(authReq: AuthenticatedRequest): Promise<string | undefined> {
+  if (authReq.user.employeeId) {
+    return authReq.user.employeeId;
+  }
+  const employee = await EmployeeRepository.findOne({ userId: authReq.user.userId }, { companyId: authReq.user.companyId });
+  return employee?.id;
+}
+
+function canViewTeamLeaveRequests(authReq: AuthenticatedRequest): boolean {
+  const permissions = authReq.auth?.permissions ?? [];
+  return LEAVE_TEAM_VIEW_PERMISSIONS.some((code) => permissions.includes(code));
 }
 
 export const seedLeaveExitDefaults: RequestHandler = async (req, res, next) => {
@@ -92,8 +110,32 @@ export const listLeaveRequests: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
-    const data = await LeaveRequestService.list(authReq.user.companyId, query);
-    return ResponseService.success(res, authReq, data);
+    const teamView = canViewTeamLeaveRequests(authReq);
+    const linkedEmployeeId = await resolveLinkedEmployeeId(authReq);
+
+    let employeeId = query.employeeId;
+    if (query.scope === 'mine' || (!teamView && !employeeId)) {
+      employeeId = linkedEmployeeId;
+    }
+
+    if (!teamView) {
+      if (!linkedEmployeeId) {
+        return ResponseService.paginated(res, authReq, {
+          items: [],
+          pagination: { page: query.page ?? 1, pageSize: query.pageSize ?? 20, total: 0, totalPages: 0 },
+        });
+      }
+      if (employeeId && employeeId !== linkedEmployeeId) {
+        throw new AuthorizationError('You can only view your own leave requests', ERROR_CODES.AUTH_FORBIDDEN);
+      }
+      employeeId = linkedEmployeeId;
+    }
+
+    const data = await LeaveRequestService.list(authReq.user.companyId, {
+      ...query,
+      employeeId,
+    });
+    return ResponseService.paginated(res, authReq, data);
   } catch (error) {
     next(error);
     return;
@@ -104,7 +146,18 @@ export const applyLeave: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const payload = validateInput(applyLeaveSchema, req.body);
-    const data = await LeaveRequestService.apply(actor(authReq), payload);
+    const linkedEmployeeId = await resolveLinkedEmployeeId(authReq);
+    const teamView = canViewTeamLeaveRequests(authReq);
+    const employeeId = payload.employeeId ?? linkedEmployeeId;
+
+    if (!employeeId) {
+      throw new AuthorizationError('Employee profile is required to apply for leave', ERROR_CODES.AUTH_FORBIDDEN);
+    }
+    if (!teamView && employeeId !== linkedEmployeeId) {
+      throw new AuthorizationError('You can only apply leave for yourself', ERROR_CODES.AUTH_FORBIDDEN);
+    }
+
+    const data = await LeaveRequestService.apply(actor(authReq), { ...payload, employeeId });
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
