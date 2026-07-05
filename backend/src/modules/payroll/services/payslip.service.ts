@@ -14,6 +14,7 @@ import { SalaryStructureService } from '@modules/payroll/services/salary-structu
 import { AttendanceRepository } from '@domain/attendance/attendance.schemas.js';
 import { PayrollAuditService } from '@modules/payroll/services/payroll-audit.service.js';
 import { PayrollEventService, PAYROLL_NOTIFICATION_JOB } from '@modules/payroll/services/payroll-event.service.js';
+import { UploadService } from '@infrastructure/storage/cloudinary.service.js';
 import type { PayrollActorContext } from '@modules/approval/types/approval.types.js';
 
 function buildPayslipHtml(input: {
@@ -219,6 +220,96 @@ export const PayslipService = {
     });
 
     return { payrollId, generatedCount: generated.length, payslipIds: generated };
+  },
+
+  async uploadManual(
+    context: PayrollActorContext,
+    employeeId: string,
+    input: {
+      buffer: Buffer;
+      filename: string;
+      mimeType: string;
+      periodStart: Date;
+      periodEnd: Date;
+      grossSalary?: number;
+      netSalary?: number;
+      currency?: string;
+    },
+  ) {
+    const employee = await EmployeeRepository.findById(employeeId, { companyId: context.companyId });
+    if (!employee) {
+      throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
+    }
+
+    const folder = `payroll/payslips/${employeeId}`;
+    const upload = await UploadService.uploadDocument({
+      buffer: input.buffer,
+      folder,
+      filename: input.filename,
+      mimeType: input.mimeType,
+    });
+
+    const compensation = await EmployeeCompensationService.getActiveForEmployee(
+      context.companyId,
+      employeeId,
+      input.periodEnd,
+    );
+    const currency = input.currency ?? compensation?.currency ?? 'INR';
+    const grossSalary = input.grossSalary ?? compensation?.baseSalary ?? 0;
+    const netSalary = input.netSalary ?? grossSalary;
+
+    const id = generateUuid();
+    const payrollId = `manual-${input.periodStart.toISOString().slice(0, 7)}`;
+
+    await PayslipRepository.create(
+      {
+        id,
+        companyId: context.companyId,
+        payrollId,
+        employeeId,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+        basicSalary: grossSalary,
+        grossSalary,
+        netSalary,
+        totalDeductions: Math.max(0, grossSalary - netSalary),
+        totalAllowances: 0,
+        earnings: [],
+        deductions: [],
+        employerContributions: [],
+        employeeContributions: [],
+        attendanceSummary: {},
+        variablePay: 0,
+        bonus: 0,
+        reimbursement: 0,
+        version: 1,
+        currency,
+        pdfUrl: upload.url,
+        pdfMetadata: {
+          uploadedAt: new Date().toISOString(),
+          originalFilename: input.filename,
+          source: 'manual_upload',
+        },
+        lineItems: [],
+        status: PAYSLIP_STATUS.UPLOADED,
+        createdBy: context.userId,
+        updatedBy: context.userId,
+      },
+      { companyId: context.companyId },
+    );
+
+    await PayrollAuditService.log({
+      companyId: context.companyId,
+      userId: context.userId,
+      entityType: 'payslip',
+      entityId: id,
+      action: 'create',
+      after: { employeeId, periodStart: input.periodStart, periodEnd: input.periodEnd },
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
+
+    return PayslipRepository.findById(id, { companyId: context.companyId });
   },
 
   async getDownloadHtml(companyId: string, id: string): Promise<string> {

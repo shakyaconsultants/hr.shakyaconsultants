@@ -86,11 +86,7 @@ export function hasStoredAuth(): boolean {
   return Boolean(getAccessToken() || getRefreshToken());
 }
 
-/** Whether bootstrap should attempt GET /auth/me. */
 export function shouldAttemptSessionRestore(): boolean {
-  if (usesHttpOnlyCookies()) {
-    return true;
-  }
   return hasStoredAuth() || hasSessionHint();
 }
 

@@ -1,8 +1,9 @@
-import { fetchMe, refreshTokens } from '@/features/auth/api/auth.api';
+import { fetchMe, logoutRequest, refreshTokens } from '@/features/auth/api/auth.api';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { classifyHttpFailure } from '@/shared/auth/auth-error.util';
 import type { SessionRestoreOutcome } from '@/shared/auth/session-restore.types';
 import {
+  clearStoredTokens,
   getRefreshToken,
   markCookieSessionActive,
   setStoredTokens,
@@ -66,6 +67,16 @@ export async function restoreSession(): Promise<SessionRestoreOutcome> {
   });
 
   return sessionRestorePromise;
+}
+
+/** Clears client session markers and revokes HttpOnly cookies before a fresh login. */
+export async function clearStaleAuthBeforeLogin(): Promise<void> {
+  clearStoredTokens();
+  try {
+    await logoutRequest();
+  } catch {
+    // Best-effort — stale cookies may already be invalid.
+  }
 }
 
 async function performSessionRestore(): Promise<SessionRestoreOutcome> {

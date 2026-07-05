@@ -34,6 +34,9 @@ function getTransporter(): Transporter {
       user: env.SMTP_USER,
       pass: env.SMTP_PASSWORD,
     },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
   });
   return transporter;
 }

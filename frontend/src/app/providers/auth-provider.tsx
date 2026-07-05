@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from '@tanstack/react-query';
 import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.api';
 import { applyLoginSession, runAuthBootstrap } from '@/shared/auth/auth-bootstrap';
+import { clearStaleAuthBeforeLogin } from '@/shared/auth/auth-session';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 import { clearStoredTokens, getRefreshToken, hasStoredAuth, hasSessionHint, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
@@ -60,16 +61,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       login: async (payload) => {
-        setAuthStatus(AUTH_STATUS.LOADING);
         setBootstrapError(null);
+        authDiag.log('login_started', { email: payload.email, companyCode: payload.companyCode });
         try {
+          await clearStaleAuthBeforeLogin();
           const result = await loginRequest(payload);
           setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
 
           const me = result.profile ?? (await fetchMe());
           applyLoginSession(me);
           setAuthStatus(AUTH_STATUS.AUTHENTICATED);
+          authDiag.log('login_success', { userId: me.user.id });
         } catch (error) {
+          authDiag.log('login_failed', {
+            message: error instanceof Error ? error.message : String(error),
+          });
           setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
           throw error;
         }

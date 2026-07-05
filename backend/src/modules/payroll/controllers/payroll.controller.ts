@@ -13,6 +13,8 @@ import { SalaryRevisionService } from '@modules/payroll/services/salary-revision
 import { PayslipService } from '@modules/payroll/services/payslip.service.js';
 import { PayrollReportService } from '@modules/payroll/services/payroll-report.service.js';
 import { PayrollDashboardService } from '@modules/payroll/services/payroll-dashboard.service.js';
+import { ValidationError } from '@shared/errors/app.error.js';
+import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import {
   assignCompensationSchema,
   createComponentSchema,
@@ -36,6 +38,7 @@ import {
   updatePoliciesSchema,
   updateSalaryRevisionSchema,
   updateSalaryStructureSchema,
+  uploadPayslipSchema,
 } from '@modules/payroll/validators/payroll.validator.js';
 
 function actor(req: AuthenticatedRequest) {
@@ -474,10 +477,47 @@ export const downloadPayslip: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
+    const payslip = await PayslipService.getById(authReq.user.companyId, id);
+    if (payslip.pdfUrl) {
+      return res.redirect(payslip.pdfUrl);
+    }
     const html = await PayslipService.getDownloadHtml(authReq.user.companyId, id);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Disposition', `inline; filename="payslip-${id}.html"`);
     return res.send(html);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const uploadPayslip: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { employeeId } = validateInput(employeeIdParamSchema, req.params);
+    const body = req.body as Record<string, string | undefined>;
+    const meta = validateInput(uploadPayslipSchema, {
+      periodStart: body.periodStart,
+      periodEnd: body.periodEnd,
+      grossSalary: body.grossSalary,
+      netSalary: body.netSalary,
+      currency: body.currency,
+    });
+    const file = req.file;
+    if (!file) {
+      throw new ValidationError('No file uploaded', [], { code: ERROR_CODES.VALIDATION_FAILED });
+    }
+    const data = await PayslipService.uploadManual(actor(authReq), employeeId, {
+      buffer: file.buffer,
+      filename: file.originalname,
+      mimeType: file.mimetype,
+      periodStart: meta.periodStart,
+      periodEnd: meta.periodEnd,
+      grossSalary: meta.grossSalary,
+      netSalary: meta.netSalary,
+      currency: meta.currency,
+    });
+    return ResponseService.created(res, authReq, data);
   } catch (error) {
     next(error);
     return;

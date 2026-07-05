@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { PasswordInput } from '@/shared/components/ui/password-input';
 import { parseMutationError } from '@/shared/feedback/mutation-error.util';
+import { toastError } from '@/shared/feedback/toast.store';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -39,7 +40,9 @@ export function LoginPage() {
       navigate(useAuthStore.getState().homeRoute ?? portalHome, { replace: true });
     } catch (e) {
       const parsed = parseMutationError(e);
-      setError(parsed.description ? `${parsed.message} ${parsed.description}` : parsed.message);
+      const message = parsed.description ? `${parsed.message} ${parsed.description}` : parsed.message;
+      setError(message);
+      toastError(parsed.title, parsed.description);
     } finally {
       setSubmitting(false);
     }
@@ -68,7 +71,11 @@ export function LoginPage() {
           <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
           Remember this device
         </label>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? 'Signing in...' : 'Sign in'}
         </Button>

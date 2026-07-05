@@ -43,6 +43,7 @@ export const DOCUMENT_TYPE = {
   OFFER_LETTER: 'offer_letter',
   JOINING_LETTER: 'joining_letter',
   CANCELLED_CHEQUE: 'cancelled_cheque',
+  PAYSLIP: 'payslip',
   OTHER: 'other',
 } as const;
 

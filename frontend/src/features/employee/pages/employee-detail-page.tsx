@@ -22,12 +22,18 @@ import { EmployeeEditDialog } from '@/features/employee/components/employee-edit
 import { EmployeeRolesPanel } from '@/features/employee/components/employee-roles-panel';
 import { EmployeeMessagesPanel } from '@/features/employee/components/employee-messages-panel';
 import { EmployeeReportingPanel } from '@/features/employee/components/employee-reporting-panel';
+import { EmployeePayrollPanel } from '@/features/payroll/components/employee-payroll-panel';
+import { useAuthStore } from '@/shared/stores/app.store';
 
-const TABS = ['Overview', 'Documents', 'Education', 'Experience', 'Skills', 'Timeline', 'Assets', 'Reporting', 'Roles & Access', 'Messages'] as const;
+const BASE_TABS = ['Overview', 'Documents', 'Education', 'Experience', 'Skills', 'Timeline', 'Assets', 'Reporting', 'Roles & Access', 'Messages'] as const;
+const PAYROLL_TAB = 'Payroll' as const;
 
 export function EmployeeDetailPage() {
   const { id = '' } = useParams();
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Overview');
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const showPayrollTab = hasPermission('payroll.read') || hasPermission('payslip.read');
+  const tabs = showPayrollTab ? ([...BASE_TABS.slice(0, 1), PAYROLL_TAB, ...BASE_TABS.slice(1)] as const) : BASE_TABS;
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Overview');
   const [editOpen, setEditOpen] = useState(false);
   const { data, isLoading, isError } = useEmployeeDashboard(id);
   const uploadMutation = useUploadDocument();
@@ -156,7 +162,7 @@ export function EmployeeDetailPage() {
       </div>
 
       <div className="flex flex-wrap gap-1 border-b">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <Button
             key={tab}
             variant={activeTab === tab ? 'default' : 'ghost'}
@@ -207,6 +213,13 @@ export function EmployeeDetailPage() {
             </dl>
           </div>
         )}
+
+        {activeTab === 'Payroll' && showPayrollTab ? (
+          <EmployeePayrollPanel
+            employeeId={id}
+            employeeName={`${employee.firstName} ${employee.lastName}`.trim()}
+          />
+        ) : null}
 
         {activeTab === 'Documents' && (
           <ul className="space-y-2">

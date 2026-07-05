@@ -17,6 +17,10 @@ import { ApprovalAuditService } from '@modules/approval/services/approval-audit.
 import { ApprovalEventService, APPROVAL_NOTIFICATION_JOB } from '@modules/approval/services/approval-event.service.js';
 import { ApprovalEntitySyncService } from '@modules/approval/services/approval-entity-sync.service.js';
 import type { ApprovalActorContext, ApprovalListQuery } from '@modules/approval/types/approval.types.js';
+import {
+  canEnterpriseApprove,
+  canViewCompanyApprovals,
+} from '@modules/approval/utils/approval-access.util.js';
 
 function sortedStages(stages: ApprovalWorkflowStageDefinition[]): ApprovalWorkflowStageDefinition[] {
   return [...stages].sort((a, b) => a.order - b.order);
@@ -257,7 +261,7 @@ export const ApprovalEngineService = {
     const stages = sortedStages(workflow.stages);
     const currentStage = resolveCurrentStage(stages, request.currentStageIndex, request.currentStageSlug);
 
-    ApprovalValidationService.assertIsPendingApprover(context.employeeId, request.pendingApproverEmployeeIds);
+    ApprovalValidationService.assertCanApproveRequest(context, request.pendingApproverEmployeeIds);
     ApprovalValidationService.assertNotSelfApproval(context.employeeId, request.requesterEmployeeId, currentStage);
 
     const priorActions = await ApprovalActionRepository.findMany({ approvalRequestId: requestId }, { companyId: context.companyId });
@@ -330,7 +334,7 @@ export const ApprovalEngineService = {
 
   async reject(context: ApprovalActorContext, requestId: string, comments?: string): Promise<ApprovalRequestDocument> {
     const request = await this.getById(context.companyId, requestId);
-    ApprovalValidationService.assertIsPendingApprover(context.employeeId, request.pendingApproverEmployeeIds);
+    ApprovalValidationService.assertCanApproveRequest(context, request.pendingApproverEmployeeIds);
 
     await recordAction(context, {
       approvalRequestId: requestId,
@@ -411,6 +415,7 @@ export const ApprovalEngineService = {
 
   async escalate(context: ApprovalActorContext, requestId: string, comments?: string): Promise<ApprovalRequestDocument> {
     const request = await this.getById(context.companyId, requestId);
+    ApprovalValidationService.assertCanApproveRequest(context, request.pendingApproverEmployeeIds);
 
     await recordAction(context, { approvalRequestId: requestId, action: APPROVAL_ACTION_TYPE.ESCALATE, comments });
 
@@ -470,14 +475,31 @@ export const ApprovalEngineService = {
   },
 
   async getInbox(context: ApprovalActorContext, query: ApprovalListQuery) {
-    if (!context.employeeId) {
-      return { items: [], total: 0, page: 1, pageSize: 20 };
-    }
+    const emptyPage = {
+      items: [] as ApprovalRequestDocument[],
+      total: 0,
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 20,
+    };
 
     const filter: Record<string, unknown> = {
-      pendingApproverEmployeeIds: context.employeeId,
-      status: { $in: [APPROVAL_REQUEST_STATUS.PENDING, APPROVAL_REQUEST_STATUS.IN_PROGRESS, APPROVAL_REQUEST_STATUS.ESCALATED] },
+      status: {
+        $in: [
+          APPROVAL_REQUEST_STATUS.PENDING,
+          APPROVAL_REQUEST_STATUS.IN_PROGRESS,
+          APPROVAL_REQUEST_STATUS.ESCALATED,
+        ],
+      },
     };
+
+    if (canEnterpriseApprove(context)) {
+      // Super Admin / HR: company-wide pending queue (no employee inbox assignment required).
+    } else if (context.employeeId) {
+      filter.pendingApproverEmployeeIds = context.employeeId;
+    } else {
+      return emptyPage;
+    }
+
     if (query.requestType) {
       filter.requestType = query.requestType;
     }
@@ -490,11 +512,13 @@ export const ApprovalEngineService = {
     }, { companyId: context.companyId });
   },
 
-  async getHistory(companyId: string, requestId: string) {
-    const [request, actions, timeline] = await Promise.all([
-      this.getById(companyId, requestId),
-      ApprovalActionRepository.findMany({ approvalRequestId: requestId }, { companyId }),
-      ApprovalTimelineRepository.findMany({ approvalRequestId: requestId }, { companyId }),
+  async getHistory(context: ApprovalActorContext, requestId: string) {
+    const request = await this.getById(context.companyId, requestId);
+    ApprovalValidationService.assertCanViewRequest(context, request);
+
+    const [actions, timeline] = await Promise.all([
+      ApprovalActionRepository.findMany({ approvalRequestId: requestId }, { companyId: context.companyId }),
+      ApprovalTimelineRepository.findMany({ approvalRequestId: requestId }, { companyId: context.companyId }),
     ]);
 
     return {
@@ -514,6 +538,21 @@ export const ApprovalEngineService = {
     }
     if (query.entityType) {
       filter.entityType = query.entityType;
+    }
+
+    if (!canViewCompanyApprovals(context)) {
+      if (!context.employeeId) {
+        return {
+          items: [],
+          total: 0,
+          page: query.page ?? 1,
+          pageSize: query.pageSize ?? 20,
+        };
+      }
+      filter.$or = [
+        { pendingApproverEmployeeIds: context.employeeId },
+        { requesterEmployeeId: context.employeeId },
+      ];
     }
 
     return ApprovalRequestRepository.paginate(filter, {

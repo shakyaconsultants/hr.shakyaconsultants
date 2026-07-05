@@ -1,10 +1,14 @@
 import type { AuthenticatedRequest } from '@modules/auth/interfaces/auth-request.interface.js';
+import { isSuperAdminRequest } from '@modules/auth/utils/super-admin-auth.util.js';
+import { PermissionEngineService } from '@modules/auth/services/permission-engine.service.js';
 
 export interface ApprovalActorContext {
   companyId: string;
   userId: string;
   employeeId?: string;
   isSuperAdmin?: boolean;
+  /** Resolved permission codes for the current request (when loaded by authorize middleware). */
+  permissions?: string[];
   ip?: string;
   userAgent?: string;
 }
@@ -22,11 +26,27 @@ export function buildApprovalActor(req: AuthenticatedRequest): ApprovalActorCont
   return {
     companyId: req.user.companyId,
     userId: req.user.userId,
-    employeeId: req.user.employeeId ?? (req.auth?.isSuperAdmin ? req.user.userId : undefined),
-    isSuperAdmin: req.auth?.isSuperAdmin,
+    employeeId: req.user.employeeId,
+    isSuperAdmin: req.auth?.isSuperAdmin === true,
+    permissions: req.auth?.permissions,
     ip: req.ip,
     userAgent: req.get('user-agent') ?? undefined,
   };
+}
+
+/** Ensures super-admin flag and permissions are loaded before building an approval actor. */
+export async function resolveApprovalActor(req: AuthenticatedRequest): Promise<ApprovalActorContext> {
+  await isSuperAdminRequest(req);
+
+  if (!Array.isArray(req.auth?.permissions) && req.user.employeeId) {
+    const permissions = await PermissionEngineService.getPermissionsForUser(
+      req.user.companyId,
+      req.user.employeeId,
+    );
+    req.auth = { ...req.auth, permissions };
+  }
+
+  return buildApprovalActor(req);
 }
 
 export type LeaveExitActorContext = ApprovalActorContext;

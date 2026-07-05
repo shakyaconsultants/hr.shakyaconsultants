@@ -5,8 +5,15 @@ import { useApprovalInbox, useApproveRequest, useBulkApprove, useRejectRequest }
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { StatusBadge } from '@/features/leave-exit/components/leave-exit-nav';
+import { useAuthStore } from '@/shared/stores/app.store';
 
 export function ApprovalInboxPage() {
+  const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin());
+  const hasEnterpriseApproval = useAuthStore((s) =>
+    s.hasAnyPermission(['approval.execute', 'leave.approve']),
+  );
+  const showCompanyQueue = isSuperAdmin || hasEnterpriseApproval;
+
   const { data, isLoading } = useApprovalInbox({ pageSize: 50 });
   const approve = useApproveRequest();
   const reject = useRejectRequest();
@@ -29,6 +36,12 @@ export function ApprovalInboxPage() {
         <ApprovalPageHeader title="Approval Inbox" description="Review and action pending approval requests." />
       </div>
       <ApprovalNav />
+
+      {showCompanyQueue ? (
+        <p className="text-sm text-muted-foreground">
+          Showing all pending approvals for your company. Managers see only requests assigned to them in their inbox.
+        </p>
+      ) : null}
 
       {selected.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">

@@ -22,7 +22,7 @@ export function LeadPipelineBoard({ pipelineId, readOnly = false }: LeadPipeline
     return <p className="text-destructive">Failed to load pipeline board.</p>;
   }
 
-  const sortedColumns = [...data.columns].sort((a, b) => a.order - b.order);
+  const sortedColumns = [...(data.columns ?? [])].sort((a, b) => a.order - b.order);
 
   return (
     <div className="space-y-4">

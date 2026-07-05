@@ -179,7 +179,7 @@ export const EmployeeLifecycleService = {
       const lifecycle = await this.getProfileStatus(actor.companyId, employeeId);
       return {
         expiresAt: result.expiresAt.toISOString(),
-        message: 'Account activation email sent successfully.',
+        message: 'Account activation link issued. Email delivery may take a moment.',
         lifecycle,
       };
     } catch (error) {

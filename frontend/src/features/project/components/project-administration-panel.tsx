@@ -20,6 +20,7 @@ import {
   useUpsertProjectKnowledgeBase,
 } from '@/features/project/hooks/use-projects';
 import type { ProjectRecord } from '@/features/project/api/project.api';
+import { ProjectManagerSelect } from '@/features/project/components/project-manager-select';
 import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Button } from '@/shared/components/ui/button';
@@ -336,12 +337,13 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               <select className="h-10 rounded-md border px-3 text-sm" value={settingsForm.priority} onChange={(e) => setSettingsForm((p) => ({ ...p, priority: e.target.value }))}>
                 {PROJECT_PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
               </select>
-              <select className="h-10 rounded-md border px-3 text-sm" value={settingsForm.projectManagerId} onChange={(e) => setSettingsForm((p) => ({ ...p, projectManagerId: e.target.value }))}>
-                <option value="">Select project manager</option>
-                {(employees ?? []).map((employee) => (
-                  <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName} ({employee.employeeNumber})</option>
-                ))}
-              </select>
+              <ProjectManagerSelect
+                className="rounded-md px-3"
+                value={settingsForm.projectManagerId}
+                onChange={(projectManagerId) => setSettingsForm((p) => ({ ...p, projectManagerId }))}
+                placeholder="Select project manager"
+                includeEmployeeId={project.projectManagerId}
+              />
               <DatePicker value={settingsForm.startDate} onChange={(value) => setSettingsForm((p) => ({ ...p, startDate: value }))} max={settingsForm.targetDate || undefined} />
               <DatePicker value={settingsForm.targetDate} onChange={(value) => setSettingsForm((p) => ({ ...p, targetDate: value }))} min={settingsForm.startDate || undefined} />
             </div>

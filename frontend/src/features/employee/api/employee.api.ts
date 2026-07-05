@@ -68,6 +68,7 @@ export interface ListEmployeesParams {
   search?: string;
   status?: string;
   departmentId?: string;
+  designationId?: string;
   branchId?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';

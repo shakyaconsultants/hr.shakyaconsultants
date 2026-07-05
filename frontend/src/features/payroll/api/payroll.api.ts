@@ -46,13 +46,18 @@ export interface Deduction {
 }
 
 export interface PayrollPolicy {
-  payCycle: 'monthly' | 'biweekly' | 'weekly';
-  payDay: number;
-  currency: string;
-  roundingMode: 'nearest' | 'up' | 'down';
-  proRataEnabled: boolean;
-  taxCalculationEnabled: boolean;
-  statutoryDeductionsEnabled: boolean;
+  calendarStartDay: number;
+  lockAfterDays: number;
+  approvalWorkflowSlug: string;
+  revisionWorkflowSlug: string;
+  statutoryPlugins: Array<{
+    pluginId: string;
+    enabled: boolean;
+    config: Record<string, unknown>;
+  }>;
+  overtimeRateMultiplier: number;
+  lwpDeductionBasis: string;
+  companyDisplayName: string;
 }
 
 export interface PayrollCalendarEntry {
@@ -411,7 +416,13 @@ export async function fetchSalaryRevisions(params: ListParams = {}): Promise<Pag
 }
 
 export async function createSalaryRevision(payload: CreateRevisionPayload): Promise<SalaryRevision> {
-  const response = await apiClient.post<ApiSuccessResponse<SalaryRevision>>(`${PAYROLL_PREFIX}/salary-revisions`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<SalaryRevision>>(`${PAYROLL_PREFIX}/salary-revisions`, {
+    employeeId: payload.employeeId,
+    revisionType: 'annual_increment',
+    newBaseSalary: payload.newSalary,
+    effectiveFrom: payload.effectiveFrom,
+    reason: payload.reason,
+  });
   return unwrap(response);
 }
 
@@ -464,6 +475,32 @@ export async function fetchMySalary(): Promise<MySalarySummary> {
 export async function downloadPayslip(id: string): Promise<Blob> {
   const response = await apiClient.get(`${PAYROLL_PREFIX}/payslips/${id}/download`, { responseType: 'blob' });
   return response.data as Blob;
+}
+
+export async function uploadPayslip(
+  employeeId: string,
+  file: File,
+  payload: { periodStart: string; periodEnd: string; grossSalary?: number; netSalary?: number },
+): Promise<Payslip> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('periodStart', payload.periodStart);
+  formData.append('periodEnd', payload.periodEnd);
+  if (payload.grossSalary !== undefined) formData.append('grossSalary', String(payload.grossSalary));
+  if (payload.netSalary !== undefined) formData.append('netSalary', String(payload.netSalary));
+  const response = await apiClient.post<ApiSuccessResponse<Payslip>>(
+    `${PAYROLL_PREFIX}/employees/${employeeId}/payslips/upload`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return unwrap(response);
+}
+
+export async function fetchEmployeeSalaryHistory(employeeId: string): Promise<CompensationAssignment[]> {
+  const response = await apiClient.get<ApiSuccessResponse<CompensationAssignment[]>>(
+    `${PAYROLL_PREFIX}/employees/${employeeId}/salary-history`,
+  );
+  return unwrap(response);
 }
 
 export async function fetchPayrollReport(params: ReportParams): Promise<PayrollReport> {

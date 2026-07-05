@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Briefcase, Plus } from 'lucide-react';
 import { useCreateProject, useProjects } from '@/features/project/hooks/use-projects';
-import { EmployeeSearchSelect } from '@/shared/components/employee-search-select';
+import { ProjectManagerSearchSelect } from '@/features/project/components/project-manager-search-select';
 import { FormSection } from '@/shared/components/form-section';
 import { SelectField } from '@/shared/components/select-field';
 import { FilterBar } from '@/shared/components/filter-bar';
@@ -128,7 +128,7 @@ export function ProjectsListPage() {
                 />
               </SelectField>
               <SelectField label="Project Manager" required>
-                <EmployeeSearchSelect
+                <ProjectManagerSearchSelect
                   value={createForm.projectManagerId}
                   onChange={(value) => setCreateForm((prev) => ({ ...prev, projectManagerId: value }))}
                   required

@@ -89,11 +89,28 @@ export const PayrollPolicyService = {
       lockAfterDays: typeof lockAfterDays === 'number' ? lockAfterDays : DEFAULT_PAYROLL_POLICIES.lockAfterDays,
       approvalWorkflowSlug: typeof approvalWorkflowSlug === 'string' ? approvalWorkflowSlug : DEFAULT_PAYROLL_POLICIES.approvalWorkflowSlug,
       revisionWorkflowSlug: typeof revisionWorkflowSlug === 'string' ? revisionWorkflowSlug : DEFAULT_PAYROLL_POLICIES.revisionWorkflowSlug,
-      statutoryPlugins: Array.isArray(statutoryPlugins) ? statutoryPlugins as StatutoryPluginConfig[] : [...DEFAULT_PAYROLL_POLICIES.statutoryPlugins],
+      statutoryPlugins: this.mergeStatutoryPlugins(
+        Array.isArray(statutoryPlugins) ? statutoryPlugins as StatutoryPluginConfig[] : undefined,
+      ),
       overtimeRateMultiplier: typeof overtimeRateMultiplier === 'number' ? overtimeRateMultiplier : DEFAULT_PAYROLL_POLICIES.overtimeRateMultiplier,
       lwpDeductionBasis: typeof lwpDeductionBasis === 'string' ? lwpDeductionBasis : DEFAULT_PAYROLL_POLICIES.lwpDeductionBasis,
       companyDisplayName: typeof companyDisplayName === 'string' ? companyDisplayName : DEFAULT_PAYROLL_POLICIES.companyDisplayName,
     };
+  },
+
+  mergeStatutoryPlugins(saved?: StatutoryPluginConfig[]): StatutoryPluginConfig[] {
+    const defaults = [...DEFAULT_PAYROLL_POLICIES.statutoryPlugins] as StatutoryPluginConfig[];
+    if (!saved || saved.length === 0) return defaults;
+    const savedMap = new Map(saved.map((plugin) => [plugin.pluginId, plugin]));
+    return defaults.map((plugin) => {
+      const existing = savedMap.get(plugin.pluginId);
+      if (!existing) return { ...plugin, config: { ...plugin.config } };
+      return {
+        ...plugin,
+        enabled: existing.enabled,
+        config: { ...plugin.config, ...existing.config },
+      };
+    });
   },
 
   async updatePolicies(context: PayrollActorContext, payload: Partial<PayrollPolicySettings>): Promise<PayrollPolicySettings> {

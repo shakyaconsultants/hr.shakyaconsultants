@@ -16,7 +16,10 @@ export type AuthDiagEvent =
   | 'session_cleared'
   | 'redirect_to_login'
   | 'bootstrap_transient_error'
-  | 'bootstrap_retry';
+  | 'bootstrap_retry'
+  | 'login_started'
+  | 'login_success'
+  | 'login_failed';
 
 interface AuthDiagPayload {
   [key: string]: string | number | boolean | undefined | null;

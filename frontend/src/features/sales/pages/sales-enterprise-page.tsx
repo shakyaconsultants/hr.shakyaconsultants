@@ -147,7 +147,7 @@ export function SalesEnterprisePage() {
             <DataTable
               columns={[
                 { key: 'name', header: 'Name' },
-                { key: 'stages', header: 'Stages', render: (row) => row.stages.length },
+                { key: 'stages', header: 'Stages', render: (row) => row.stages?.length ?? 0 },
                 { key: 'isDefault', header: 'Default', render: (row) => (row.isDefault ? 'Yes' : 'No') },
                 {
                   key: 'actions',
@@ -195,7 +195,7 @@ export function SalesEnterprisePage() {
               { key: 'code', header: 'Code' },
               { key: 'name', header: 'Name' },
               { key: 'managerEmployeeId', header: 'Manager' },
-              { key: 'memberEmployeeIds', header: 'Members', render: (row) => row.memberEmployeeIds.length },
+              { key: 'memberEmployeeIds', header: 'Members', render: (row) => row.memberEmployeeIds?.length ?? 0 },
               { key: 'status', header: 'Status', render: (row) => <span className="capitalize">{row.status}</span> },
             ]}
             data={teams?.items ?? []}
@@ -224,7 +224,7 @@ export function SalesEnterprisePage() {
               { key: 'code', header: 'Code' },
               { key: 'name', header: 'Name' },
               { key: 'region', header: 'Region', render: (row) => row.region ?? '—' },
-              { key: 'assignedEmployeeIds', header: 'Assigned', render: (row) => row.assignedEmployeeIds.length },
+              { key: 'assignedEmployeeIds', header: 'Assigned', render: (row) => row.assignedEmployeeIds?.length ?? 0 },
               { key: 'status', header: 'Status', render: (row) => <span className="capitalize">{row.status}</span> },
             ]}
             data={territories?.items ?? []}
@@ -335,7 +335,7 @@ export function SalesEnterprisePage() {
                   { key: 'count', header: 'Count' },
                   { key: 'conversionRate', header: 'Conversion %', render: (row) => `${row.conversionRate}%` },
                 ]}
-                data={conversion.stages.map((s) => ({ ...s, id: s.stageId }))}
+                data={(conversion.stages ?? []).map((s) => ({ ...s, id: s.stageId }))}
                 emptyMessage="No conversion data"
               />
             </div>

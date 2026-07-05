@@ -38,6 +38,7 @@ export const PAYROLL_COMPONENT_CATEGORY = {
 
 export const PAYSLIP_STATUS = {
   GENERATED: 'generated',
+  UPLOADED: 'uploaded',
   SENT: 'sent',
   ACKNOWLEDGED: 'acknowledged',
 } as const;

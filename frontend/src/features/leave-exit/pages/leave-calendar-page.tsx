@@ -19,7 +19,8 @@ export function LeaveCalendarPage() {
 
   if (isLoading) return <Loading message="Loading company calendar..." />;
 
-  const eventsByDate = (data ?? []).reduce<Record<string, CalendarEvent[]>>((acc, event) => {
+  const events = Array.isArray(data) ? data : [];
+  const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, event) => {
     const key = new Date(event.date).toLocaleDateString();
     if (!acc[key]) acc[key] = [];
     acc[key]?.push(event);

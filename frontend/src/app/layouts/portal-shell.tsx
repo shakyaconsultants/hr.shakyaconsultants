@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { APP_CONFIG } from '@/config/app.config';
@@ -15,7 +15,6 @@ export interface PortalShellProps {
 }
 
 export function PortalShell({ portal, children }: PortalShellProps) {
-  const location = useLocation();
   const { logout } = useAuth();
   const company = useAuthStore((s) => s.company);
   const user = useAuthStore((s) => s.user);
@@ -60,7 +59,6 @@ export function PortalShell({ portal, children }: PortalShellProps) {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <span className="hidden truncate text-sm text-muted-foreground sm:inline">{location.pathname}</span>
           </div>
           <Button variant="outline" size="sm" onClick={() => void logout()}>
             <LogOut className="mr-2 h-4 w-4" />

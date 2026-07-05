@@ -1,4 +1,5 @@
 import type { ApiErrorResponse } from '@/shared/types/api.types';
+import axios from 'axios';
 import { toUserFacingErrorMessage } from '@/shared/utils/user-facing-error.util';
 
 export interface DependencyBlocker {
@@ -153,6 +154,25 @@ export function parseMutationError(error: unknown): ParsedMutationError {
     title = NOT_FOUND_MESSAGE;
     description = backendMessage && backendMessage !== NOT_FOUND_MESSAGE ? backendMessage : undefined;
     preferInline = false;
+  } else if (statusCode === 401) {
+    title = backendMessage || 'Invalid email, password, or company code.';
+    preferInline = true;
+  } else if (statusCode === 429) {
+    title = 'Too many login attempts';
+    description = backendMessage || 'Please wait a minute before trying again.';
+    preferInline = true;
+  } else if (statusCode === 0 && axios.isAxiosError(error)) {
+    preferInline = false;
+    if (error.code === 'ECONNABORTED') {
+      title = 'Request timed out';
+      description =
+        'The server took too long to respond. On hosted environments the first request after idle can be slow — please try again.';
+    } else if (!error.response) {
+      title = 'Unable to reach the server';
+      description = 'Check your connection. The API may be restarting — wait a few seconds and try again.';
+    } else {
+      title = SERVER_ERROR_MESSAGE;
+    }
   } else if (isServerError) {
     title = SERVER_ERROR_MESSAGE;
     const detailFromDetails =

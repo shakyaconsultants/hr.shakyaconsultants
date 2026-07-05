@@ -37,7 +37,7 @@ export const QueueProducer = {
     return job.id;
   },
 
-  async addEmailJob(jobName: string, payload: Record<string, unknown>, _options?: JobsOptions): Promise<string> {
+  async addEmailJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string> {
     const correlationId = getCorrelationId() ?? 'system';
     const data: QueueJobData = {
       correlationId,
@@ -46,9 +46,26 @@ export const QueueProducer = {
       payload,
     };
 
-    await deliverEmailPayload(data, jobName);
-    queueLogger.info('Email delivered', { jobName, correlationId, to: payload.to });
-    return 'delivered';
+    if (isQueuesEnabled()) {
+      const jobId = await this.addJob(QUEUE_NAMES.EMAIL, jobName, payload, options);
+      queueLogger.info('Email job queued', { jobName, correlationId, to: payload.to, jobId });
+      return jobId ?? 'queued';
+    }
+
+    void deliverEmailPayload(data, jobName).catch((error) => {
+      queueLogger.error('Background email delivery failed', {
+        jobName,
+        correlationId,
+        to: payload.to,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+    queueLogger.info('Email scheduled for background delivery (Redis unavailable)', {
+      jobName,
+      correlationId,
+      to: payload.to,
+    });
+    return 'pending';
   },
 
   addNotificationJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {

@@ -1,4 +1,5 @@
 import apiClient from '@/shared/api/axios.client';
+import { isAxiosError } from 'axios';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
 
 const SALES_PREFIX = '/api/v1/sales';
@@ -569,10 +570,22 @@ export async function fetchLeadTimeline(id: string): Promise<LeadActivity[]> {
 }
 
 export async function fetchLeadKanban(pipelineId?: string): Promise<LeadKanbanBoard> {
-  const response = await apiClient.get<ApiSuccessResponse<LeadKanbanBoard>>(`${SALES_PREFIX}/leads/kanban`, {
-    params: pipelineId ? { pipelineId } : undefined,
-  });
-  return unwrap(response);
+  try {
+    const response = await apiClient.get<ApiSuccessResponse<LeadKanbanBoard>>(`${SALES_PREFIX}/leads/kanban`, {
+      params: pipelineId ? { pipelineId } : undefined,
+    });
+    const board = await unwrap(response);
+    return {
+      pipelineId: board.pipelineId ?? '',
+      pipelineName: board.pipelineName ?? 'Pipeline',
+      columns: board.columns ?? [],
+    };
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return { pipelineId: '', pipelineName: 'Pipeline', columns: [] };
+    }
+    throw error;
+  }
 }
 
 export async function importLeads(file: File): Promise<{ imported: number; errors: string[] }> {

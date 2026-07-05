@@ -180,11 +180,30 @@ export async function fetchLeaveCalendar(startDate: string, endDate: string, emp
   return unwrap(response);
 }
 
+export interface CompanyCalendarResponse {
+  events: CalendarEvent[];
+  startDate: string;
+  endDate: string;
+}
+
+function normalizeCalendarEvents(data: CalendarEvent[] | CompanyCalendarResponse | undefined): CalendarEvent[] {
+  if (Array.isArray(data)) {
+    return data;
+  }
+  if (data && Array.isArray(data.events)) {
+    return data.events;
+  }
+  return [];
+}
+
 export async function fetchCompanyCalendar(startDate: string, endDate: string): Promise<CalendarEvent[]> {
-  const response = await apiClient.get<ApiSuccessResponse<CalendarEvent[]>>(`${LEAVE_EXIT_PREFIX}/calendar`, {
-    params: { startDate, endDate },
-  });
-  return unwrap(response);
+  const response = await apiClient.get<ApiSuccessResponse<CalendarEvent[] | CompanyCalendarResponse>>(
+    `${LEAVE_EXIT_PREFIX}/calendar`,
+    {
+      params: { startDate, endDate },
+    },
+  );
+  return normalizeCalendarEvents(await unwrap(response));
 }
 
 export async function fetchResignations(employeeId?: string): Promise<Resignation[]> {

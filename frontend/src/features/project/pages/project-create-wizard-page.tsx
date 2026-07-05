@@ -20,6 +20,8 @@ import {
   useSaveProjectWizardDraft,
 } from '@/features/project/hooks/use-projects';
 import { useAllEmployees } from '@/features/employee/hooks/use-employees';
+import { useProjectManagerEmployees } from '@/features/project/hooks/use-project-manager-employees';
+import { ProjectManagerSelect } from '@/features/project/components/project-manager-select';
 import { PageHeader } from '@/shared/components/page-header';
 import { Button } from '@/shared/components/ui/button';
 import { DatePicker } from '@/shared/components/date-picker';
@@ -91,6 +93,7 @@ export function ProjectCreateWizardPage() {
   const saveDraftMutation = useSaveProjectWizardDraft();
   const finalizeMutation = useFinalizeProjectWizard();
   const { data: employees } = useAllEmployees({ status: 'active' });
+  const { data: projectManagers } = useProjectManagerEmployees();
 
   const step = PROJECT_WIZARD_STEPS[draft.currentStepIndex];
   const employeeOptions = employees ?? [];
@@ -120,9 +123,10 @@ export function ProjectCreateWizardPage() {
   }, [searchParams, setSearchParams]);
 
   const employeeName = useMemo(() => {
-    const map = new Map(employeeOptions.map((e) => [e.id, `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim()]));
+    const merged = [...employeeOptions, ...(projectManagers ?? [])];
+    const map = new Map(merged.map((e) => [e.id, `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim()]));
     return (id: string) => map.get(id) ?? id;
-  }, [employeeOptions]);
+  }, [employeeOptions, projectManagers]);
 
   async function persistDraft(nextIndex = draft.currentStepIndex) {
     if (saveDraftMutation.isPending) return;
@@ -267,10 +271,10 @@ export function ProjectCreateWizardPage() {
                 </select>
               </Field>
               <Field label="Project Manager *">
-                <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.basicInfo.projectManagerId} onChange={(e) => updateBasic('projectManagerId', e.target.value)}>
-                  <option value="">Select manager</option>
-                  {employeeOptions.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
-                </select>
+                <ProjectManagerSelect
+                  value={draft.basicInfo.projectManagerId}
+                  onChange={(projectManagerId) => updateBasic('projectManagerId', projectManagerId)}
+                />
               </Field>
               {draft.basicInfo.projectKind === 'external' && (
                 <Field label="Client Name"><Input value={draft.basicInfo.clientName} onChange={(e) => updateBasic('clientName', e.target.value)} /></Field>

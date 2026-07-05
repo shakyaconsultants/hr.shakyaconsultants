@@ -37,7 +37,9 @@ async function unwrap<T>(response: { data: ApiSuccessResponse<T> }): Promise<T> 
 }
 
 export async function loginRequest(payload: LoginPayload): Promise<LoginResult> {
-  const response = await apiClient.post<ApiSuccessResponse<LoginResult>>(`${AUTH_PREFIX}/login`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<LoginResult>>(`${AUTH_PREFIX}/login`, payload, {
+    timeout: 45_000,
+  });
   return unwrap(response);
 }
 

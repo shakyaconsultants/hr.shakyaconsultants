@@ -1,6 +1,9 @@
 import type { ApprovalWorkflowDocument, ApprovalWorkflowStageDefinition } from '@domain/approval/approval.schemas.js';
-import { ConflictError, ValidationError } from '@shared/errors/app.error.js';
+import type { ApprovalRequestDocument } from '@domain/approval/approval.schemas.js';
+import { ConflictError, ValidationError, AuthorizationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+import { canViewCompanyApprovals } from '@modules/approval/utils/approval-access.util.js';
+import type { ApprovalActorContext } from '@modules/approval/types/approval.types.js';
 
 export const ApprovalValidationService = {
   assertValidWorkflow(workflow: ApprovalWorkflowDocument): void {
@@ -56,6 +59,34 @@ export const ApprovalValidationService = {
   ): void {
     if (!actorEmployeeId || !pendingApproverEmployeeIds.includes(actorEmployeeId)) {
       throw new ConflictError('You are not an authorized approver for this request', ERROR_CODES.CONFLICT);
+    }
+  },
+
+  assertCanApproveRequest(
+    context: { employeeId?: string; isSuperAdmin?: boolean; permissions?: string[] },
+    pendingApproverEmployeeIds: string[],
+  ): void {
+    const enterprise =
+      context.isSuperAdmin === true ||
+      (context.permissions ?? []).some((code) => code === 'approval.execute' || code === 'leave.approve');
+    if (enterprise) {
+      return;
+    }
+    this.assertIsPendingApprover(context.employeeId, pendingApproverEmployeeIds);
+  },
+
+  assertCanViewRequest(context: ApprovalActorContext, request: ApprovalRequestDocument): void {
+    if (canViewCompanyApprovals(context)) {
+      return;
+    }
+    const employeeId = context.employeeId;
+    if (!employeeId) {
+      throw new AuthorizationError('You cannot view this approval request');
+    }
+    const isApprover = request.pendingApproverEmployeeIds.includes(employeeId);
+    const isRequester = request.requesterEmployeeId === employeeId;
+    if (!isApprover && !isRequester) {
+      throw new AuthorizationError('You cannot view this approval request');
     }
   },
 

@@ -44,7 +44,12 @@ export const DEFAULT_PAYROLL_POLICIES = {
   lockAfterDays: 7,
   approvalWorkflowSlug: 'payroll-run-default',
   revisionWorkflowSlug: 'salary-revision-default',
-  statutoryPlugins: [] as Array<{ pluginId: string; enabled: boolean; config: Record<string, unknown> }>,
+  statutoryPlugins: [
+    { pluginId: 'pf', enabled: true, config: { name: 'Provident Fund (PF)', code: 'PF', basis: 'basic', employeeRate: 12, employerRate: 12 } },
+    { pluginId: 'esi', enabled: false, config: { name: 'Employee State Insurance (ESI)', code: 'ESI', basis: 'gross', employeeRate: 0.75, employerRate: 3.25 } },
+    { pluginId: 'professional_tax', enabled: true, config: { name: 'Professional Tax', code: 'PT', basis: 'gross', rate: 0, employeeRate: 200, employerRate: 0 } },
+    { pluginId: 'gratuity', enabled: true, config: { name: 'Gratuity (Employer accrual)', code: 'GRAT', basis: 'basic', rate: 0, employeeRate: 0, employerRate: 4.81 } },
+  ] as Array<{ pluginId: string; enabled: boolean; config: Record<string, unknown> }>,
   overtimeRateMultiplier: 1.5,
   lwpDeductionBasis: 'daily',
   companyDisplayName: '',

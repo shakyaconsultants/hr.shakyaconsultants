@@ -23,9 +23,8 @@ export const ENTITY_CATALOG: EntityMeta[] = [
   { key: MASTER_ENTITIES.DEPARTMENT, label: 'Department', pluralLabel: 'Departments', description: 'Organizational departments with hierarchy' },
   { key: MASTER_ENTITIES.DESIGNATION, label: 'Designation', pluralLabel: 'Designations', description: 'Job titles and hierarchy levels' },
   { key: MASTER_ENTITIES.WORK_SHIFT, label: 'Work Shift', pluralLabel: 'Work Shifts', description: 'Shift schedules and attendance rules' },
-  { key: MASTER_ENTITIES.HOLIDAY, label: 'Holiday', pluralLabel: 'Holidays', description: 'Holiday calendar entries' },
+  { key: MASTER_ENTITIES.HOLIDAY, label: 'Holiday', pluralLabel: 'Holidays', description: 'Company holiday calendar for attendance, leave, and payroll' },
   { key: MASTER_ENTITIES.EMPLOYMENT_TYPE, label: 'Employment Type', pluralLabel: 'Employment Types', description: 'Employment classifications' },
-  { key: MASTER_ENTITIES.SALARY_GRADE, label: 'Salary Grade', pluralLabel: 'Salary Grades', description: 'Compensation grade bands' },
   { key: MASTER_ENTITIES.LEAVE_TYPE, label: 'Leave Type', pluralLabel: 'Leave Types', description: 'Leave policy types' },
 ];
 

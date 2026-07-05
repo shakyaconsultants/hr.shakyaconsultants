@@ -17,7 +17,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: 'All Requests', path: ROUTES.LEAVE_REQUESTS, permission: 'leave.read' },
   { label: 'Resignations', path: ROUTES.RESIGNATION, permission: 'resignation.read' },
   { label: 'Leave Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.calendar.read' },
-  { label: 'Holiday Calendar', path: '/organization/holiday', permission: 'holiday.read' },
+  { label: 'Holiday Calendar', path: ROUTES.organizationEntity('holiday'), permission: 'holiday.read' },
   { label: 'All Balances', path: ROUTES.LEAVE_BALANCES, permission: 'leave.balance.read' },
   { label: 'Policies & Rules', path: ROUTES.LEAVE_POLICIES, permission: 'leave.read' },
   { label: 'Approval Inbox', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read' },

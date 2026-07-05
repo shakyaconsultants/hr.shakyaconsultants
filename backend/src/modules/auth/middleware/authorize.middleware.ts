@@ -14,6 +14,9 @@ async function loadPermissions(req: AuthenticatedRequest): Promise<string[]> {
   }
 
   if (!req.user.employeeId) {
+    if (await isSuperAdminRequest(req)) {
+      return req.auth?.permissions ?? [];
+    }
     return [];
   }
 
@@ -22,7 +25,7 @@ async function loadPermissions(req: AuthenticatedRequest): Promise<string[]> {
     req.user.employeeId,
   );
 
-  req.auth = { permissions };
+  req.auth = { ...req.auth, permissions };
   return permissions;
 }
 

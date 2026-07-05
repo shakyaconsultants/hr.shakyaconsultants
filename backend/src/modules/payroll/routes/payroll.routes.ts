@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticateMiddleware } from '@modules/auth/middleware/authenticate.middleware.js';
 import { companyScopeMiddleware } from '@modules/auth/middleware/company-scope.middleware.js';
+import { uploadMiddleware } from '@config/upload.config.js';
 import { authorize } from '@modules/rbac/middleware/authorize.middleware.js';
 import { PAYROLL_PERMISSIONS, PAYSLIP_PERMISSIONS } from '@modules/payroll/constants/payroll-permissions.constants.js';
 import {
@@ -48,6 +49,7 @@ import {
   updateSalaryRevision,
   updateSalaryStructure,
   updateSettings,
+  uploadPayslip,
 } from '@modules/payroll/controllers/payroll.controller.js';
 
 const payrollRoutes = Router();
@@ -97,6 +99,12 @@ payrollRoutes.get('/payslips', authorize(PAYSLIP_PERMISSIONS.READ), listPayslips
 payrollRoutes.get('/me/payslips', authorize(PAYSLIP_PERMISSIONS.READ), listMyPayslips);
 payrollRoutes.get('/payslips/:id', authorize(PAYSLIP_PERMISSIONS.READ), getPayslip);
 payrollRoutes.get('/payslips/:id/download', authorize(PAYSLIP_PERMISSIONS.READ), downloadPayslip);
+payrollRoutes.post(
+  '/employees/:employeeId/payslips/upload',
+  authorize(PAYSLIP_PERMISSIONS.CREATE),
+  uploadMiddleware.single('file'),
+  uploadPayslip,
+);
 
 payrollRoutes.get('/salary-revisions', authorize(PAYROLL_PERMISSIONS.READ), listSalaryRevisions);
 payrollRoutes.post('/salary-revisions', authorize(PAYROLL_PERMISSIONS.CREATE), createSalaryRevision);

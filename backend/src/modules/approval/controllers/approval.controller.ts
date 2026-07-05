@@ -4,7 +4,7 @@ import { ResponseService } from '@shared/services/response.service.js';
 import { validateInput } from '@modules/auth/validators/validate.util.js';
 import { ApprovalEngineService } from '@modules/approval/services/approval-engine.service.js';
 import { ApprovalWorkflowService } from '@modules/approval/services/approval-workflow.service.js';
-import { buildApprovalActor } from '@modules/approval/types/approval.types.js';
+import { resolveApprovalActor } from '@modules/approval/types/approval.types.js';
 import {
   approvalListQuerySchema,
   bulkApproveSchema,
@@ -16,14 +16,14 @@ import {
 } from '@modules/approval/validators/approval.validator.js';
 
 function actor(req: AuthenticatedRequest) {
-  return buildApprovalActor(req);
+  return resolveApprovalActor(req);
 }
 
 export const listApprovalRequests: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(approvalListQuerySchema, req.query);
-    const data = await ApprovalEngineService.list(actor(authReq), query);
+    const data = await ApprovalEngineService.list(await actor(authReq), query);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -35,7 +35,7 @@ export const getApprovalInbox: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(approvalListQuerySchema, req.query);
-    const data = await ApprovalEngineService.getInbox(actor(authReq), query);
+    const data = await ApprovalEngineService.getInbox(await actor(authReq), query);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -47,7 +47,7 @@ export const getApprovalHistory: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
-    const data = await ApprovalEngineService.getHistory(authReq.user.companyId, id);
+    const data = await ApprovalEngineService.getHistory(await actor(authReq), id);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -60,7 +60,7 @@ export const approveRequest: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const { comments } = validateInput(decisionSchema, req.body);
-    const data = await ApprovalEngineService.approve(actor(authReq), id, comments);
+    const data = await ApprovalEngineService.approve(await actor(authReq), id, comments);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -73,7 +73,7 @@ export const rejectRequest: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const { comments } = validateInput(decisionSchema, req.body);
-    const data = await ApprovalEngineService.reject(actor(authReq), id, comments);
+    const data = await ApprovalEngineService.reject(await actor(authReq), id, comments);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -85,7 +85,7 @@ export const bulkApproveRequests: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const payload = validateInput(bulkApproveSchema, req.body);
-    const data = await ApprovalEngineService.bulkApprove(actor(authReq), payload.requestIds, payload.comments);
+    const data = await ApprovalEngineService.bulkApprove(await actor(authReq), payload.requestIds, payload.comments);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -98,7 +98,7 @@ export const escalateRequest: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const { comments } = validateInput(decisionSchema, req.body);
-    const data = await ApprovalEngineService.escalate(actor(authReq), id, comments);
+    const data = await ApprovalEngineService.escalate(await actor(authReq), id, comments);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -111,7 +111,7 @@ export const addApprovalComment: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const { comments } = validateInput(commentSchema, req.body);
-    await ApprovalEngineService.addComment(actor(authReq), id, comments);
+    await ApprovalEngineService.addComment(await actor(authReq), id, comments);
     return ResponseService.success(res, authReq, { success: true });
   } catch (error) {
     next(error);
@@ -135,7 +135,7 @@ export const createWorkflow: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const payload = validateInput(createWorkflowSchema, req.body);
-    const data = await ApprovalWorkflowService.create(actor(authReq), payload);
+    const data = await ApprovalWorkflowService.create(await actor(authReq), payload);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -148,7 +148,7 @@ export const updateWorkflow: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const payload = validateInput(updateWorkflowSchema, req.body);
-    const data = await ApprovalWorkflowService.update(actor(authReq), id, payload);
+    const data = await ApprovalWorkflowService.update(await actor(authReq), id, payload);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);

@@ -27,12 +27,14 @@ import {
   fetchPayrollRun,
   fetchPayrollRuns,
   fetchPayslips,
+  fetchEmployeeSalaryHistory,
   fetchSalaryRevisions,
   fetchSalaryStructures,
   lockPayrollRun,
   processPayrollRun,
   updatePayrollPolicy,
   updateSalaryStructure,
+  uploadPayslip,
   type CreateCompensationPayload,
   type CreatePayrollRunPayload,
   type CreateRevisionPayload,
@@ -285,6 +287,27 @@ export function useDownloadPayslip() {
   return useAppMutation({
     mutationFn: (id: string) => downloadPayslip(id),
     successMessage: 'Downloaded successfully',
+  });
+}
+
+export function useUploadPayslip(employeeId: string) {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: (input: { file: File; periodStart: string; periodEnd: string; grossSalary?: number; netSalary?: number }) =>
+      uploadPayslip(employeeId, input.file, input),
+    errorToast: false,
+    successMessage: false,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['payroll', 'payslips', { employeeId }] });
+    },
+  });
+}
+
+export function useEmployeeSalaryHistory(employeeId: string) {
+  return useQuery({
+    queryKey: ['payroll', 'salary-history', employeeId],
+    queryFn: () => fetchEmployeeSalaryHistory(employeeId),
+    enabled: Boolean(employeeId),
   });
 }
 

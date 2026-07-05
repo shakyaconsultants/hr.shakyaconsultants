@@ -102,6 +102,14 @@ export const updateCompensationSchema = z.object({
   status: z.string().optional(),
 });
 
+export const uploadPayslipSchema = z.object({
+  periodStart: z.coerce.date(),
+  periodEnd: z.coerce.date(),
+  grossSalary: z.coerce.number().min(0).optional(),
+  netSalary: z.coerce.number().min(0).optional(),
+  currency: z.string().optional(),
+});
+
 export const listCompensationsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
