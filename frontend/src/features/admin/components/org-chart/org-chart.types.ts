@@ -26,6 +26,7 @@ export interface OrgChartBranch {
   code: string;
   departments: OrgChartDepartment[];
   employeeCount: number;
+  branchHead?: OrgChartEmployee;
 }
 
 export interface OrgChartTree {

@@ -69,6 +69,17 @@ export function LeavePoliciesPage() {
                   <dt className="text-muted-foreground">Carry Forward</dt>
                   <dd className="font-medium">{policy.carryForwardEnabled ? 'Yes' : 'No'}</dd>
                 </div>
+                {policy.applicableDepartmentIds?.length ? (
+                  <div className="col-span-2">
+                    <dt className="text-muted-foreground">Departments</dt>
+                    <dd className="font-medium">{policy.applicableDepartmentIds.length} department(s)</dd>
+                  </div>
+                ) : (
+                  <div className="col-span-2">
+                    <dt className="text-muted-foreground">Scope</dt>
+                    <dd className="font-medium">Company-wide</dd>
+                  </div>
+                )}
               </dl>
             </article>
           ))

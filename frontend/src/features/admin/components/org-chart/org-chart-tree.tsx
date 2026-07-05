@@ -115,6 +115,12 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
 
                 {!branchCollapsed ? (
                   <>
+                    {branch.branchHead ? (
+                      <>
+                        <OrgChartConnector />
+                        <OrgChartEmployeeCard employee={branch.branchHead} />
+                      </>
+                    ) : null}
                     <OrgChartHorizontalRail childCount={branch.departments.length} />
 
                     <div className="flex items-start justify-center gap-4">

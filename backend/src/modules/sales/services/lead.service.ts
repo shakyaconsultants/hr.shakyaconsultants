@@ -394,4 +394,83 @@ export const LeadService = {
 
     return lines.join('\n');
   },
+
+  async listMine(context: SalesActorContext, permissions: string[], query: LeadListQuery) {
+    if (!context.employeeId) {
+      return LeadRepository.paginate(
+        { assignedToId: null },
+        { page: query.page, pageSize: query.pageSize, sortBy: 'lastActivityAt', sortOrder: 'desc' },
+        { companyId: context.companyId },
+      );
+    }
+    return this.list(context, permissions, { ...query, assignedToId: context.employeeId });
+  },
+
+  async listTeam(context: SalesActorContext, permissions: string[], query: LeadListQuery) {
+    const scope = await resolveScope(context, permissions);
+    const employeeIds =
+      scope.scope === SALES_SCOPE.ALL
+        ? undefined
+        : scope.employeeIds && scope.employeeIds.length > 0
+          ? scope.employeeIds
+          : context.employeeId
+            ? [context.employeeId]
+            : [];
+
+    const filter: Record<string, unknown> = {};
+    if (employeeIds !== undefined) {
+      filter.assignedToId = employeeIds.length > 0 ? { $in: employeeIds } : null;
+    }
+    if (query.status) filter.status = query.status;
+    if (query.pipelineId) filter.pipelineId = query.pipelineId;
+    if (query.stageId) filter.stageId = query.stageId;
+    if (query.teamId) filter.teamId = query.teamId;
+    if (query.territoryId) filter.territoryId = query.territoryId;
+    if (query.priority) filter.priority = query.priority;
+    if (query.sourceId) filter.sourceId = query.sourceId;
+    if (query.search) filter.$text = { $search: query.search };
+
+    return LeadRepository.paginate(filter, {
+      page: query.page,
+      pageSize: query.pageSize,
+      sortBy: 'lastActivityAt',
+      sortOrder: 'desc',
+    }, { companyId: context.companyId });
+  },
+
+  async getKanban(
+    context: SalesActorContext,
+    permissions: string[],
+    pipelineId?: string,
+  ) {
+    const pipeline = pipelineId
+      ? await PipelineService.getById(context.companyId, pipelineId)
+      : await PipelineService.getDefault(context.companyId);
+
+    const scope = await resolveScope(context, permissions);
+    const filter: Record<string, unknown> = {
+      pipelineId: pipeline.id,
+      ...buildScopeFilter(scope),
+    };
+
+    const leads = await LeadRepository.findMany(filter, { companyId: context.companyId });
+    const enriched = await Promise.all(
+      leads.map((lead) => this.enrichLead(context.companyId, lead)),
+    );
+
+    const columns = [...pipeline.stages]
+      .sort((a, b) => a.order - b.order)
+      .map((stage) => ({
+        stageId: stage.id,
+        stageName: stage.name,
+        order: stage.order,
+        leads: enriched.filter((lead) => lead?.stageId === stage.id),
+      }));
+
+    return {
+      pipelineId: pipeline.id,
+      pipelineName: pipeline.name,
+      columns,
+    };
+  },
 };

@@ -58,18 +58,6 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     { key: 'salaryGradeId', label: 'Salary Grade', type: 'select', refEntity: 'salary-grade' },
   ],
 
-  'office-location': [
-    ...BASE_FIELDS,
-    { key: 'branchId', label: 'Branch', type: 'select', refEntity: 'branch' },
-    { key: 'isRemote', label: 'Remote Location', type: 'boolean' },
-    { key: 'timezone', label: 'Timezone', type: 'text' },
-    { key: 'address.line1', label: 'Address Line 1', type: 'text', required: true },
-    { key: 'address.line2', label: 'Address Line 2', type: 'text' },
-    { key: 'address.city', label: 'City', type: 'text', required: true },
-    { key: 'address.state', label: 'State', type: 'text', required: true },
-    { key: 'address.country', label: 'Country', type: 'text', required: true },
-    { key: 'address.postalCode', label: 'Postal Code', type: 'text', required: true },
-  ],
   'work-shift': [
     ...BASE_FIELDS,
   ],
@@ -77,7 +65,8 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     ...BASE_FIELDS.filter((field) => field.key !== 'description'),
     { key: 'date', label: 'Holiday Date', type: 'date', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'type', label: 'Type', type: 'select', options: [{ value: 'public', label: 'Public' }, { value: 'optional', label: 'Optional' }] },
+    { key: 'type', label: 'Type', type: 'select', options: [{ value: 'public', label: 'Public' }, { value: 'company', label: 'Company' }, { value: 'branch', label: 'Branch' }, { value: 'optional', label: 'Optional' }] },
+    { key: 'branchId', label: 'Branch (optional)', type: 'select', refEntity: 'branch' },
     { key: 'isRecurring', label: 'Recurring', type: 'boolean' },
   ],
   'employment-type': [

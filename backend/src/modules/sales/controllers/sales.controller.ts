@@ -452,6 +452,45 @@ export const listLeads: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const listMyLeads: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const query = validateInput(listLeadsQuerySchema, req.query);
+    const perms = await permissions(authReq);
+    const data = await LeadService.listMine(actor(authReq), perms, query);
+    return ResponseService.paginated(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const listTeamLeads: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const query = validateInput(listLeadsQuerySchema, req.query);
+    const perms = await permissions(authReq);
+    const data = await LeadService.listTeam(actor(authReq), perms, query);
+    return ResponseService.paginated(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getLeadKanban: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const pipelineId = typeof req.query.pipelineId === 'string' ? req.query.pipelineId : undefined;
+    const perms = await permissions(authReq);
+    const data = await LeadService.getKanban(actor(authReq), perms, pipelineId);
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const createLead: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;

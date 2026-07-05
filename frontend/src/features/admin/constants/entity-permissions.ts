@@ -27,12 +27,6 @@ export const ENTITY_PERMISSIONS: Record<MasterEntityKey, EntityPermissionSet> = 
     delete: 'designation.delete',
   },
 
-  'office-location': {
-    read: 'office-location.read',
-    create: 'office-location.create',
-    update: 'office-location.update',
-    delete: 'office-location.delete',
-  },
   'work-shift': {
     read: 'work-shift.read',
     create: 'work-shift.create',

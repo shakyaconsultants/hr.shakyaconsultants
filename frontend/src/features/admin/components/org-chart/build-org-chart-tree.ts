@@ -34,9 +34,10 @@ function buildDepartmentEmployees(
   departmentId: string,
   employees: EmployeeRecord[],
   designationMap: Map<string, Record<string, unknown>>,
+  headEmployeeId?: string,
 ): OrgChartEmployee[] {
   return employees
-    .filter((employee) => employee.departmentId === departmentId)
+    .filter((employee) => employee.departmentId === departmentId && employee.id !== headEmployeeId)
     .map((employee) => mapEmployee(employee, designationMap))
     .sort((a, b) => b.hierarchyLevel - a.hierarchyLevel || a.lastName.localeCompare(b.lastName));
 }
@@ -47,14 +48,21 @@ function buildDepartment(
   designationMap: Map<string, Record<string, unknown>>,
 ): OrgChartDepartment {
   const id = String(department.id);
-  const deptEmployees = buildDepartmentEmployees(id, employees, designationMap);
+  const headEmployeeId = department.headEmployeeId ? String(department.headEmployeeId) : undefined;
+  const deptEmployees = buildDepartmentEmployees(id, employees, designationMap, headEmployeeId);
+  const headEmployee = headEmployeeId
+    ? employees.find((employee) => employee.id === headEmployeeId)
+    : undefined;
+  const orderedEmployees = headEmployee
+    ? [mapEmployee(headEmployee, designationMap), ...deptEmployees]
+    : deptEmployees;
 
   return {
     id,
     name: String(department.name ?? 'Department'),
     code: String(department.code ?? ''),
-    employeeCount: deptEmployees.length,
-    employees: deptEmployees,
+    employeeCount: orderedEmployees.length,
+    employees: orderedEmployees,
   };
 }
 
@@ -77,6 +85,10 @@ export function buildOrgChartTree(input: OrgChartBuildInput): OrgChartTree {
     const deptNodes = branchDepartments.map((department) =>
       buildDepartment(department, employees, designationMap),
     );
+    const branchManagerId = branch.branchManagerId ? String(branch.branchManagerId) : undefined;
+    const branchHeadEmployee = branchManagerId
+      ? employees.find((employee) => employee.id === branchManagerId)
+      : undefined;
 
     return {
       id: String(branch.id),
@@ -84,6 +96,7 @@ export function buildOrgChartTree(input: OrgChartBuildInput): OrgChartTree {
       code: String(branch.code ?? ''),
       departments: deptNodes.sort((a, b) => a.name.localeCompare(b.name)),
       employeeCount: deptNodes.reduce((sum, dept) => sum + dept.employeeCount, 0),
+      branchHead: branchHeadEmployee ? mapEmployee(branchHeadEmployee, designationMap) : undefined,
     };
   });
 

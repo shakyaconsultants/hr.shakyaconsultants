@@ -100,7 +100,8 @@ export function LeaveBalancesPage() {
 
           {canManage ? (
             <section className="max-w-lg space-y-3 rounded-lg border p-4">
-              <h2 className="font-semibold">Adjust Balance</h2>
+              <h2 className="font-semibold">Bonus / Reward Adjustment</h2>
+              <p className="text-xs text-muted-foreground">Add earned leave days for performance rewards, festival bonuses, or manual corrections.</p>
               <label className="block space-y-1 text-sm">
                 <span className="font-medium">Policy</span>
                 <select

@@ -16,8 +16,9 @@ const ADMIN_NAV: NavItem[] = [
   { label: 'Leave Management', path: ROUTES.LEAVE_EXIT, permissionsAny: ['leave.read', 'resignation.read'] },
   { label: 'All Requests', path: ROUTES.LEAVE_REQUESTS, permission: 'leave.read' },
   { label: 'Resignations', path: ROUTES.RESIGNATION, permission: 'resignation.read' },
-  { label: 'Leave Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.read' },
-  { label: 'All Balances', path: ROUTES.LEAVE_BALANCES, permission: 'leave.read' },
+  { label: 'Leave Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.calendar.read' },
+  { label: 'Holiday Calendar', path: '/organization/holiday', permission: 'holiday.read' },
+  { label: 'All Balances', path: ROUTES.LEAVE_BALANCES, permission: 'leave.balance.read' },
   { label: 'Policies & Rules', path: ROUTES.LEAVE_POLICIES, permission: 'leave.read' },
   { label: 'Approval Inbox', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read' },
   { label: 'Exit Management', path: ROUTES.EXIT, permission: 'exit.read' },
@@ -26,7 +27,7 @@ const ADMIN_NAV: NavItem[] = [
 const HR_NAV: NavItem[] = [
   { label: 'Leave Management', path: ROUTES.LEAVE_EXIT, permissionsAny: ['leave.read', 'leave.approve'] },
   { label: 'Pending Requests', path: ROUTES.LEAVE_REQUESTS, permissionsAny: ['leave.read', 'leave.approve'] },
-  { label: 'Team Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.read' },
+  { label: 'Team Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.calendar.read' },
   { label: 'Approvals', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read' },
 ];
 

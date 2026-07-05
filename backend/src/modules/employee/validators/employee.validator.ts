@@ -87,7 +87,6 @@ export const createEmployeeSchema = z.object({
   departmentId: z.uuid(),
   designationId: z.uuid(),
   branchId: optionalUuid(),
-  officeLocationId: optionalUuid(),
   shiftId: optionalUuid(),
   employmentTypeId: optionalUuid(),
   reportingManagerId: optionalUuid(),

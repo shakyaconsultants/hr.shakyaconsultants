@@ -30,7 +30,7 @@ import { cn } from '@/shared/utils/cn';
 
 function mergeDraft(local: ProjectWizardDraft, remote: Record<string, unknown> | undefined): ProjectWizardDraft {
   if (!remote || Object.keys(remote).length === 0) return local;
-  return {
+  const merged = {
     ...local,
     ...remote,
     basicInfo: { ...local.basicInfo, ...(remote.basicInfo as ProjectWizardDraft['basicInfo'] | undefined) },
@@ -38,6 +38,11 @@ function mergeDraft(local: ProjectWizardDraft, remote: Record<string, unknown> |
     tech: { ...local.tech, ...(remote.tech as ProjectWizardDraft['tech'] | undefined) },
     deployment: { ...local.deployment, ...(remote.deployment as ProjectWizardDraft['deployment'] | undefined) },
   } as ProjectWizardDraft;
+  const remoteDeployment = remote.deployment as Record<string, unknown> | undefined;
+  if (remoteDeployment?.deploymentUrl && !merged.deployment.productionDeployUrl) {
+    merged.deployment.productionDeployUrl = String(remoteDeployment.deploymentUrl);
+  }
+  return merged;
 }
 
 function buildFinalizePayload(draft: ProjectWizardDraft) {
@@ -63,7 +68,8 @@ function buildFinalizePayload(draft: ProjectWizardDraft) {
     },
     repository: {
       repositoryUrl: draft.deployment.repositoryUrl || undefined,
-      productionUrl: draft.deployment.deploymentUrl || undefined,
+      productionUrl: draft.deployment.productionDeployUrl || undefined,
+      stagingUrl: draft.deployment.developmentDeployUrl || undefined,
       envVariables: draft.deployment.envVariables || undefined,
       deploymentGuide: draft.deployment.deploymentGuide || undefined,
       documentUrls: documentUrls.length > 0 ? documentUrls : undefined,
@@ -296,7 +302,8 @@ export function ProjectCreateWizardPage() {
           {step.id === 'deployment' && (
             <div className="space-y-4">
               <Field label="GitHub / Repository URL"><Input value={draft.deployment.repositoryUrl} onChange={(e) => updateDeployment('repositoryUrl', e.target.value)} placeholder="https://github.com/org/repo" /></Field>
-              <Field label="Deployment URL"><Input value={draft.deployment.deploymentUrl} onChange={(e) => updateDeployment('deploymentUrl', e.target.value)} placeholder="https://app.example.com" /></Field>
+              <Field label="Production Deploy URL"><Input value={draft.deployment.productionDeployUrl} onChange={(e) => updateDeployment('productionDeployUrl', e.target.value)} placeholder="https://app.example.com" /></Field>
+              <Field label="Development Deploy URL"><Input value={draft.deployment.developmentDeployUrl} onChange={(e) => updateDeployment('developmentDeployUrl', e.target.value)} placeholder="https://dev.example.com" /></Field>
               <Field label="Environment Variables (encrypted at rest)">
                 <div className="space-y-2">
                   <div className="flex gap-2">
@@ -352,7 +359,8 @@ export function ProjectCreateWizardPage() {
               <ReviewRow label="Status" value={draft.basicInfo.status} />
               <ReviewRow label="Manager" value={employeeName(draft.basicInfo.projectManagerId)} />
               <ReviewRow label="Repository" value={draft.deployment.repositoryUrl || '—'} />
-              <ReviewRow label="Deployment" value={draft.deployment.deploymentUrl || '—'} />
+              <ReviewRow label="Production Deploy" value={draft.deployment.productionDeployUrl || '—'} />
+              <ReviewRow label="Development Deploy" value={draft.deployment.developmentDeployUrl || '—'} />
               <ReviewRow label="Team Members" value={String(draft.teamMembers.filter((m) => m.employeeId).length)} />
               <ReviewRow label="Tags" value={draft.tech.tags || '—'} />
               <ReviewRow label="Env Variables" value={draft.deployment.envVariables ? 'Configured (encrypted)' : 'None'} />

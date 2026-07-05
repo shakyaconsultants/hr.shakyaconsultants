@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, GitBranch, Mail, Users } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
+import { useAuthStore } from '@/shared/stores/app.store';
 import { cn } from '@/shared/utils/cn';
 import type { OrgChartEmployee } from '@/features/admin/components/org-chart/org-chart.types';
 
@@ -143,16 +144,11 @@ export function OrgChartDepartmentNode({
 
 export function OrgChartEmployeeCard({ employee, compact = false }: { employee: OrgChartEmployee; compact?: boolean }) {
   const fullName = `${employee.firstName} ${employee.lastName}`.trim();
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canOpenProfile = hasPermission('employee.read');
 
-  return (
-    <Link
-      to={ROUTES.employeeDetail(employee.id)}
-      className={cn(
-        'group flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2 shadow-sm transition-all',
-        'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md',
-        compact ? 'min-w-[160px]' : 'min-w-[190px]',
-      )}
-    >
+  const cardBody = (
+    <>
       {employee.photoUrl ? (
         <img
           src={employee.photoUrl}
@@ -170,7 +166,9 @@ export function OrgChartEmployeeCard({ employee, compact = false }: { employee: 
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium leading-tight group-hover:text-primary">{fullName}</p>
+        <p className={cn('truncate text-sm font-medium leading-tight', canOpenProfile && 'group-hover:text-primary')}>
+          {fullName}
+        </p>
         <p className="truncate text-xs text-muted-foreground">{employee.designationName}</p>
         {!compact ? (
           <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground/80">
@@ -179,6 +177,22 @@ export function OrgChartEmployeeCard({ employee, compact = false }: { employee: 
           </p>
         ) : null}
       </div>
+    </>
+  );
+
+  const className = cn(
+    'group flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2 shadow-sm transition-all',
+    canOpenProfile && 'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md',
+    compact ? 'min-w-[160px]' : 'min-w-[190px]',
+  );
+
+  if (!canOpenProfile) {
+    return <div className={className}>{cardBody}</div>;
+  }
+
+  return (
+    <Link to={ROUTES.employeeDetail(employee.id)} className={className}>
+      {cardBody}
     </Link>
   );
 }

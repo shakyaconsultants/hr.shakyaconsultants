@@ -4,7 +4,7 @@ import {
   REPORTING_RELATIONSHIP_TYPE,
   ReportingHierarchyRepository,
 } from '@domain/employee/employee.schemas.js';
-import { DepartmentRepository, DesignationRepository } from '@domain/organization/organization.schemas.js';
+import { DepartmentRepository, DesignationRepository, BranchRepository } from '@domain/organization/organization.schemas.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 
 const DIRECT_TYPES = new Set([
@@ -148,7 +148,7 @@ export const EmployeeReportingService = {
   },
 
   async getReportingTree(companyId: string, companyName: string) {
-    const [employees, relationships] = await Promise.all([
+    const [employees, relationships, departments, branches] = await Promise.all([
       EmployeeRepository.findMany(
         { status: { $ne: ENTITY_STATUS.ARCHIVED }, isDeleted: { $ne: true } },
         { companyId },
@@ -160,10 +160,14 @@ export const EmployeeReportingService = {
         },
         { companyId },
       ),
+      DepartmentRepository.findMany({ status: { $ne: ENTITY_STATUS.ARCHIVED } }, { companyId }),
+      BranchRepository.findMany({ status: { $ne: ENTITY_STATUS.ARCHIVED } }, { companyId }),
     ]);
 
     const personViews = await enrichEmployees(companyId, employees);
     const personMap = new Map(personViews.map((p) => [p.id, p]));
+    const deptById = new Map(departments.map((dept) => [String(dept.id), dept]));
+    const branchById = new Map(branches.map((branch) => [String(branch.id), branch]));
 
     const managerByEmployee = new Map<string, string>();
 
@@ -176,6 +180,64 @@ export const EmployeeReportingService = {
     for (const employee of employees) {
       if (employee.reportingManagerId && !managerByEmployee.has(employee.id)) {
         managerByEmployee.set(employee.id, employee.reportingManagerId);
+      }
+    }
+
+    function resolveBranchId(employee: (typeof employees)[number]): string | undefined {
+      if (employee.branchId) return String(employee.branchId);
+      if (employee.departmentId) {
+        const dept = deptById.get(String(employee.departmentId));
+        if (dept?.branchId) return String(dept.branchId);
+      }
+      return undefined;
+    }
+
+    for (const employee of employees) {
+      if (managerByEmployee.has(employee.id)) continue;
+
+      let inferredManager: string | undefined;
+      if (employee.departmentId) {
+        const dept = deptById.get(String(employee.departmentId));
+        const headId = dept?.headEmployeeId ? String(dept.headEmployeeId) : undefined;
+        if (headId && headId !== employee.id && personMap.has(headId)) {
+          inferredManager = headId;
+        }
+      }
+
+      if (!inferredManager) {
+        const branchId = resolveBranchId(employee);
+        if (branchId) {
+          const branch = branchById.get(branchId);
+          const branchManagerId = branch?.branchManagerId ? String(branch.branchManagerId) : undefined;
+          if (branchManagerId && branchManagerId !== employee.id && personMap.has(branchManagerId)) {
+            inferredManager = branchManagerId;
+          }
+        }
+      }
+
+      if (inferredManager) {
+        managerByEmployee.set(employee.id, inferredManager);
+      }
+    }
+
+    const branchManagerIds = branches
+      .map((branch) => (branch.branchManagerId ? String(branch.branchManagerId) : undefined))
+      .filter((id): id is string => Boolean(id && personMap.has(id)));
+
+    const companyRootId = branchManagerIds.find((id) => !managerByEmployee.has(id))
+      ?? branchManagerIds[0];
+
+    if (companyRootId) {
+      for (const branch of branches) {
+        const branchManagerId = branch.branchManagerId ? String(branch.branchManagerId) : undefined;
+        if (
+          branchManagerId
+          && branchManagerId !== companyRootId
+          && !managerByEmployee.has(branchManagerId)
+          && personMap.has(companyRootId)
+        ) {
+          managerByEmployee.set(branchManagerId, companyRootId);
+        }
       }
     }
 

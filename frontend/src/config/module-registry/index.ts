@@ -73,7 +73,7 @@ function buildOrganizationNavItems(): ModuleNavItem[] {
     label: 'Org Chart',
     path: ROUTES.ORGANIZATION_CHART,
     icon: Building2,
-    permission: 'company.read',
+    permission: 'employee.read',
     portals: ENTERPRISE_ONLY,
   };
 
@@ -872,7 +872,7 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.WORKSPACE_SEARCH, portals: WORKSPACE_ONLY, permission: 'workspace.read' },
   { path: ROUTES.WORKSPACE_MESSAGES, portals: WORKSPACE_ONLY, permissionsAny: ['chat.message.send', 'conversation.read'] },
   { path: ROUTES.ORGANIZATION, portals: ENTERPRISE_ONLY, permission: 'company.read' },
-  { path: ROUTES.ORGANIZATION_CHART, portals: ENTERPRISE_ONLY, permission: 'employee.read' },
+  { path: ROUTES.ORGANIZATION_CHART, portals: [...ENTERPRISE_ONLY, ...MANAGER_ONLY], permission: 'employee.read' },
   { path: ROUTES.SETTINGS, portals: ENTERPRISE_ONLY, permissionsAny: ['settings.read', 'company.update'] },
   { path: `${ROUTES.ORGANIZATION}/:entityKey/:id`, portals: ENTERPRISE_ONLY, permission: 'company.read' },
   { path: ROUTES.ADMIN_SETTINGS, portals: ENTERPRISE_ONLY, permission: 'settings.read' },
@@ -920,7 +920,7 @@ const ROUTE_REGISTRY: ModuleRouteMeta[] = [
   { path: ROUTES.PAYROLL_HR, portals: ENTERPRISE_ONLY, permission: 'payroll.read' },
   { path: ROUTES.WORKSPACE_PAYROLL, portals: WORKSPACE_ONLY, permission: 'payslip.read' },
   { path: ROUTES.SALES, portals: ENTERPRISE_ONLY, permission: 'lead.read' },
-  { path: ROUTES.SALES_ADMIN, portals: ENTERPRISE_ONLY, permission: 'pipeline.update' },
+  { path: ROUTES.SALES_ADMIN, portals: ENTERPRISE_ONLY, permission: 'lead.read' },
   { path: ROUTES.SALES_MANAGER, portals: MANAGER_ONLY, permission: 'lead.read' },
   { path: ROUTES.SALES_EXECUTIVE, portals: WORKSPACE_ONLY, permission: 'lead.read' },
   { path: ROUTES.COMMUNICATION, portals: ENTERPRISE_ONLY, permissionsAny: ['notification.read', 'notifications.broadcast'] },
@@ -1154,7 +1154,7 @@ export function isPathAllowedForPortal(
 export function getEnterpriseDashboardWidgets(ctx: NavigationFilterContext) {
   const widgets = [
     { id: 'employee-stats', title: 'Organization Headcount', permission: 'company.read', colSpan: 2 as const },
-    { id: 'org-chart-preview', title: 'Organization Chart', permission: 'company.read', colSpan: 2 as const },
+    { id: 'org-chart-preview', title: 'Organization Chart', permission: 'employee.read', colSpan: 2 as const },
     { id: 'recruitment-overview', title: 'Recruitment Pipeline', permission: 'candidate.read', colSpan: 2 as const },
     { id: 'project-overview', title: 'Project Portfolio', permission: 'project.read', colSpan: 2 as const },
     { id: 'attendance-today', title: 'Company Attendance Today', permission: 'attendance.read', featureFlag: 'attendance', colSpan: 2 as const },
@@ -1176,7 +1176,7 @@ export function getEnterpriseDashboardWidgets(ctx: NavigationFilterContext) {
 export function getManagerDashboardWidgets(ctx: NavigationFilterContext) {
   const widgets = [
     { id: 'employee-stats', title: 'Team Size', permission: 'employee.read', colSpan: 2 as const },
-    { id: 'org-chart-preview', title: 'Organization Chart', permission: 'company.read', colSpan: 2 as const },
+    { id: 'org-chart-preview', title: 'Organization Chart', permission: 'employee.read', colSpan: 2 as const },
     { id: 'pending-approvals', title: 'Pending Approvals', permission: 'approval.read', colSpan: 2 as const },
     { id: 'project-overview', title: 'Active Projects', permission: 'project.read', colSpan: 2 as const },
     { id: 'pending-interviews', title: 'Upcoming Interviews', permission: 'candidate.read', featureFlag: 'recruitment', colSpan: 2 as const },

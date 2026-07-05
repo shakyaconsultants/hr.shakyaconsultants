@@ -4,7 +4,6 @@ import { EmailService } from '@infrastructure/email/email.service.js';
 import { renderEmailFromJobPayload } from '@infrastructure/email/email-template.renderer.js';
 import type { QueueJobData } from '@infrastructure/queue/queue.producer.js';
 import { queueLogger } from '@logging/winston.logger.js';
-import { ExternalServiceError } from '@shared/errors/app.error.js';
 
 export async function deliverEmailPayload(
   data: QueueJobData,
@@ -21,35 +20,53 @@ export async function deliverEmailPayload(
 
   if (env.SMTP_PASSWORD === 'not-configured') {
     const hint = 'Configure SMTP_HOST, SMTP_USER, SMTP_PASSWORD, and SMTP_FROM_EMAIL in backend/.env';
-    if (env.NODE_ENV === 'development') {
-      queueLogger.warn('SMTP not configured — activation link logged to console', {
-        jobName,
-        to,
-        activationUrl: payload.activationUrl,
-        portalUrl: payload.portalUrl,
-        resetUrl: payload.resetUrl,
-      });
-      console.log('\n--- EMAIL (SMTP not configured) ---');
+    queueLogger.warn('SMTP not configured — email content logged to console', {
+      jobName,
+      to,
+      activationUrl: payload.activationUrl,
+      portalUrl: payload.portalUrl,
+      resetUrl: payload.resetUrl,
+    });
+    console.log('\n--- EMAIL (SMTP not configured) ---');
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${rendered.subject}`);
+    if (payload.activationUrl) console.log(`Activation: ${String(payload.activationUrl)}`);
+    if (payload.portalUrl) console.log(`Onboarding: ${String(payload.portalUrl)}`);
+    if (payload.resetUrl) console.log(`Reset: ${String(payload.resetUrl)}`);
+    console.log(`Note: ${hint}`);
+    console.log('---\n');
+    return;
+  }
+
+  try {
+    await EmailService.send({
+      to,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      templateType: rendered.templateType,
+      correlationId: data.correlationId,
+      tenantId: data.tenantId,
+    });
+  } catch (error) {
+    queueLogger.error('Email delivery failed — link logged for manual follow-up', {
+      jobName,
+      to,
+      activationUrl: payload.activationUrl,
+      portalUrl: payload.portalUrl,
+      resetUrl: payload.resetUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    if (payload.activationUrl || payload.portalUrl || payload.resetUrl) {
+      console.log('\n--- EMAIL DELIVERY FAILED (manual link) ---');
       console.log(`To: ${to}`);
-      console.log(`Subject: ${rendered.subject}`);
       if (payload.activationUrl) console.log(`Activation: ${String(payload.activationUrl)}`);
       if (payload.portalUrl) console.log(`Onboarding: ${String(payload.portalUrl)}`);
       if (payload.resetUrl) console.log(`Reset: ${String(payload.resetUrl)}`);
-      console.log(`Note: ${hint}`);
       console.log('---\n');
     }
-    throw new ExternalServiceError(`Email could not be delivered. ${hint}`, { service: 'smtp', to });
+    throw error;
   }
-
-  await EmailService.send({
-    to,
-    subject: rendered.subject,
-    html: rendered.html,
-    text: rendered.text,
-    templateType: rendered.templateType,
-    correlationId: data.correlationId,
-    tenantId: data.tenantId,
-  });
 }
 
 export async function processEmailJob(job: Job<QueueJobData>): Promise<void> {

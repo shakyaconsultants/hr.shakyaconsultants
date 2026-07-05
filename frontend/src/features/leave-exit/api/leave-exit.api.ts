@@ -12,6 +12,8 @@ export interface LeavePolicy {
   allowHalfDay: boolean;
   allowNegativeBalance: boolean;
   carryForwardEnabled: boolean;
+  applicableDepartmentIds?: string[];
+  applicableBranchIds?: string[];
   status: string;
 }
 

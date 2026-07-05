@@ -28,7 +28,6 @@ const ADMIN_CREATE_FIELD_KEYS = [
   'departmentId',
   'designationId',
   'branchId',
-  'officeLocationId',
   'shiftId',
   'employmentTypeId',
   'reportingManagerId',

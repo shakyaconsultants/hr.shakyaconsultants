@@ -5,7 +5,6 @@ import {
   DepartmentRepository,
   DesignationRepository,
   HolidayRepository,
-  OfficeLocationRepository,
   WorkShiftRepository,
 } from '@domain/organization/organization.schemas.js';
 import {
@@ -85,21 +84,6 @@ export const MASTER_DATA_ENTITY_REGISTRY: Record<MasterDataEntityKey, MasterData
     cacheEnabled: false,
   },
 
-  [MASTER_DATA_ENTITY.OFFICE_LOCATION]: {
-    key: MASTER_DATA_ENTITY.OFFICE_LOCATION,
-    entityType: 'office-location',
-    label: 'Office Location',
-    repository: OfficeLocationRepository as unknown as BaseRepository<BaseDocument>,
-    permissions: {
-      read: ORG_PERMISSIONS.OFFICE_LOCATION_READ,
-      create: ORG_PERMISSIONS.OFFICE_LOCATION_CREATE,
-      update: ORG_PERMISSIONS.OFFICE_LOCATION_UPDATE,
-      delete: ORG_PERMISSIONS.OFFICE_LOCATION_DELETE,
-    },
-    searchFields: ['name', 'code', 'address.city'],
-    duplicateFields: ['name', 'code'],
-    cacheEnabled: false,
-  },
   [MASTER_DATA_ENTITY.WORK_SHIFT]: {
     key: MASTER_DATA_ENTITY.WORK_SHIFT,
     entityType: 'work-shift',

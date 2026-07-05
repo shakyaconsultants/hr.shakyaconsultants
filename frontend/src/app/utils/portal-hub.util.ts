@@ -65,7 +65,7 @@ export function resolveSalesHubRoute(portal: PortalType, hasPermission: Permissi
     return ROUTES.FORBIDDEN;
   }
   if (portal === PORTAL.ENTERPRISE) {
-    return ROUTES.SALES;
+    return ROUTES.SALES_ADMIN;
   }
   if (portal === PORTAL.MANAGER) {
     return ROUTES.SALES_MANAGER;

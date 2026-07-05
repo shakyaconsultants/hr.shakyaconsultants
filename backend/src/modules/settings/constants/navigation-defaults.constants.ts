@@ -18,7 +18,7 @@ export const DEFAULT_NAVIGATION_ITEMS: NavigationItemDefault[] = [
   { id: 'payroll', label: 'Payroll', groupId: 'hr', enabled: true, sortOrder: 50, icon: 'wallet', permission: 'payroll.read' },
   { id: 'recruitment', label: 'Recruitment', groupId: 'talent', enabled: true, sortOrder: 60, icon: 'user-plus', permission: 'recruitment.read' },
   { id: 'projects', label: 'Projects', groupId: 'operations', enabled: true, sortOrder: 70, icon: 'folder-kanban', permission: 'project.read' },
-  { id: 'sales', label: 'Sales', groupId: 'operations', enabled: true, sortOrder: 80, icon: 'trending-up', permission: 'sales.read' },
+  { id: 'sales', label: 'Sales', groupId: 'operations', enabled: true, sortOrder: 80, icon: 'trending-up', permission: 'lead.read' },
   { id: 'communication', label: 'Communication', groupId: 'collaboration', enabled: true, sortOrder: 90, icon: 'message-square', permission: 'communication.read' },
   { id: 'reports', label: 'Reports', groupId: 'analytics', enabled: true, sortOrder: 100, icon: 'bar-chart', permission: 'reports.read' },
   { id: 'settings', label: 'Settings', groupId: 'admin', enabled: true, sortOrder: 110, icon: 'settings', permission: 'settings.read' },

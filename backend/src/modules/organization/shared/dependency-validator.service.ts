@@ -3,7 +3,6 @@ import {
   BranchRepository,
   DepartmentRepository,
   DesignationRepository,
-  OfficeLocationRepository,
 } from '@domain/organization/organization.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ProjectRepository } from '@domain/project/project.schemas.js';
@@ -30,12 +29,6 @@ const DELETE_DEPENDENCY_MAP: Partial<Record<MasterDataEntityKey, DependencyCheck
       filter: (id) => ({ branchId: id }),
       label: 'Departments',
       message: 'Branch is referenced by one or more departments',
-    },
-    {
-      repository: OfficeLocationRepository,
-      filter: (id) => ({ branchId: id }),
-      label: 'Office Locations',
-      message: 'Branch is referenced by one or more office locations',
     },
   ],
   [MASTER_DATA_ENTITY.DEPARTMENT]: [

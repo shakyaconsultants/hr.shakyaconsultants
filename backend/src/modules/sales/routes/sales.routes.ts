@@ -35,6 +35,7 @@ import {
   getExecutiveDashboard,
   getFollowUp,
   getLead,
+  getLeadKanban,
   getLeadSource,
   getLeadTimeline,
   getManagerDashboard,
@@ -53,6 +54,8 @@ import {
   listFollowUps,
   listLeadSources,
   listLeads,
+  listMyLeads,
+  listTeamLeads,
   listPipelines,
   listSalesTargets,
   listSalesTeams,
@@ -121,6 +124,9 @@ salesRoutes.get('/leads', authorize(LEAD_PERMISSIONS.READ), listLeads);
 salesRoutes.post('/leads', authorize(LEAD_PERMISSIONS.CREATE), createLead);
 salesRoutes.post('/leads/import', authorize(LEAD_PERMISSIONS.CREATE), importLeads);
 salesRoutes.get('/leads/export', authorize(LEAD_PERMISSIONS.READ), exportLeads);
+salesRoutes.get('/leads/me', authorize(LEAD_PERMISSIONS.READ), listMyLeads);
+salesRoutes.get('/leads/team', authorize(LEAD_PERMISSIONS.READ), listTeamLeads);
+salesRoutes.get('/leads/kanban', authorize(LEAD_PERMISSIONS.READ), getLeadKanban);
 salesRoutes.get('/leads/:id', authorize(LEAD_PERMISSIONS.READ), getLead);
 salesRoutes.patch('/leads/:id', authorize(LEAD_PERMISSIONS.UPDATE), updateLead);
 salesRoutes.delete('/leads/:id', authorize(LEAD_PERMISSIONS.DELETE), deleteLead);
