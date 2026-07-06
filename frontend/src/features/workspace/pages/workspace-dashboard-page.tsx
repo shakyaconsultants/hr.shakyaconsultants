@@ -16,7 +16,10 @@ export function WorkspaceDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-primary">
         <LayoutDashboard className="h-5 w-5" />
-        <WorkspacePageHeader title="My Workspace" description="Your daily employee portal — widgets load independently." />
+        <WorkspacePageHeader
+          title="My Workspace"
+          description="Your daily overview — tasks, projects, leave, and announcements."
+        />
       </div>
       <WorkspaceOnboardingBanner />
       <WorkspaceOrgPositionCard />
@@ -27,7 +30,11 @@ export function WorkspaceDashboardPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" role="region" aria-label="Workspace widgets">
+        <div
+          className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+          role="region"
+          aria-label="Workspace widgets"
+        >
           {visibleWidgets.map((widget) => {
             const catalog = catalogMap.get(widget.widgetSlug);
             return (

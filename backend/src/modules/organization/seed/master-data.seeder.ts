@@ -1,6 +1,5 @@
 import {
   AppSettingRepository,
-  EmploymentTypeRepository,
   LeaveTypeRepository,
   SETTING_GROUP,
   SETTING_VALUE_TYPE,
@@ -15,18 +14,32 @@ import { databaseLogger } from '@logging/winston.logger.js';
 const SYSTEM_ACTOR = 'system';
 const MASTER_DATA_SEEDER = 'master_data';
 
-const DEFAULT_EMPLOYMENT_TYPES = [
-  { code: 'FT', name: 'Full Time', isDefault: true },
-  { code: 'PT', name: 'Part Time', isDefault: false },
-  { code: 'CONTRACT', name: 'Contract', isDefault: false },
-  { code: 'INTERN', name: 'Intern', isDefault: false },
-  { code: 'PROBATION', name: 'Probation', isDefault: false },
-];
-
 const DEFAULT_LEAVE_TYPES = [
-  { code: 'CL', name: 'Casual Leave', isPaid: true, maxDaysPerYear: 12, isDefault: true, color: '#3B82F6' },
-  { code: 'SL', name: 'Sick Leave', isPaid: true, maxDaysPerYear: 10, isDefault: true, color: '#EF4444' },
-  { code: 'EL', name: 'Earned Leave', isPaid: true, maxDaysPerYear: 15, carryForward: true, isDefault: true, color: '#10B981' },
+  {
+    code: 'CL',
+    name: 'Casual Leave',
+    isPaid: true,
+    maxDaysPerYear: 12,
+    isDefault: true,
+    color: '#3B82F6',
+  },
+  {
+    code: 'SL',
+    name: 'Sick Leave',
+    isPaid: true,
+    maxDaysPerYear: 10,
+    isDefault: true,
+    color: '#EF4444',
+  },
+  {
+    code: 'EL',
+    name: 'Earned Leave',
+    isPaid: true,
+    maxDaysPerYear: 15,
+    carryForward: true,
+    isDefault: true,
+    color: '#10B981',
+  },
   { code: 'LOP', name: 'Loss of Pay', isPaid: false, isDefault: true, color: '#6B7280' },
 ];
 
@@ -131,26 +144,6 @@ async function resolveCompanyId(fallbackCompanyId: string): Promise<string | nul
   return companies[0]?.id ?? null;
 }
 
-async function seedEmploymentTypes(companyId: string): Promise<void> {
-  for (const item of DEFAULT_EMPLOYMENT_TYPES) {
-    const exists = await EmploymentTypeRepository.findOne({ code: item.code }, { companyId });
-    if (exists) {
-      continue;
-    }
-    await EmploymentTypeRepository.create(
-      {
-        id: generateUuid(),
-        companyId,
-        ...item,
-        status: ENTITY_STATUS.ACTIVE,
-        createdBy: SYSTEM_ACTOR,
-        updatedBy: SYSTEM_ACTOR,
-      },
-      { companyId },
-    );
-  }
-}
-
 async function seedLeaveTypes(companyId: string): Promise<void> {
   for (const item of DEFAULT_LEAVE_TYPES) {
     const exists = await LeaveTypeRepository.findOne({ code: item.code }, { companyId });
@@ -225,7 +218,6 @@ registerSeeder({
       return;
     }
 
-    await seedEmploymentTypes(companyId);
     await seedLeaveTypes(companyId);
     await seedSkills(companyId);
     await seedSettings(companyId);

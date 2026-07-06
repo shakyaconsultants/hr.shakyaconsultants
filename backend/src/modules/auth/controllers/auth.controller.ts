@@ -9,7 +9,10 @@ import {
   resetPasswordSchema,
 } from '@modules/auth/validators/auth.validator.js';
 import { validateInput } from '@modules/auth/validators/validate.util.js';
-import type { AuthenticatedRequest } from '@modules/auth/interfaces/auth-request.interface.js';
+import {
+  isAuthenticatedRequest,
+  type AuthenticatedRequest,
+} from '@modules/auth/interfaces/auth-request.interface.js';
 import {
   clearAuthCookies,
   extractRefreshToken,
@@ -40,12 +43,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
+  const body = validateInput(refreshSchema, req.body);
   authServerDiag.log('auth_refresh_started', {
     hasRefreshCookie: Boolean(req.cookies[AUTH_COOKIE_NAMES.REFRESH]),
-    hasBodyToken: Boolean(req.body?.refreshToken),
+    hasBodyToken: Boolean(body.refreshToken),
   });
-
-  const body = validateInput(refreshSchema, req.body);
   const refreshToken = extractRefreshToken(
     body.refreshToken,
     req.cookies[AUTH_COOKIE_NAMES.REFRESH] as string | undefined,
@@ -63,7 +65,6 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
-  const authReq = req as AuthenticatedRequest;
   const body = validateInput(logoutSchema, req.body);
   const refreshToken = extractRefreshToken(
     body.refreshToken,
@@ -71,10 +72,10 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   );
 
   try {
-    if (authReq.user) {
-      await AuthService.logout(authReq.user, refreshToken, getRequestMeta(req));
+    if (isAuthenticatedRequest(req)) {
+      await AuthService.logout(req.user, refreshToken, getRequestMeta(req));
     }
-  } catch (error) {
+  } catch {
     // Ignore error since we are clearing cookies and logging out anyway
   } finally {
     clearAuthCookies(res);
@@ -113,28 +114,5 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
     permissionCount: result.permissions.length,
     roleCount: result.roles.length,
   });
-  ResponseService.success(res, req, result);
-});
-
-export const listSessions = asyncHandler(async (req: Request, res: Response) => {
-  const authReq = req as AuthenticatedRequest;
-  const result = await AuthService.listSessions(authReq.user);
-  ResponseService.success(res, req, result);
-});
-
-export const listSessionHistory = asyncHandler(async (req: Request, res: Response) => {
-  const authReq = req as AuthenticatedRequest;
-  const result = await AuthService.listSessionHistory(authReq.user);
-  ResponseService.success(res, req, result);
-});
-
-export const revokeSession = asyncHandler(async (req: Request, res: Response) => {
-  const authReq = req as AuthenticatedRequest;
-  const sessionIdParam = req.params.sessionId;
-  const sessionId = Array.isArray(sessionIdParam) ? sessionIdParam[0] : sessionIdParam;
-  if (!sessionId) {
-    throw new ValidationError('Session ID is required');
-  }
-  const result = await AuthService.revokeSession(authReq.user, sessionId, getRequestMeta(req));
   ResponseService.success(res, req, result);
 });

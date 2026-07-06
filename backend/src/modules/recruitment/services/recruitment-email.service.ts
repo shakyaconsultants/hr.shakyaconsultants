@@ -1,5 +1,8 @@
 import { NotificationRepository } from '@domain/communication/communication.schemas.js';
-import { NOTIFICATION_CHANNELS, NOTIFICATION_STATUS } from '@shared/constants/notification.constants.js';
+import {
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_STATUS,
+} from '@shared/constants/notification.constants.js';
 import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { EmailService } from '@infrastructure/email/email.service.js';
@@ -20,33 +23,93 @@ function wrapTemplate(title: string, body: string): string {
 }
 
 export const RecruitmentEmailTemplates = {
-  interviewInvite(data: { candidateName: string; date: string; meetingLink?: string; interviewType: string }): EmailTemplateData {
+  interviewInvite(data: {
+    candidateName: string;
+    date: string;
+    meetingLink?: string;
+    interviewType: string;
+  }): EmailTemplateData {
     const body = `<p>Dear ${data.candidateName},</p><p>Your ${data.interviewType} interview is scheduled for <strong>${data.date}</strong>.</p>${data.meetingLink ? `<p><a href="${data.meetingLink}">Join Meeting</a></p>` : ''}<p>Best regards,<br/>HR Team</p>`;
-    return { to: '', subject: 'Interview Invitation', html: wrapTemplate('Interview Invitation', body), text: `Interview scheduled for ${data.date}` };
+    return {
+      to: '',
+      subject: 'Interview Invitation',
+      html: wrapTemplate('Interview Invitation', body),
+      text: `Interview scheduled for ${data.date}`,
+    };
   },
   interviewReminder(data: { candidateName: string; date: string }): EmailTemplateData {
     const body = `<p>Dear ${data.candidateName},</p><p>Reminder: your interview is tomorrow at <strong>${data.date}</strong>.</p>`;
-    return { to: '', subject: 'Interview Reminder', html: wrapTemplate('Interview Reminder', body) };
+    return {
+      to: '',
+      subject: 'Interview Reminder',
+      html: wrapTemplate('Interview Reminder', body),
+    };
   },
   reschedule(data: { candidateName: string; newDate: string }): EmailTemplateData {
     const body = `<p>Dear ${data.candidateName},</p><p>Your interview has been rescheduled to <strong>${data.newDate}</strong>.</p>`;
-    return { to: '', subject: 'Interview Rescheduled', html: wrapTemplate('Interview Rescheduled', body) };
+    return {
+      to: '',
+      subject: 'Interview Rescheduled',
+      html: wrapTemplate('Interview Rescheduled', body),
+    };
   },
   rejection(data: { candidateName: string }): EmailTemplateData {
     const body = `<p>Dear ${data.candidateName},</p><p>Thank you for your interest. After careful consideration, we will not be moving forward at this time.</p>`;
-    return { to: '', subject: 'Application Update', html: wrapTemplate('Application Update', body) };
+    return {
+      to: '',
+      subject: 'Application Update',
+      html: wrapTemplate('Application Update', body),
+    };
   },
-  offerLetter(data: { candidateName: string; joiningDate: string; salary: string }): EmailTemplateData {
+  stageUpdate(data: {
+    candidateName: string;
+    stageName: string;
+    message?: string;
+  }): EmailTemplateData {
+    const body = `<p>Dear ${data.candidateName},</p><p>Your application status has been updated to <strong>${data.stageName}</strong>.</p>${data.message ? `<p>${data.message}</p>` : ''}<p>Best regards,<br/>HR Team</p>`;
+    return {
+      to: '',
+      subject: 'Application Status Update',
+      html: wrapTemplate('Application Status Update', body),
+    };
+  },
+  offerLetter(data: {
+    candidateName: string;
+    joiningDate: string;
+    salary: string;
+  }): EmailTemplateData {
     const body = `<p>Dear ${data.candidateName},</p><p>We are pleased to offer you a position. Joining date: <strong>${data.joiningDate}</strong>. CTC: <strong>${data.salary}</strong>.</p><p>Please review the attached offer letter.</p>`;
     return { to: '', subject: 'Offer Letter', html: wrapTemplate('Offer Letter', body) };
   },
-  joiningInstructions(data: { candidateName: string; joiningDate: string; location?: string }): EmailTemplateData {
+  joiningInstructions(data: {
+    candidateName: string;
+    joiningDate: string;
+    location?: string;
+  }): EmailTemplateData {
     const body = `<p>Dear ${data.candidateName},</p><p>Welcome! Your joining date is <strong>${data.joiningDate}</strong>.${data.location ? ` Location: ${data.location}` : ''}</p>`;
-    return { to: '', subject: 'Joining Instructions', html: wrapTemplate('Joining Instructions', body) };
+    return {
+      to: '',
+      subject: 'Joining Instructions',
+      html: wrapTemplate('Joining Instructions', body),
+    };
   },
   welcome(data: { employeeName: string }): EmailTemplateData {
     const body = `<p>Dear ${data.employeeName},</p><p>Welcome to the team! Your employee account has been created.</p>`;
     return { to: '', subject: 'Welcome to the Team', html: wrapTemplate('Welcome', body) };
+  },
+  accountCredentials(data: {
+    employeeName: string;
+    email: string;
+    password: string;
+    loginUrl: string;
+  }): EmailTemplateData {
+    const body = `<p>Dear ${data.employeeName},</p><p>Your employee account is ready. Log in to the employee portal with:</p><ul><li><strong>Email:</strong> ${data.email}</li><li><strong>Password:</strong> ${data.password}</li></ul><p><a href="${data.loginUrl}">Log in to Employee Portal</a></p><p>No activation step is required — use the credentials above to sign in and complete your onboarding form.</p>`;
+    return {
+      to: '',
+      subject: 'Your Employee Account',
+      html: wrapTemplate('Employee Account Created', body),
+      text: `Login: ${data.email} / ${data.password}`,
+    };
   },
 };
 
@@ -68,39 +131,113 @@ export const RecruitmentEmailService = {
       context.companyId,
     );
 
-    await QueueProducer.addEmailJob(jobName, {
-      ...payload,
-      tenantId: context.companyId,
-      userId: context.userId,
-    }, delayMs ? { delay: delayMs } : undefined);
+    await QueueProducer.addEmailJob(
+      jobName,
+      {
+        ...payload,
+        tenantId: context.companyId,
+        userId: context.userId,
+      },
+      delayMs ? { delay: delayMs } : undefined,
+    );
   },
 
-  async sendInterviewInvite(context: RecruitmentActorContext, to: string, data: Parameters<typeof RecruitmentEmailTemplates.interviewInvite>[0]): Promise<void> {
+  async sendInterviewInvite(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.interviewInvite>[0],
+  ): Promise<void> {
     const template = RecruitmentEmailTemplates.interviewInvite(data);
     await this.queueEmail(context, RECRUITMENT_EMAIL_JOB.INTERVIEW_INVITE, { ...template, to }, to);
   },
 
-  async sendInterviewReminder(context: RecruitmentActorContext, to: string, data: Parameters<typeof RecruitmentEmailTemplates.interviewReminder>[0], delayMs = 86400000): Promise<void> {
+  async sendInterviewReminder(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.interviewReminder>[0],
+    delayMs = 86400000,
+  ): Promise<void> {
     const template = RecruitmentEmailTemplates.interviewReminder(data);
-    await this.queueEmail(context, RECRUITMENT_EMAIL_JOB.INTERVIEW_REMINDER, { ...template, to }, to, delayMs);
+    await this.queueEmail(
+      context,
+      RECRUITMENT_EMAIL_JOB.INTERVIEW_REMINDER,
+      { ...template, to },
+      to,
+      delayMs,
+    );
   },
 
-  async sendRejection(context: RecruitmentActorContext, to: string, data: Parameters<typeof RecruitmentEmailTemplates.rejection>[0]): Promise<void> {
+  async sendRejection(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.rejection>[0],
+  ): Promise<void> {
     const template = RecruitmentEmailTemplates.rejection(data);
     await this.queueEmail(context, RECRUITMENT_EMAIL_JOB.REJECTION, { ...template, to }, to);
   },
 
-  async sendOfferLetter(context: RecruitmentActorContext, to: string, data: Parameters<typeof RecruitmentEmailTemplates.offerLetter>[0]): Promise<void> {
+  async sendStageUpdate(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.stageUpdate>[0],
+  ): Promise<void> {
+    const template = RecruitmentEmailTemplates.stageUpdate(data);
+    await this.queueEmail(context, RECRUITMENT_EMAIL_JOB.STAGE_UPDATE, { ...template, to }, to);
+  },
+
+  async sendOfferLetter(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.offerLetter>[0],
+  ): Promise<void> {
     const template = RecruitmentEmailTemplates.offerLetter(data);
     await this.queueEmail(context, RECRUITMENT_EMAIL_JOB.OFFER_LETTER, { ...template, to }, to);
   },
 
-  async sendWelcome(context: RecruitmentActorContext, to: string, data: Parameters<typeof RecruitmentEmailTemplates.welcome>[0]): Promise<void> {
+  async sendJoiningInstructions(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.joiningInstructions>[0],
+  ): Promise<void> {
+    const template = RecruitmentEmailTemplates.joiningInstructions(data);
+    await this.queueEmail(
+      context,
+      RECRUITMENT_EMAIL_JOB.JOINING_INSTRUCTIONS,
+      { ...template, to },
+      to,
+    );
+  },
+
+  async sendWelcome(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.welcome>[0],
+  ): Promise<void> {
     const template = RecruitmentEmailTemplates.welcome(data);
     await this.queueEmail(context, RECRUITMENT_EMAIL_JOB.WELCOME, { ...template, to }, to);
   },
 
-  async createWelcomeNotification(context: RecruitmentActorContext, recipientId: string, title: string, body: string, entityId?: string): Promise<void> {
+  async sendAccountCredentials(
+    context: RecruitmentActorContext,
+    to: string,
+    data: Parameters<typeof RecruitmentEmailTemplates.accountCredentials>[0],
+  ): Promise<void> {
+    const template = RecruitmentEmailTemplates.accountCredentials(data);
+    await this.queueEmail(
+      context,
+      RECRUITMENT_EMAIL_JOB.ACCOUNT_CREDENTIALS,
+      { ...template, to },
+      to,
+    );
+  },
+
+  async createWelcomeNotification(
+    context: RecruitmentActorContext,
+    recipientId: string,
+    title: string,
+    body: string,
+    entityId?: string,
+  ): Promise<void> {
     await NotificationRepository.create(
       {
         id: generateUuid(),

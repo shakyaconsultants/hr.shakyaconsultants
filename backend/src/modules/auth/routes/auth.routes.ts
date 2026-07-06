@@ -9,14 +9,13 @@ import {
   refresh,
   resetPassword,
 } from '@modules/auth/controllers/auth.controller.js';
-import { bootstrap, getSystemStatus } from '@modules/auth/controllers/bootstrap.controller.js';
+import { getSystemStatus } from '@modules/auth/controllers/system-status.controller.js';
 import {
   authenticateMiddleware,
   optionalAuthenticateMiddleware,
 } from '@modules/auth/middleware/authenticate.middleware.js';
 import { createLoginRateLimitMiddleware } from '@modules/auth/middleware/login-rate-limit.middleware.js';
 import {
-  bootstrapRateLimitMiddleware,
   forgotPasswordRateLimitMiddleware,
   refreshRateLimitMiddleware,
   resetPasswordRateLimitMiddleware,
@@ -27,43 +26,6 @@ const authRoutes = Router();
 
 authRoutes.use(systemInitMiddleware());
 
-/**
- * @swagger
- * /auth/bootstrap:
- *   post:
- *     summary: Initialize the ERP system
- *     description: Idempotent bootstrap wizard — creates company, branch, permissions, roles, and super admin user. Only available when no company exists.
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [company, admin]
- *             properties:
- *               company:
- *                 type: object
- *               admin:
- *                 type: object
- *     responses:
- *       201:
- *         description: System initialized successfully
- *       409:
- *         description: System already initialized
- */
-authRoutes.post(AUTH_ROUTES.BOOTSTRAP, bootstrapRateLimitMiddleware, bootstrap);
-
-/**
- * @swagger
- * /auth/system/status:
- *   get:
- *     summary: Get system initialization status
- *     tags: [Auth]
- *     responses:
- *       200:
- *         description: Initialization status
- */
 authRoutes.get(AUTH_ROUTES.SYSTEM_STATUS, getSystemStatus);
 
 /**

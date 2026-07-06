@@ -1,1 +1,2 @@
-npm run typecheck --workspace=@hr-shakya/backend
+npx lint-staged
+npm run typecheck --workspaces --if-present

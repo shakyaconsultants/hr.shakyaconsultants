@@ -10,16 +10,23 @@ import { PayrollAuditService } from '@modules/payroll/services/payroll-audit.ser
 import type { PayrollActorContext } from '@modules/approval/types/approval.types.js';
 
 export const EmployeeCompensationService = {
-  async list(companyId: string, query: { employeeId?: string; status?: string; page?: number; pageSize?: number }) {
+  async list(
+    companyId: string,
+    query: { employeeId?: string; status?: string; page?: number; pageSize?: number },
+  ) {
     const filter: Record<string, unknown> = {};
     if (query.employeeId) filter.employeeId = query.employeeId;
     if (query.status) filter.status = query.status;
-    return EmployeeCompensationRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: 'effectiveFrom',
-      sortOrder: 'desc',
-    }, { companyId });
+    return EmployeeCompensationRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: 'effectiveFrom',
+        sortOrder: 'desc',
+      },
+      { companyId },
+    );
   },
 
   async getById(companyId: string, id: string) {
@@ -37,12 +44,19 @@ export const EmployeeCompensationService = {
         employeeId,
         status: EMPLOYEE_COMPENSATION_STATUS.ACTIVE,
         effectiveFrom: { $lte: date },
-        $or: [{ effectiveTo: { $exists: false } }, { effectiveTo: null }, { effectiveTo: { $gte: date } }],
+        $or: [
+          { effectiveTo: { $exists: false } },
+          { effectiveTo: null },
+          { effectiveTo: { $gte: date } },
+        ],
       },
       { page: 1, pageSize: 1, sortBy: 'effectiveFrom', sortOrder: 'desc' },
       { companyId },
     );
-    return result.items[0] ?? null;
+    if (result.items.length === 0) {
+      return null;
+    }
+    return result.items[0];
   },
 
   async getSalaryHistory(companyId: string, employeeId: string) {
@@ -63,14 +77,22 @@ export const EmployeeCompensationService = {
     return { ...active, salaryStructure: structure };
   },
 
-  async assign(context: PayrollActorContext, payload: {
-    employeeId: string;
-    salaryStructureId: string;
-    baseSalary: number;
-    currency?: string;
-    effectiveFrom: Date;
-    componentOverrides?: Array<{ code: string; amount: number; type?: string }>;
-  }) {
+  /** Active compensation with populated company salary structure (admin employee profile). */
+  async getActiveWithStructure(companyId: string, employeeId: string) {
+    return this.getMyCompensation(companyId, employeeId);
+  },
+
+  async assign(
+    context: PayrollActorContext,
+    payload: {
+      employeeId: string;
+      salaryStructureId: string;
+      baseSalary: number;
+      currency?: string;
+      effectiveFrom: Date;
+      componentOverrides?: Array<{ code: string; amount: number; type?: string }>;
+    },
+  ) {
     await SalaryStructureService.getById(context.companyId, payload.salaryStructureId);
 
     const active = await this.getActiveForEmployee(context.companyId, payload.employeeId);
@@ -118,12 +140,16 @@ export const EmployeeCompensationService = {
     return created;
   },
 
-  async update(context: PayrollActorContext, id: string, payload: {
-    baseSalary?: number;
-    currency?: string;
-    componentOverrides?: Array<{ code: string; amount: number; type?: string }>;
-    status?: string;
-  }) {
+  async update(
+    context: PayrollActorContext,
+    id: string,
+    payload: {
+      baseSalary?: number;
+      currency?: string;
+      componentOverrides?: Array<{ code: string; amount: number; type?: string }>;
+      status?: string;
+    },
+  ) {
     const before = await this.getById(context.companyId, id);
     const updated = await EmployeeCompensationRepository.update(
       id,

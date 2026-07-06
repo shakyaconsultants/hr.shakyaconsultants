@@ -16,7 +16,12 @@ import { salesRoutes } from '@modules/sales/index.js';
 import { communicationRoutes } from '@modules/communication/index.js';
 import { integrationRoutes } from '@modules/integration/index.js';
 import { portalRoutes } from '@modules/portal/index.js';
-import { ORGANIZATION_ROUTES, SETTINGS_ROUTES } from '@modules/organization/constants/organization.constants.js';
+import { reportsRoutes } from '@modules/reports/index.js';
+import { REPORTS_ROUTES } from '@modules/reports/constants/reports.constants.js';
+import {
+  ORGANIZATION_ROUTES,
+  SETTINGS_ROUTES,
+} from '@modules/organization/constants/organization.constants.js';
 import { RBAC_ROUTES } from '@modules/rbac/constants/rbac.constants.js';
 import { EMPLOYEE_ROUTES } from '@modules/employee/constants/employee.constants.js';
 import { RECRUITMENT_ROUTES } from '@modules/recruitment/constants/recruitment.constants.js';
@@ -48,6 +53,7 @@ v1Router.use(PAYROLL_ROUTES.BASE, payrollRoutes);
 v1Router.use(SALES_ROUTES.BASE, salesRoutes);
 v1Router.use(COMMUNICATION_ROUTES.BASE, communicationRoutes);
 v1Router.use(INTEGRATION_ROUTES.BASE, integrationRoutes);
+v1Router.use(REPORTS_ROUTES.BASE, reportsRoutes);
 v1Router.use('/portal', portalRoutes);
 
 export { v1Router };

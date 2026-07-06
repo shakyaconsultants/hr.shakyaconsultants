@@ -135,8 +135,4 @@ export function toLoginResponse(params: {
   };
 }
 
-export function toBootstrapResponse(result: BootstrapResultResponse): BootstrapResultResponse {
-  return result;
-}
-
 export type { BootstrapInput };

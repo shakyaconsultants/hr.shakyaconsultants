@@ -22,16 +22,32 @@ reportsRoutes.use(authenticateMiddleware);
 reportsRoutes.use(companyScopeMiddleware());
 
 /** @swagger tags: [Reports] */
-reportsRoutes.get('/dashboard/executive', authorize(REPORTS_PERMISSIONS.DASHBOARD_READ), getExecutiveDashboard);
-reportsRoutes.get('/dashboard/:role', authorize(REPORTS_PERMISSIONS.DASHBOARD_READ), getRoleDashboard);
+reportsRoutes.get(
+  '/dashboard/executive',
+  authorize(REPORTS_PERMISSIONS.DASHBOARD_READ),
+  getExecutiveDashboard,
+);
+reportsRoutes.get(
+  '/dashboard/:role',
+  authorize(REPORTS_PERMISSIONS.DASHBOARD_READ),
+  getRoleDashboard,
+);
 
 reportsRoutes.get('/widgets', authorize(REPORTS_PERMISSIONS.DASHBOARD_READ), getWidgets);
-reportsRoutes.get('/widgets/:id/data', authorize(REPORTS_PERMISSIONS.DASHBOARD_READ), getWidgetData);
+reportsRoutes.get(
+  '/widgets/:id/data',
+  authorize(REPORTS_PERMISSIONS.DASHBOARD_READ),
+  getWidgetData,
+);
 
 reportsRoutes.get('/settings', authorize(REPORTS_PERMISSIONS.DASHBOARD_READ), getSettings);
-reportsRoutes.patch('/settings', authorize(REPORTS_PERMISSIONS.DASHBOARD_READ), updateSettings);
+reportsRoutes.patch('/settings', authorize(REPORTS_PERMISSIONS.SETTINGS_MANAGE), updateSettings);
 
-reportsRoutes.get('/analytics/:domain', authorize(REPORTS_PERMISSIONS.REPORT_READ), getDomainAnalytics);
+reportsRoutes.get(
+  '/analytics/:domain',
+  authorize(REPORTS_PERMISSIONS.REPORT_READ),
+  getDomainAnalytics,
+);
 reportsRoutes.get('/reports', authorize(REPORTS_PERMISSIONS.REPORT_READ), generateReport);
 reportsRoutes.get('/reports/export', authorize(REPORTS_PERMISSIONS.REPORT_EXPORT), exportReport);
 reportsRoutes.get('/search', authorize(REPORTS_PERMISSIONS.REPORT_READ), searchReports);

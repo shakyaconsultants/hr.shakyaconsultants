@@ -13,6 +13,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: hr-shakya-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -22,16 +34,26 @@ services:
     ports:
       - '4000:4000'
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 4000
       HOST: 0.0.0.0
       MONGODB_URI: mongodb://mongodb:27017/hr_shakya
+      REDIS_URL: redis://redis:6379
       FRONTEND_URL: http://localhost:5173
+      AUTH_USE_HTTP_ONLY_COOKIES: 'false'
     env_file:
       - ./backend/.env.example
     depends_on:
       mongodb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - backend_logs:/app/logs
 
@@ -46,7 +68,8 @@ services:
     ports:
       - '5173:80'
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   mongodb_data:

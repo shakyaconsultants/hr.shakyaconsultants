@@ -71,16 +71,39 @@ export const HOLIDAY_TYPE = {
   PUBLIC: 'public',
   COMPANY: 'company',
   BRANCH: 'branch',
+  FESTIVAL: 'festival',
+  WEEKLY: 'weekly',
   OPTIONAL: 'optional',
   RECURRING: 'recurring',
 } as const;
 
+export const HOLIDAY_MODULE_TYPE = {
+  NATIONAL: 'national',
+  FESTIVAL: 'festival',
+  WEEKLY: 'weekly',
+  REGIONAL: 'regional',
+  CUSTOM: 'custom',
+} as const;
+
+export interface HolidayModuleDocument extends BaseDocument {
+  name: string;
+  code: string;
+  description?: string;
+  moduleType: string;
+  calendarYear?: number;
+  branchId?: string;
+  departmentIds: string[];
+  status: string;
+}
+
 export interface HolidayDocument extends BaseDocument {
   name: string;
-  date: Date;
+  date?: Date;
   type: string;
+  holidayModuleId?: string;
   branchId?: string;
   officeLocationId?: string;
+  dayOfWeek?: number;
   isRecurring: boolean;
   recurrenceRule?: string;
   isOptional: boolean;
@@ -166,12 +189,30 @@ const officeLocationFields: SchemaDefinition = {
   status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
 };
 
+const holidayModuleFields: SchemaDefinition = {
+  name: { type: String, required: true, trim: true },
+  code: { type: String, required: true, trim: true, uppercase: true },
+  description: { type: String, trim: true },
+  moduleType: {
+    type: String,
+    enum: Object.values(HOLIDAY_MODULE_TYPE),
+    default: HOLIDAY_MODULE_TYPE.CUSTOM,
+    index: true,
+  },
+  calendarYear: { type: Number, min: 2000, max: 2100, index: true },
+  branchId: { type: String, index: true },
+  departmentIds: { type: [String], default: [], index: true },
+  status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
+};
+
 const holidayFields: SchemaDefinition = {
   name: { type: String, required: true, trim: true },
-  date: { type: Date, required: true, index: true },
+  date: { type: Date, index: true },
   type: { type: String, enum: Object.values(HOLIDAY_TYPE), default: HOLIDAY_TYPE.PUBLIC },
+  holidayModuleId: { type: String, index: true },
   branchId: { type: String, index: true },
   officeLocationId: { type: String, index: true },
+  dayOfWeek: { type: Number, min: 0, max: 6, index: true },
   isRecurring: { type: Boolean, default: false },
   recurrenceRule: { type: String, trim: true },
   isOptional: { type: Boolean, default: false },
@@ -200,14 +241,18 @@ export const departmentModel = defineDomainModel<DepartmentDocument>(
   departmentFields,
   {
     indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_departments_company_code' } },
-      { fields: { companyId: 1, parentDepartmentId: 1, name: 1 }, options: { name: 'idx_departments_company_parent_name' } },
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_departments_company_code' },
+      },
+      {
+        fields: { companyId: 1, parentDepartmentId: 1, name: 1 },
+        options: { name: 'idx_departments_company_parent_name' },
+      },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_departments_company_status' } },
     ],
   },
 );
-
-
 
 export const designationModel = defineDomainModel<DesignationDocument>(
   'Designation',
@@ -215,8 +260,14 @@ export const designationModel = defineDomainModel<DesignationDocument>(
   designationFields,
   {
     indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_designations_company_code' } },
-      { fields: { companyId: 1, departmentId: 1, name: 1 }, options: { name: 'idx_designations_company_department_name' } },
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_designations_company_code' },
+      },
+      {
+        fields: { companyId: 1, departmentId: 1, name: 1 },
+        options: { name: 'idx_designations_company_department_name' },
+      },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_designations_company_status' } },
     ],
   },
@@ -228,7 +279,10 @@ export const branchModel = defineDomainModel<BranchDocument>(
   branchFields,
   {
     indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_branches_company_code' } },
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_branches_company_code' },
+      },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_branches_company_status' } },
     ],
   },
@@ -240,8 +294,36 @@ export const officeLocationModel = defineDomainModel<OfficeLocationDocument>(
   officeLocationFields,
   {
     indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_office_locations_company_code' } },
-      { fields: { companyId: 1, branchId: 1 }, options: { name: 'idx_office_locations_company_branch' } },
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_office_locations_company_code' },
+      },
+      {
+        fields: { companyId: 1, branchId: 1 },
+        options: { name: 'idx_office_locations_company_branch' },
+      },
+    ],
+  },
+);
+
+export const holidayModuleModel = defineDomainModel<HolidayModuleDocument>(
+  'HolidayModule',
+  COLLECTIONS.HOLIDAY_MODULES,
+  holidayModuleFields,
+  {
+    indexes: [
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_holiday_modules_company_code' },
+      },
+      {
+        fields: { companyId: 1, moduleType: 1, status: 1 },
+        options: { name: 'idx_holiday_modules_company_type_status' },
+      },
+      {
+        fields: { companyId: 1, departmentIds: 1 },
+        options: { name: 'idx_holiday_modules_company_departments' },
+      },
     ],
   },
 );
@@ -253,7 +335,18 @@ export const holidayModel = defineDomainModel<HolidayDocument>(
   {
     indexes: [
       { fields: { companyId: 1, date: 1 }, options: { name: 'idx_holidays_company_date' } },
-      { fields: { companyId: 1, branchId: 1, date: 1 }, options: { name: 'idx_holidays_company_branch_date' } },
+      {
+        fields: { companyId: 1, branchId: 1, date: 1 },
+        options: { name: 'idx_holidays_company_branch_date' },
+      },
+      {
+        fields: { companyId: 1, holidayModuleId: 1, date: 1 },
+        options: { name: 'idx_holidays_company_module_date' },
+      },
+      {
+        fields: { companyId: 1, holidayModuleId: 1, dayOfWeek: 1 },
+        options: { name: 'idx_holidays_company_module_dow' },
+      },
     ],
   },
 );
@@ -264,7 +357,10 @@ export const workShiftModel = defineDomainModel<WorkShiftDocument>(
   workShiftFields,
   {
     indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_work_shifts_company_code' } },
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_work_shifts_company_code' },
+      },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_work_shifts_company_status' } },
     ],
   },
@@ -274,6 +370,7 @@ export const DepartmentModel = departmentModel.model;
 export const DesignationModel = designationModel.model;
 export const BranchModel = branchModel.model;
 export const OfficeLocationModel = officeLocationModel.model;
+export const HolidayModuleModel = holidayModuleModel.model;
 export const HolidayModel = holidayModel.model;
 export const WorkShiftModel = workShiftModel.model;
 
@@ -281,5 +378,6 @@ export const DepartmentRepository = departmentModel.repository;
 export const DesignationRepository = designationModel.repository;
 export const BranchRepository = branchModel.repository;
 export const OfficeLocationRepository = officeLocationModel.repository;
+export const HolidayModuleRepository = holidayModuleModel.repository;
 export const HolidayRepository = holidayModel.repository;
 export const WorkShiftRepository = workShiftModel.repository;

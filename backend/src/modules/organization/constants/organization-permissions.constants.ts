@@ -18,7 +18,6 @@ export const ORG_PERMISSIONS = {
   DESIGNATION_UPDATE: 'designation.update',
   DESIGNATION_DELETE: 'designation.delete',
 
-
   OFFICE_LOCATION_READ: 'office-location.read',
   OFFICE_LOCATION_CREATE: 'office-location.create',
   OFFICE_LOCATION_UPDATE: 'office-location.update',
@@ -33,11 +32,6 @@ export const ORG_PERMISSIONS = {
   HOLIDAY_CREATE: 'holiday.create',
   HOLIDAY_UPDATE: 'holiday.update',
   HOLIDAY_DELETE: 'holiday.delete',
-
-  EMPLOYMENT_TYPE_READ: 'employment-type.read',
-  EMPLOYMENT_TYPE_CREATE: 'employment-type.create',
-  EMPLOYMENT_TYPE_UPDATE: 'employment-type.update',
-  EMPLOYMENT_TYPE_DELETE: 'employment-type.delete',
 
   SALARY_GRADE_READ: 'salary-grade.read',
   SALARY_GRADE_CREATE: 'salary-grade.create',
@@ -80,7 +74,6 @@ export const ORG_READ_PERMISSIONS: string[] = [
   ORG_PERMISSIONS.OFFICE_LOCATION_READ,
   ORG_PERMISSIONS.WORK_SHIFT_READ,
   ORG_PERMISSIONS.HOLIDAY_READ,
-  ORG_PERMISSIONS.EMPLOYMENT_TYPE_READ,
   ORG_PERMISSIONS.SALARY_GRADE_READ,
   ORG_PERMISSIONS.LEAVE_TYPE_READ,
   ORG_PERMISSIONS.PROJECT_CATEGORY_READ,

@@ -4,7 +4,10 @@ import { PORTAL, type PortalType } from '@/config/portals';
 type PermissionCheck = (code: string) => boolean;
 
 /** Resolve attendance landing route from authenticated portal — never infer from employee record. */
-export function resolveAttendanceHubRoute(portal: PortalType, hasPermission: PermissionCheck): string {
+export function resolveAttendanceHubRoute(
+  portal: PortalType,
+  hasPermission: PermissionCheck,
+): string {
   if (portal === PORTAL.ENTERPRISE) {
     if (hasPermission('attendance.update')) {
       return ROUTES.ATTENDANCE_ADMIN;
@@ -31,41 +34,28 @@ export function resolveAttendanceHubRoute(portal: PortalType, hasPermission: Per
   return ROUTES.FORBIDDEN;
 }
 
-/** Resolve payroll landing route from authenticated portal. */
+/** Resolve payroll landing route — payroll is managed per employee profile, not a standalone section. */
 export function resolvePayrollHubRoute(portal: PortalType, hasPermission: PermissionCheck): string {
-  if (portal === PORTAL.ENTERPRISE) {
-    if (hasPermission('payroll.update')) {
-      return ROUTES.PAYROLL_ADMIN;
-    }
-    if (hasPermission('payroll.read')) {
-      return ROUTES.PAYROLL_HR;
+  if (portal === PORTAL.ENTERPRISE || portal === PORTAL.MANAGER) {
+    if (hasPermission('employee.read')) {
+      return ROUTES.EMPLOYEES;
     }
     return ROUTES.FORBIDDEN;
   }
 
-  if (portal === PORTAL.MANAGER) {
-    if (hasPermission('payroll.process')) {
-      return ROUTES.PAYROLL_FINANCE;
-    }
-    return ROUTES.FORBIDDEN;
-  }
-
-  if (hasPermission('payslip.read')) {
-    return ROUTES.WORKSPACE_PAYROLL;
+  if (hasPermission('payslip.read') || hasPermission('payroll.read')) {
+    return `${ROUTES.WORKSPACE_PROFILE}?tab=payroll`;
   }
   return ROUTES.FORBIDDEN;
 }
 
 /** Resolve sales landing route from authenticated portal. */
 export function resolveSalesHubRoute(portal: PortalType, hasPermission: PermissionCheck): string {
-  if (hasPermission('pipeline.update')) {
-    return ROUTES.SALES_ADMIN;
-  }
   if (!hasPermission('lead.read')) {
     return ROUTES.FORBIDDEN;
   }
   if (portal === PORTAL.ENTERPRISE) {
-    return ROUTES.SALES_ADMIN;
+    return ROUTES.SALES;
   }
   if (portal === PORTAL.MANAGER) {
     return ROUTES.SALES_MANAGER;
@@ -74,13 +64,12 @@ export function resolveSalesHubRoute(portal: PortalType, hasPermission: Permissi
 }
 
 /** Resolve communication landing route from authenticated portal. */
-export function resolveCommunicationHubRoute(portal: PortalType, hasPermission: PermissionCheck): string {
-  if (hasPermission('notifications.broadcast')) {
-    return ROUTES.COMMUNICATION_ADMIN;
-  }
-
+export function resolveCommunicationHubRoute(
+  portal: PortalType,
+  hasPermission: PermissionCheck,
+): string {
   if (portal === PORTAL.ENTERPRISE) {
-    if (hasPermission('notification.read')) {
+    if (hasPermission('notification.read') || hasPermission('notifications.broadcast')) {
       return ROUTES.COMMUNICATION;
     }
     return ROUTES.FORBIDDEN;

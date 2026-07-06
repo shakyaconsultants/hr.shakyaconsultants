@@ -1,7 +1,7 @@
 export const SUPER_ADMIN_ROLE = {
   slug: 'super-admin',
-  name: 'Super Admin',
-  description: 'Full system access with all permissions',
+  name: 'Admin',
+  description: 'Top-level administrator with full system access — manages HQ and all employees',
   isSystem: true,
 } as const;
 

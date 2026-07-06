@@ -4,14 +4,20 @@ import { DatePicker } from '@/shared/components/date-picker';
 import { MasterDataSelect } from '@/shared/components/master-data-select';
 import { Input } from '@/shared/components/ui/input';
 import type { HolidayRecord } from '@/features/organization/holidays/holiday.api';
-import { HOLIDAY_TYPES, RECURRENCE_OPTIONS } from '@/features/organization/holidays/holiday.constants';
+import {
+  HOLIDAY_TYPES,
+  RECURRENCE_OPTIONS,
+} from '@/features/organization/holidays/holiday.constants';
+import { WEEKDAY_OPTIONS } from '@/features/organization/holidays/holiday-module.constants';
 import { toDateInputValue } from '@/shared/utils/datetime';
 
 export interface HolidayFormValue {
   name: string;
   date: string;
   type: string;
+  holidayModuleId: string;
   branchId: string;
+  dayOfWeek: string;
   description: string;
   status: string;
   isRecurring: boolean;
@@ -19,12 +25,14 @@ export interface HolidayFormValue {
   isOptional: boolean;
 }
 
-export function defaultHolidayFormValue(date?: string): HolidayFormValue {
+export function defaultHolidayFormValue(date?: string, moduleId?: string): HolidayFormValue {
   return {
     name: '',
     date: date ?? '',
     type: 'public',
+    holidayModuleId: moduleId ?? '',
     branchId: '',
+    dayOfWeek: '0',
     description: '',
     status: 'active',
     isRecurring: false,
@@ -39,7 +47,9 @@ export function recordToHolidayForm(record: HolidayRecord | null): HolidayFormVa
     name: String(record.name ?? ''),
     date: record.date ? toDateInputValue(String(record.date)) : '',
     type: String(record.type ?? 'public'),
+    holidayModuleId: String(record.holidayModuleId ?? ''),
     branchId: String(record.branchId ?? ''),
+    dayOfWeek: record.dayOfWeek !== undefined ? String(record.dayOfWeek) : '0',
     description: String(record.description ?? ''),
     status: String(record.status ?? 'active'),
     isRecurring: Boolean(record.isRecurring),
@@ -56,7 +66,15 @@ export function holidayFormToPayload(value: HolidayFormValue): Record<string, un
     isRecurring: value.isRecurring,
     isOptional: value.isOptional || value.type === 'optional',
     description: value.description.trim() || undefined,
+    holidayModuleId: value.holidayModuleId || undefined,
   };
+
+  if (value.type === 'weekly') {
+    payload.dayOfWeek = Number(value.dayOfWeek);
+    payload.isRecurring = true;
+    payload.recurrenceRule = 'weekly';
+    return payload;
+  }
 
   if (value.date) {
     payload.date = new Date(`${value.date}T00:00:00`).toISOString();
@@ -80,12 +98,15 @@ export function holidayFormToPayload(value: HolidayFormValue): Record<string, un
 interface HolidayFormProps {
   value: HolidayFormValue;
   onChange: (value: HolidayFormValue) => void;
+  moduleFilterId?: string;
 }
 
-export function HolidayForm({ value, onChange }: HolidayFormProps) {
+export function HolidayForm({ value, onChange, moduleFilterId }: HolidayFormProps) {
   function update<K extends keyof HolidayFormValue>(key: K, next: HolidayFormValue[K]) {
     onChange({ ...value, [key]: next });
   }
+
+  const isWeekly = value.type === 'weekly';
 
   return (
     <div className="space-y-4">
@@ -96,12 +117,18 @@ export function HolidayForm({ value, onChange }: HolidayFormProps) {
               id="holiday-name"
               value={value.name}
               required
-              placeholder="e.g. Independence Day"
+              placeholder="e.g. Diwali, Republic Day, Saturday Off"
               onChange={(event) => update('name', event.target.value)}
             />
           </SelectField>
-          <SelectField label="Date" htmlFor="holiday-date" required>
-            <DatePicker value={value.date} onChange={(next) => update('date', next)} required />
+          <SelectField label="Holiday Module" htmlFor="holiday-module">
+            <MasterDataSelect
+              id="holiday-module"
+              entityKey="holiday-module"
+              value={value.holidayModuleId || moduleFilterId || ''}
+              onChange={(next) => update('holidayModuleId', next)}
+              placeholder="Select module (recommended)"
+            />
           </SelectField>
           <SelectField label="Holiday Type" htmlFor="holiday-type" required>
             <select
@@ -117,6 +144,26 @@ export function HolidayForm({ value, onChange }: HolidayFormProps) {
               ))}
             </select>
           </SelectField>
+          {isWeekly ? (
+            <SelectField label="Weekly Off Day" htmlFor="holiday-dow" required>
+              <select
+                id="holiday-dow"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={value.dayOfWeek}
+                onChange={(event) => update('dayOfWeek', event.target.value)}
+              >
+                {WEEKDAY_OPTIONS.map((option) => (
+                  <option key={option.value} value={String(option.value)}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </SelectField>
+          ) : (
+            <SelectField label="Date" htmlFor="holiday-date" required>
+              <DatePicker value={value.date} onChange={(next) => update('date', next)} required />
+            </SelectField>
+          )}
           <SelectField label="Status" htmlFor="holiday-status">
             <select
               id="holiday-status"
@@ -154,42 +201,44 @@ export function HolidayForm({ value, onChange }: HolidayFormProps) {
         </div>
       </FormSection>
 
-      <FormSection title="Recurrence & Policy">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={value.isOptional}
-              onChange={(event) => update('isOptional', event.target.checked)}
-            />
-            <span>Employees may choose to work (optional / restricted holiday)</span>
-          </label>
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={value.isRecurring}
-              onChange={(event) => update('isRecurring', event.target.checked)}
-            />
-            <span>Recurring holiday</span>
-          </label>
-          {value.isRecurring ? (
-            <SelectField label="Recurrence" htmlFor="holiday-recurrence">
-              <select
-                id="holiday-recurrence"
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={value.recurrenceRule}
-                onChange={(event) => update('recurrenceRule', event.target.value)}
-              >
-                {RECURRENCE_OPTIONS.map((option) => (
-                  <option key={option.value || 'none'} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </SelectField>
-          ) : null}
-        </div>
-      </FormSection>
+      {!isWeekly ? (
+        <FormSection title="Recurrence & Policy">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={value.isOptional}
+                onChange={(event) => update('isOptional', event.target.checked)}
+              />
+              <span>Employees may choose to work (optional / restricted holiday)</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={value.isRecurring}
+                onChange={(event) => update('isRecurring', event.target.checked)}
+              />
+              <span>Recurring holiday (e.g. same date every year)</span>
+            </label>
+            {value.isRecurring ? (
+              <SelectField label="Recurrence" htmlFor="holiday-recurrence">
+                <select
+                  id="holiday-recurrence"
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={value.recurrenceRule}
+                  onChange={(event) => update('recurrenceRule', event.target.value)}
+                >
+                  {RECURRENCE_OPTIONS.map((option) => (
+                    <option key={option.value || 'none'} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </SelectField>
+            ) : null}
+          </div>
+        </FormSection>
+      ) : null}
     </div>
   );
 }

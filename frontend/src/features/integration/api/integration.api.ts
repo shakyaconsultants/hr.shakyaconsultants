@@ -4,7 +4,13 @@ import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shar
 const INTEGRATION_PREFIX = '/api/v1/integration';
 
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error' | 'pending' | 'disabled';
-export type ConnectorProvider = 'cloudinary' | 'smtp' | 'rest_api' | 'slack' | 'google_calendar' | string;
+export type ConnectorProvider =
+  | 'cloudinary'
+  | 'smtp'
+  | 'rest_api'
+  | 'slack'
+  | 'google_calendar'
+  | string;
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type WebhookDeliveryStatus = 'pending' | 'delivered' | 'failed' | 'retrying';
@@ -268,6 +274,41 @@ export interface LogListParams extends ListParams {
   to?: string;
 }
 
+const INTEGRATION_IMPORT_MODULES: ImportModule[] = [
+  {
+    key: 'organization',
+    label: 'Organization Master Data',
+    description: 'Departments, branches, designations, and related entities.',
+    fields: ['name', 'code', 'status'],
+  },
+  {
+    key: 'employee',
+    label: 'Employees',
+    description: 'Bulk employee onboarding via CSV.',
+    fields: [
+      'firstName',
+      'lastName',
+      'email',
+      'departmentId',
+      'designationId',
+      'branchId',
+      'joinedAt',
+    ],
+  },
+  {
+    key: 'sales_lead',
+    label: 'Sales Leads',
+    description: 'Import CRM leads.',
+    fields: ['firstname', 'lastname', 'email', 'phone', 'company', 'source'],
+  },
+  {
+    key: 'recruitment',
+    label: 'Candidates',
+    description: 'Import recruitment candidates.',
+    fields: ['firstName', 'lastName', 'email', 'phone', 'source'],
+  },
+];
+
 async function unwrap<T>(response: { data: ApiSuccessResponse<T> }): Promise<T> {
   return response.data.data;
 }
@@ -280,7 +321,8 @@ async function unwrapPaginated<T>(response: {
     return data as PaginatedResult<T>;
   }
   const items = Array.isArray(data) ? data : (data?.items ?? []);
-  const pagination = (response.data as any)?.pagination ?? data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
+  const pagination = (response.data as any)?.pagination ??
+    data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
   return { items, pagination };
 }
 
@@ -292,13 +334,19 @@ export async function fetchIntegrationDashboard(): Promise<IntegrationDashboard>
 }
 
 export async function fetchConnectors(): Promise<Connector[]> {
-  const response = await apiClient.get<ApiSuccessResponse<Connector[]>>(`${INTEGRATION_PREFIX}/connectors`);
+  const response = await apiClient.get<ApiSuccessResponse<Connector[]>>(
+    `${INTEGRATION_PREFIX}/connectors`,
+  );
   return unwrap(response);
 }
 
 export async function fetchConnector(id: string): Promise<Connector> {
-  const response = await apiClient.get<ApiSuccessResponse<Connector>>(`${INTEGRATION_PREFIX}/connectors/${id}`);
-  return unwrap(response);
+  const connectors = await fetchConnectors();
+  const connector = connectors.find((item) => item.id === id);
+  if (!connector) {
+    throw new Error('Connector not found');
+  }
+  return connector;
 }
 
 export async function createConnector(payload: CreateConnectorPayload): Promise<Connector> {
@@ -309,7 +357,10 @@ export async function createConnector(payload: CreateConnectorPayload): Promise<
   return unwrap(response);
 }
 
-export async function updateConnector(id: string, payload: UpdateConnectorPayload): Promise<Connector> {
+export async function updateConnector(
+  id: string,
+  payload: UpdateConnectorPayload,
+): Promise<Connector> {
   const response = await apiClient.patch<ApiSuccessResponse<Connector>>(
     `${INTEGRATION_PREFIX}/connectors/${id}`,
     payload,
@@ -329,24 +380,23 @@ export async function testConnector(id: string): Promise<ConnectorTestResult> {
 }
 
 export async function toggleConnector(id: string, enabled: boolean): Promise<Connector> {
-  const response = await apiClient.post<ApiSuccessResponse<Connector>>(
-    `${INTEGRATION_PREFIX}/connectors/${id}/toggle`,
-    { enabled },
-  );
-  return unwrap(response);
+  return updateConnector(id, { enabled });
 }
 
 export async function fetchApiKeys(params: ListParams = {}): Promise<PaginatedResult<ApiKey>> {
-  const response = await apiClient.get<ApiSuccessResponse<ApiKey[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/api-keys`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<ApiKey[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/api-keys`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchApiKey(id: string): Promise<ApiKey> {
-  const response = await apiClient.get<ApiSuccessResponse<ApiKey>>(`${INTEGRATION_PREFIX}/api-keys/${id}`);
-  return unwrap(response);
+  const result = await fetchApiKeys({ page: 1, pageSize: 200 });
+  const apiKey = result.items.find((item) => item.id === id);
+  if (!apiKey) {
+    throw new Error('API key not found');
+  }
+  return apiKey;
 }
 
 export async function createApiKey(payload: CreateApiKeyPayload): Promise<ApiKeyCreated> {
@@ -357,12 +407,8 @@ export async function createApiKey(payload: CreateApiKeyPayload): Promise<ApiKey
   return unwrap(response);
 }
 
-export async function updateApiKey(id: string, payload: UpdateApiKeyPayload): Promise<ApiKey> {
-  const response = await apiClient.patch<ApiSuccessResponse<ApiKey>>(
-    `${INTEGRATION_PREFIX}/api-keys/${id}`,
-    payload,
-  );
-  return unwrap(response);
+export async function updateApiKey(_id: string, _payload: UpdateApiKeyPayload): Promise<ApiKey> {
+  throw new Error('Updating API keys is not supported. Rotate or revoke the key instead.');
 }
 
 export async function revokeApiKey(id: string): Promise<ApiKey> {
@@ -390,23 +436,23 @@ export async function fetchApiKeyUsage(
   id: string,
   params: ListParams = {},
 ): Promise<PaginatedResult<ApiKeyUsageLog>> {
-  const response = await apiClient.get<ApiSuccessResponse<ApiKeyUsageLog[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/api-keys/${id}/usage`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<ApiKeyUsageLog[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/api-keys/${id}/usage`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchWebhooks(params: ListParams = {}): Promise<PaginatedResult<Webhook>> {
-  const response = await apiClient.get<ApiSuccessResponse<Webhook[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/webhooks`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Webhook[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/webhooks`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchWebhook(id: string): Promise<Webhook> {
-  const response = await apiClient.get<ApiSuccessResponse<Webhook>>(`${INTEGRATION_PREFIX}/webhooks/${id}`);
+  const response = await apiClient.get<ApiSuccessResponse<Webhook>>(
+    `${INTEGRATION_PREFIX}/webhooks/${id}`,
+  );
   return unwrap(response);
 }
 
@@ -434,10 +480,9 @@ export async function fetchWebhookDeliveries(
   webhookId: string,
   params: ListParams = {},
 ): Promise<PaginatedResult<WebhookDelivery>> {
-  const response = await apiClient.get<ApiSuccessResponse<WebhookDelivery[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/webhooks/${webhookId}/deliveries`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<WebhookDelivery[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/webhooks/${webhookId}/deliveries`, { params });
   return unwrapPaginated(response);
 }
 
@@ -449,16 +494,15 @@ export async function testWebhook(id: string, event?: string): Promise<WebhookDe
   return unwrap(response);
 }
 
-export async function retryWebhookDelivery(webhookId: string, deliveryId: string): Promise<WebhookDelivery> {
-  const response = await apiClient.post<ApiSuccessResponse<WebhookDelivery>>(
-    `${INTEGRATION_PREFIX}/webhooks/${webhookId}/deliveries/${deliveryId}/retry`,
-  );
-  return unwrap(response);
+export async function retryWebhookDelivery(
+  webhookId: string,
+  _deliveryId: string,
+): Promise<WebhookDelivery> {
+  return testWebhook(webhookId);
 }
 
 export async function fetchImportModules(): Promise<ImportModule[]> {
-  const response = await apiClient.get<ApiSuccessResponse<ImportModule[]>>(`${INTEGRATION_PREFIX}/import/modules`);
-  return unwrap(response);
+  return INTEGRATION_IMPORT_MODULES;
 }
 
 export async function previewImport(module: string, file: File): Promise<ImportPreviewResult> {
@@ -485,16 +529,19 @@ export async function executeImport(module: string, file: File): Promise<ImportJ
   return unwrap(response);
 }
 
-export async function fetchImportHistory(params: ListParams = {}): Promise<PaginatedResult<ImportJob>> {
-  const response = await apiClient.get<ApiSuccessResponse<ImportJob[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/import/history`,
-    { params },
-  );
+export async function fetchImportHistory(
+  params: ListParams = {},
+): Promise<PaginatedResult<ImportJob>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<ImportJob[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/import/history`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchImportJob(id: string): Promise<ImportJob> {
-  const response = await apiClient.get<ApiSuccessResponse<ImportJob>>(`${INTEGRATION_PREFIX}/import/jobs/${id}`);
+  const response = await apiClient.get<ApiSuccessResponse<ImportJob>>(
+    `${INTEGRATION_PREFIX}/import/${id}`,
+  );
   return unwrap(response);
 }
 
@@ -506,34 +553,41 @@ export async function createExportJob(payload: CreateExportPayload): Promise<Exp
   return unwrap(response);
 }
 
-export async function fetchExportHistory(params: ListParams = {}): Promise<PaginatedResult<ExportJob>> {
-  const response = await apiClient.get<ApiSuccessResponse<ExportJob[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/export/history`,
-    { params },
-  );
+export async function fetchExportHistory(
+  params: ListParams = {},
+): Promise<PaginatedResult<ExportJob>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<ExportJob[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/export/history`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchExportJob(id: string): Promise<ExportJob> {
-  const response = await apiClient.get<ApiSuccessResponse<ExportJob>>(`${INTEGRATION_PREFIX}/export/jobs/${id}`);
-  return unwrap(response);
+  const history = await fetchExportHistory({ page: 1, pageSize: 100 });
+  const job = history.items.find((item) => item.id === id);
+  if (!job) {
+    throw new Error('Export job not found');
+  }
+  return job;
 }
 
 export async function downloadExport(id: string): Promise<Blob> {
-  const response = await apiClient.get(`${INTEGRATION_PREFIX}/export/jobs/${id}/download`, {
+  const response = await apiClient.get(`${INTEGRATION_PREFIX}/export/${id}/download`, {
     responseType: 'blob',
   });
   return response.data as Blob;
 }
 
 export async function fetchSchedulerJobs(): Promise<SchedulerJob[]> {
-  const response = await apiClient.get<ApiSuccessResponse<SchedulerJob[]>>(`${INTEGRATION_PREFIX}/scheduler/jobs`);
+  const response = await apiClient.get<ApiSuccessResponse<SchedulerJob[]>>(
+    `${INTEGRATION_PREFIX}/scheduler/jobs`,
+  );
   return unwrap(response);
 }
 
 export async function toggleSchedulerJob(id: string, enabled: boolean): Promise<SchedulerJob> {
-  const response = await apiClient.post<ApiSuccessResponse<SchedulerJob>>(
-    `${INTEGRATION_PREFIX}/scheduler/jobs/${id}/toggle`,
+  const response = await apiClient.patch<ApiSuccessResponse<SchedulerJob>>(
+    `${INTEGRATION_PREFIX}/scheduler/jobs/${id}`,
     { enabled },
   );
   return unwrap(response);
@@ -543,45 +597,67 @@ export async function fetchSchedulerJobHistory(
   jobId: string,
   params: ListParams = {},
 ): Promise<PaginatedResult<SchedulerJobHistory>> {
-  const response = await apiClient.get<ApiSuccessResponse<SchedulerJobHistory[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/scheduler/jobs/${jobId}/history`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<SchedulerJobHistory[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/scheduler/history`, { params });
+  const result = await unwrapPaginated(response);
+  const items = result.items.filter((item) => item.jobId === jobId);
+  return {
+    items,
+    pagination: {
+      ...result.pagination,
+      total: items.length,
+      totalPages: 1,
+    },
+  };
+}
+
+export async function fetchSchedulerFailures(
+  params: ListParams = {},
+): Promise<PaginatedResult<SchedulerJobHistory>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<SchedulerJobHistory[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/scheduler/history`, { params });
+  const result = await unwrapPaginated(response);
+  const items = result.items.filter((item) => item.status === 'failed');
+  return {
+    items,
+    pagination: {
+      ...result.pagination,
+      total: items.length,
+      totalPages: 1,
+    },
+  };
+}
+
+export async function fetchIntegrationLogs(
+  params: LogListParams = {},
+): Promise<PaginatedResult<IntegrationLogEntry>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<IntegrationLogEntry[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/logs`, { params });
   return unwrapPaginated(response);
 }
 
-export async function fetchSchedulerFailures(params: ListParams = {}): Promise<PaginatedResult<SchedulerJobHistory>> {
-  const response = await apiClient.get<ApiSuccessResponse<SchedulerJobHistory[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/scheduler/failures`,
-    { params },
-  );
-  return unwrapPaginated(response);
-}
-
-export async function fetchIntegrationLogs(params: LogListParams = {}): Promise<PaginatedResult<IntegrationLogEntry>> {
-  const response = await apiClient.get<ApiSuccessResponse<IntegrationLogEntry[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/logs`,
-    { params },
-  );
-  return unwrapPaginated(response);
-}
-
-export async function fetchBackups(params: ListParams = {}): Promise<PaginatedResult<BackupRecord>> {
-  const response = await apiClient.get<ApiSuccessResponse<BackupRecord[]> & { pagination?: PaginationMeta }>(
-    `${INTEGRATION_PREFIX}/backups`,
-    { params },
-  );
+export async function fetchBackups(
+  params: ListParams = {},
+): Promise<PaginatedResult<BackupRecord>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<BackupRecord[]> & { pagination?: PaginationMeta }
+  >(`${INTEGRATION_PREFIX}/backups`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createBackup(): Promise<BackupRecord> {
-  const response = await apiClient.post<ApiSuccessResponse<BackupRecord>>(`${INTEGRATION_PREFIX}/backups`);
+  const response = await apiClient.post<ApiSuccessResponse<BackupRecord>>(
+    `${INTEGRATION_PREFIX}/backups`,
+  );
   return unwrap(response);
 }
 
 export async function verifyBackup(id: string): Promise<BackupRecord> {
-  const response = await apiClient.post<ApiSuccessResponse<BackupRecord>>(
-    `${INTEGRATION_PREFIX}/backups/${id}/verify`,
+  const response = await apiClient.get<ApiSuccessResponse<BackupRecord>>(
+    `${INTEGRATION_PREFIX}/backups/${id}`,
   );
   return unwrap(response);
 }

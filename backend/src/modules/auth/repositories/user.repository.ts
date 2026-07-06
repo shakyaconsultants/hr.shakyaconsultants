@@ -1,6 +1,7 @@
 import type { ClientSession } from 'mongoose';
 import { UserModel, USER_STATUS, type UserDocument } from '@domain/auth/user.schema.js';
 import { getEnv } from '@config/env.js';
+import { SessionService } from '@modules/auth/services/session.service.js';
 
 export const AuthUserRepository = {
   async findByEmailWithPassword(email: string, companyId: string): Promise<UserDocument | null> {
@@ -30,7 +31,7 @@ export const AuthUserRepository = {
     }
 
     if (user.failedLoginAttempts >= env.AUTH_MAX_FAILED_ATTEMPTS) {
-      return UserModel.findOneAndUpdate(
+      const locked = await UserModel.findOneAndUpdate(
         { id: userId, companyId },
         {
           $set: {
@@ -41,6 +42,12 @@ export const AuthUserRepository = {
         },
         { new: true },
       ).exec();
+
+      if (locked) {
+        await SessionService.revokeAllUserSessions(companyId, userId, userId);
+      }
+
+      return locked;
     }
 
     return user;
@@ -72,6 +79,7 @@ export const AuthUserRepository = {
         },
       },
     ).exec();
+    await SessionService.revokeAllUserSessions(companyId, userId, userId);
   },
 
   async updateLastLogin(userId: string, companyId: string): Promise<void> {

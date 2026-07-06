@@ -22,12 +22,6 @@ export function createAuthEndpointRateLimitMiddleware(options: AuthEndpointRateL
   });
 }
 
-export const bootstrapRateLimitMiddleware = createAuthEndpointRateLimitMiddleware({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
-  message: 'Too many bootstrap attempts, please try again later',
-});
-
 export const forgotPasswordRateLimitMiddleware = createAuthEndpointRateLimitMiddleware({
   windowMs: 15 * 60 * 1000,
   max: 5,

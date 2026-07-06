@@ -1,15 +1,23 @@
-import { HolidayRepository } from '@domain/organization/organization.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
-import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
+import { HolidayResolverService } from '@modules/organization/services/holiday-resolver.service.js';
 import { LeaveRequestService } from '@modules/leave-exit/services/leave-request.service.js';
+import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 
 export const CompanyCalendarService = {
   async getEvents(companyId: string, startDate: string, endDate: string, employeeId?: string) {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    let scope: { branchId?: string; departmentId?: string } = {};
+    if (employeeId) {
+      const employee = await EmployeeRepository.findById(employeeId, { companyId });
+      if (employee) {
+        scope = { branchId: employee.branchId, departmentId: employee.departmentId };
+      }
+    }
+
     const [holidays, approvedLeave, employees] = await Promise.all([
-      HolidayRepository.findMany({ date: { $gte: start, $lte: end }, status: ENTITY_STATUS.ACTIVE }, { companyId }),
+      HolidayResolverService.listHolidaysInRange(companyId, start, end, scope),
       LeaveRequestService.getCalendar(companyId, startDate, endDate, employeeId),
       EmployeeRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId }),
     ]);
@@ -62,7 +70,9 @@ export const CompanyCalendarService = {
       }
     }
 
-    events.sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
+    events.sort(
+      (a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime(),
+    );
     return { events, startDate, endDate };
   },
 };

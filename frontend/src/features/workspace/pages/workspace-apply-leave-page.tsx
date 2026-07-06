@@ -71,7 +71,10 @@ export function WorkspaceApplyLeavePage() {
 
   return (
     <div className="space-y-6">
-      <WorkspacePageHeader title="Apply Leave" description="Submit a leave request for approval." />
+      <WorkspacePageHeader
+        title="Leave & Time Off"
+        description="Apply for leave, track requests, view balance, or submit resignation."
+      />
       <WorkspaceLeaveNav />
 
       {!employeeId ? (
@@ -79,9 +82,16 @@ export function WorkspaceApplyLeavePage() {
           Your account is not linked to an employee record. Contact HR to apply for leave.
         </p>
       ) : (
-        <form onSubmit={(e) => void onSubmit(e)} className="max-w-xl space-y-4 rounded-lg border bg-card p-6">
+        <form
+          onSubmit={(e) => void onSubmit(e)}
+          className="max-w-xl space-y-4 rounded-lg border bg-card p-6"
+        >
           <Field label="Leave Policy" required>
-            <Select value={leavePolicyId} onChange={(e) => setLeavePolicyId(e.target.value)} required>
+            <Select
+              value={leavePolicyId}
+              onChange={(e) => setLeavePolicyId(e.target.value)}
+              required
+            >
               <option value="">Select policy</option>
               {(policies ?? []).map((p) => (
                 <option key={p.id} value={p.id}>
@@ -93,7 +103,12 @@ export function WorkspaceApplyLeavePage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Start Date" required>
-              <DatePicker value={startDate} onChange={setStartDate} max={endDate || undefined} required />
+              <DatePicker
+                value={startDate}
+                onChange={setStartDate}
+                max={endDate || undefined}
+                required
+              />
             </Field>
             <Field label="End Date" required error={dateRangeError ?? undefined}>
               <DatePicker
@@ -115,11 +130,20 @@ export function WorkspaceApplyLeavePage() {
           </Field>
 
           <Field label="Reason" required>
-            <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} required />
+            <Textarea
+              rows={3}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              required
+            />
           </Field>
 
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isEmergency} onChange={(e) => setIsEmergency(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={isEmergency}
+              onChange={(e) => setIsEmergency(e.target.checked)}
+            />
             Emergency leave
           </label>
 
@@ -134,7 +158,17 @@ export function WorkspaceApplyLeavePage() {
   );
 }
 
-function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: ReactNode }) {
+function Field({
+  label,
+  required,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="block space-y-1 text-sm">
       <span className="font-medium">

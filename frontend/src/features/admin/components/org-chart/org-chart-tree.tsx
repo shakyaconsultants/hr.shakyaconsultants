@@ -57,7 +57,8 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
       <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 p-10 text-center">
         <p className="text-lg font-semibold">No organizational structure yet</p>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          Add branches and departments from Organization settings to visualize your company hierarchy here.
+          Add branches and departments from Organization settings to visualize your company
+          hierarchy here.
         </p>
       </div>
     );
@@ -93,7 +94,9 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
 
             return (
               <div key={branch.id} className="flex flex-col items-center">
-                {tree.branches.length > 1 ? <div className="mb-0 h-6 w-px bg-border" aria-hidden /> : null}
+                {tree.branches.length > 1 ? (
+                  <div className="mb-0 h-6 w-px bg-border" aria-hidden />
+                ) : null}
 
                 <div className="relative">
                   <Button
@@ -104,7 +107,11 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
                     onClick={() => toggleBranch(branch.id)}
                     aria-label={branchCollapsed ? 'Expand branch' : 'Collapse branch'}
                   >
-                    {branchCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    {branchCollapsed ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
                   </Button>
                   <OrgChartBranchNode
                     name={branch.name}
@@ -118,7 +125,7 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
                     {branch.branchHead ? (
                       <>
                         <OrgChartConnector />
-                        <OrgChartEmployeeCard employee={branch.branchHead} />
+                        <OrgChartEmployeeCard employee={branch.branchHead} variant="admin" />
                       </>
                     ) : null}
                     <OrgChartHorizontalRail childCount={branch.departments.length} />
@@ -145,7 +152,9 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
                                 size="sm"
                                 className="absolute -left-7 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
                                 onClick={() => toggleDepartment(department.id)}
-                                aria-label={deptCollapsed ? 'Expand department' : 'Collapse department'}
+                                aria-label={
+                                  deptCollapsed ? 'Expand department' : 'Collapse department'
+                                }
                               >
                                 {deptCollapsed ? (
                                   <ChevronRight className="h-4 w-4" />
@@ -165,7 +174,11 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
                                 {department.employees.length > 0 ? <OrgChartConnector /> : null}
                                 <div className="flex flex-col items-stretch gap-2">
                                   {visibleEmployees.map((employee) => (
-                                    <OrgChartEmployeeCard key={employee.id} employee={employee} compact />
+                                    <OrgChartEmployeeCard
+                                      key={employee.id}
+                                      employee={employee}
+                                      compact
+                                    />
                                   ))}
                                   {hiddenCount > 0 ? (
                                     <Button
@@ -219,6 +232,10 @@ export function OrgChartLegend() {
       <span className="inline-flex items-center gap-2">
         <span className="h-2.5 w-2.5 rounded-full bg-sky-500/30" />
         Employee
+      </span>
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-primary/40 ring-1 ring-primary/40" />
+        Admin
       </span>
     </div>
   );

@@ -25,7 +25,7 @@ export const SystemInitService = {
     if (!initialized) {
       throw new AppError({
         code: ERROR_CODES.SYSTEM_NOT_INITIALIZED,
-        message: 'System is not initialized. Complete bootstrap setup first.',
+        message: 'System is not initialized. Run `npm run seed` once from the backend workspace.',
         statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
       });
     }

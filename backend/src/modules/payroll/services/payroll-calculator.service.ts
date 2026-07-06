@@ -5,7 +5,10 @@ import {
   type PayrollLineItem,
   type SalaryStructureDocument,
 } from '@domain/payroll/payroll.schemas.js';
-import type { PayrollPolicySettings, StatutoryPluginConfig } from '@modules/payroll/services/payroll-policy.service.js';
+import type {
+  PayrollPolicySettings,
+  StatutoryPluginConfig,
+} from '@modules/payroll/services/payroll-policy.service.js';
 
 export interface PayrollCalculationInput {
   baseSalary: number;
@@ -35,13 +38,9 @@ export interface PayrollCalculationResult {
   attendanceSummary: Record<string, unknown>;
 }
 
-function computeComponentAmount(
-  baseSalary: number,
-  type: string,
-  amount: number,
-): number {
+function computeComponentAmount(baseSalary: number, type: string, amount: number): number {
   if (type === SALARY_COMPONENT_TYPE.PERCENTAGE) {
-    return Math.round((baseSalary * amount) / 100 * 100) / 100;
+    return Math.round(((baseSalary * amount) / 100) * 100) / 100;
   }
   return amount;
 }
@@ -54,9 +53,10 @@ function applyLwpDeduction(
   const lopDays = typeof attendanceSummary.lopDays === 'number' ? attendanceSummary.lopDays : 0;
   if (lopDays <= 0) return 0;
 
-  const workingDays = typeof attendanceSummary.payableDays === 'number'
-    ? (attendanceSummary.payableDays as number) + lopDays
-    : 30;
+  const workingDays =
+    typeof attendanceSummary.payableDays === 'number'
+      ? attendanceSummary.payableDays + lopDays
+      : 30;
 
   if (lwpBasis === 'daily' && workingDays > 0) {
     const dailyRate = baseSalary / workingDays;
@@ -70,7 +70,8 @@ function applyOvertime(
   attendanceSummary: AttendancePayrollSnapshot,
   multiplier: number,
 ): number {
-  const overtimeMinutes = typeof attendanceSummary.overtimeMinutes === 'number' ? attendanceSummary.overtimeMinutes : 0;
+  const overtimeMinutes =
+    typeof attendanceSummary.overtimeMinutes === 'number' ? attendanceSummary.overtimeMinutes : 0;
   if (overtimeMinutes <= 0) return 0;
 
   const hourlyRate = baseSalary / (30 * 8);
@@ -90,11 +91,11 @@ function applyStatutoryPlugins(
   for (const plugin of plugins) {
     if (!plugin.enabled) continue;
 
-    const config = plugin.config ?? {};
+    const config = plugin.config;
     const basis = typeof config.basis === 'string' ? config.basis : 'gross';
     const rate = typeof config.rate === 'number' ? config.rate : 0;
     const basisAmount = basis === 'basic' ? basicSalary : grossSalary;
-    const amount = Math.round((basisAmount * rate) / 100 * 100) / 100;
+    const amount = Math.round(((basisAmount * rate) / 100) * 100) / 100;
     if (amount <= 0) continue;
 
     const code = typeof config.code === 'string' ? config.code : plugin.pluginId.toUpperCase();
@@ -102,8 +103,8 @@ function applyStatutoryPlugins(
     const employerRate = typeof config.employerRate === 'number' ? config.employerRate : 0;
     const employeeRate = typeof config.employeeRate === 'number' ? config.employeeRate : rate;
 
-    const employeeAmount = Math.round((basisAmount * employeeRate) / 100 * 100) / 100;
-    const employerAmount = Math.round((basisAmount * employerRate) / 100 * 100) / 100;
+    const employeeAmount = Math.round(((basisAmount * employeeRate) / 100) * 100) / 100;
+    const employerAmount = Math.round(((basisAmount * employerRate) / 100) * 100) / 100;
 
     if (employeeAmount > 0) {
       const item: PayrollLineItem = {
@@ -154,6 +155,10 @@ export const PayrollCalculatorService = {
         const rawAmount = override?.amount ?? comp.amount;
         const amount = computeComponentAmount(basicSalary, type, rawAmount);
 
+        if (amount === 0) {
+          continue;
+        }
+
         const item: PayrollLineItem = {
           code: comp.code,
           name: comp.name,
@@ -162,7 +167,10 @@ export const PayrollCalculatorService = {
           isTaxable: comp.isTaxable,
         };
 
-        if (comp.category === PAYROLL_COMPONENT_CATEGORY.DEDUCTION || comp.code.startsWith('DED_')) {
+        if (
+          comp.category === PAYROLL_COMPONENT_CATEGORY.DEDUCTION ||
+          comp.code.startsWith('DED_')
+        ) {
           deductions.push(item);
         } else {
           earnings.push(item);
@@ -170,7 +178,11 @@ export const PayrollCalculatorService = {
       }
     }
 
-    const lwpAmount = applyLwpDeduction(basicSalary, input.attendanceSummary, input.policies.lwpDeductionBasis);
+    const lwpAmount = applyLwpDeduction(
+      basicSalary,
+      input.attendanceSummary,
+      input.policies.lwpDeductionBasis,
+    );
     if (lwpAmount > 0) {
       deductions.push({
         code: 'LWP',
@@ -180,7 +192,11 @@ export const PayrollCalculatorService = {
       });
     }
 
-    const overtimeAmount = applyOvertime(basicSalary, input.attendanceSummary, input.policies.overtimeRateMultiplier);
+    const overtimeAmount = applyOvertime(
+      basicSalary,
+      input.attendanceSummary,
+      input.policies.overtimeRateMultiplier,
+    );
     if (overtimeAmount > 0) {
       earnings.push({
         code: 'OT',
@@ -227,7 +243,11 @@ export const PayrollCalculatorService = {
 
     const grossSalary = earnings.reduce((sum, e) => sum + e.amount, 0);
 
-    const statutory = applyStatutoryPlugins(grossSalary, basicSalary, input.policies.statutoryPlugins);
+    const statutory = applyStatutoryPlugins(
+      grossSalary,
+      basicSalary,
+      input.policies.statutoryPlugins,
+    );
     deductions.push(...statutory.deductions);
 
     const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
@@ -253,7 +273,9 @@ export const PayrollCalculatorService = {
     };
   },
 
-  aggregateAttendanceSnapshot(records: Array<{ payrollSnapshot?: AttendancePayrollSnapshot; status?: string }>): AttendancePayrollSnapshot {
+  aggregateAttendanceSnapshot(
+    records: Array<{ payrollSnapshot?: AttendancePayrollSnapshot; status?: string }>,
+  ): AttendancePayrollSnapshot {
     const summary: AttendancePayrollSnapshot = {
       presentDays: 0,
       absentDays: 0,
@@ -266,13 +288,23 @@ export const PayrollCalculatorService = {
 
     for (const record of records) {
       const snap = record.payrollSnapshot ?? {};
-      summary.presentDays = (summary.presentDays ?? 0) + (typeof snap.presentDays === 'number' ? snap.presentDays : 0);
-      summary.absentDays = (summary.absentDays ?? 0) + (typeof snap.absentDays === 'number' ? snap.absentDays : 0);
-      summary.lateDays = (summary.lateDays ?? 0) + (typeof snap.lateDays === 'number' ? snap.lateDays : 0);
-      summary.halfDays = (summary.halfDays ?? 0) + (typeof snap.halfDays === 'number' ? snap.halfDays : 0);
-      summary.overtimeMinutes = (summary.overtimeMinutes ?? 0) + (typeof snap.overtimeMinutes === 'number' ? snap.overtimeMinutes : (record as { overtimeMinutes?: number }).overtimeMinutes ?? 0);
-      summary.payableDays = (summary.payableDays ?? 0) + (typeof snap.payableDays === 'number' ? snap.payableDays : 0);
-      summary.lopDays = (summary.lopDays ?? 0) + (typeof snap.lopDays === 'number' ? snap.lopDays : 0);
+      summary.presentDays =
+        (summary.presentDays ?? 0) + (typeof snap.presentDays === 'number' ? snap.presentDays : 0);
+      summary.absentDays =
+        (summary.absentDays ?? 0) + (typeof snap.absentDays === 'number' ? snap.absentDays : 0);
+      summary.lateDays =
+        (summary.lateDays ?? 0) + (typeof snap.lateDays === 'number' ? snap.lateDays : 0);
+      summary.halfDays =
+        (summary.halfDays ?? 0) + (typeof snap.halfDays === 'number' ? snap.halfDays : 0);
+      summary.overtimeMinutes =
+        (summary.overtimeMinutes ?? 0) +
+        (typeof snap.overtimeMinutes === 'number'
+          ? snap.overtimeMinutes
+          : ((record as { overtimeMinutes?: number }).overtimeMinutes ?? 0));
+      summary.payableDays =
+        (summary.payableDays ?? 0) + (typeof snap.payableDays === 'number' ? snap.payableDays : 0);
+      summary.lopDays =
+        (summary.lopDays ?? 0) + (typeof snap.lopDays === 'number' ? snap.lopDays : 0);
     }
 
     return summary;

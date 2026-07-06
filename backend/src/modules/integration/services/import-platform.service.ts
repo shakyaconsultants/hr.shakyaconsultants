@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import {
   IMPORT_FORMAT,
   IMPORT_MODULE,
@@ -18,7 +19,10 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { IntegrationLogService } from '@modules/integration/services/integration-log.service.js';
 import { IntegrationAuditService } from '@modules/integration/services/integration-audit.service.js';
-import { sanitizeImportBatchError, sanitizeImportRowError } from '@shared/utils/production-sanitize.util.js';
+import {
+  sanitizeImportBatchError,
+  sanitizeImportRowError,
+} from '@shared/utils/production-sanitize.util.js';
 import { IMPORT_TEMPLATES } from '@modules/integration/constants/integration.constants.js';
 import type { IntegrationActorContext } from '@modules/approval/types/approval.types.js';
 import type { PaginatedResult } from '@shared/types/api.types.js';
@@ -31,46 +35,52 @@ export interface ImportPreviewInput {
   entityKey?: string;
 }
 
-export interface ImportExecuteInput extends ImportPreviewInput {}
+export type ImportExecuteInput = ImportPreviewInput;
 
 const ORG_ENTITY_KEYS = Object.values(MASTER_DATA_ENTITY);
 
 export const ImportPlatformService = {
   getTemplate(module: string, entityKey?: string): { headers: string[]; sampleCsv: string } {
     if (module === IMPORT_MODULE.ORGANIZATION && entityKey) {
-      const config = resolveEntityConfig(entityKey as MasterDataEntityKey);
+      const config = resolveEntityConfig(entityKey);
       const headers = ['name', 'code', 'status'];
       const sampleRow = { name: `Sample ${config.label}`, code: 'CODE-001', status: 'active' };
       const header = headers.join(',');
-      const row = headers.map((h) => sampleRow[h as keyof typeof sampleRow] ?? '').join(',');
+      const row = headers.map((h) => sampleRow[h as keyof typeof sampleRow]).join(',');
       return { headers, sampleCsv: `${header}\n${row}` };
     }
 
-    const template = IMPORT_TEMPLATES[module];
-    if (!template) {
-      throw new NotFoundError(`Import template not found for module: ${module}`, ERROR_CODES.NOT_FOUND);
+    if (!(module in IMPORT_TEMPLATES)) {
+      throw new NotFoundError(
+        `Import template not found for module: ${module}`,
+        ERROR_CODES.NOT_FOUND,
+      );
     }
+    const template = IMPORT_TEMPLATES[module];
     const header = template.headers.join(',');
     const row = template.headers.map((h) => template.sampleRow[h] ?? '').join(',');
     return { headers: template.headers, sampleCsv: `${header}\n${row}` };
   },
 
-  async preview(_context: IntegrationActorContext, input: ImportPreviewInput): Promise<{ rows: Record<string, string>[]; totalRows: number; errors: string[] }> {
+  preview(
+    _context: IntegrationActorContext,
+    input: ImportPreviewInput,
+  ): { rows: Record<string, string>[]; totalRows: number; errors: string[] } {
     const rows = CsvService.parseCsv(input.content);
     const errors: string[] = [];
 
     rows.forEach((row, index) => {
       if (input.module === IMPORT_MODULE.EMPLOYEE) {
         if (!row.email || !row.firstName || !row.lastName) {
-          errors.push(`Row ${index + 2}: missing required employee fields`);
+          errors.push(`Row ${String(index + 2)}: missing required employee fields`);
         }
       } else if (input.module === IMPORT_MODULE.SALES_LEAD) {
         if (!row.email && !row.firstname) {
-          errors.push(`Row ${index + 2}: missing email or firstname`);
+          errors.push(`Row ${String(index + 2)}: missing email or firstname`);
         }
       } else if (input.module === IMPORT_MODULE.ORGANIZATION) {
         if (!row.name) {
-          errors.push(`Row ${index + 2}: missing name`);
+          errors.push(`Row ${String(index + 2)}: missing name`);
         }
       }
     });
@@ -82,8 +92,11 @@ export const ImportPlatformService = {
     };
   },
 
-  async execute(context: IntegrationActorContext, input: ImportExecuteInput): Promise<ImportJobDocument> {
-    const preview = await this.preview(context, input);
+  async execute(
+    context: IntegrationActorContext,
+    input: ImportExecuteInput,
+  ): Promise<ImportJobDocument> {
+    const preview = this.preview(context, input);
     const rows = CsvService.parseCsv(input.content);
 
     const job = await ImportJobRepository.create({
@@ -103,26 +116,37 @@ export const ImportPlatformService = {
     });
 
     try {
-      const result = await runInTransaction(async () => {
-        return this.runImport(context, input, rows);
+      const result = await runInTransaction(async (session) => {
+        return this.runImport(context, input, rows, session);
       });
 
-      const updated = await ImportJobRepository.update(job.id, {
-        $set: {
-          status: result.errorCount > 0 && result.successCount === 0 ? JOB_STATUS.FAILED : JOB_STATUS.COMPLETED,
-          successCount: result.successCount,
-          errorCount: result.errorCount,
-          errors: result.errors,
-          updatedBy: context.userId,
+      const updated = await ImportJobRepository.update(
+        job.id,
+        {
+          $set: {
+            status:
+              result.errorCount > 0 && result.successCount === 0
+                ? JOB_STATUS.FAILED
+                : JOB_STATUS.COMPLETED,
+            successCount: result.successCount,
+            errorCount: result.errorCount,
+            errors: result.errors,
+            updatedBy: context.userId,
+          },
         },
-      }, { companyId: context.companyId });
+        { companyId: context.companyId },
+      );
 
       await IntegrationLogService.log({
         companyId: context.companyId,
         userId: context.userId,
         category: INTEGRATION_LOG_CATEGORY.IMPORT,
         message: `Import completed for ${input.module}`,
-        metadata: { jobId: job.id, successCount: result.successCount, errorCount: result.errorCount },
+        metadata: {
+          jobId: job.id,
+          successCount: result.successCount,
+          errorCount: result.errorCount,
+        },
       });
 
       await IntegrationAuditService.log({
@@ -139,9 +163,13 @@ export const ImportPlatformService = {
       return updated ?? job;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Import failed';
-      await ImportJobRepository.update(job.id, {
-        $set: { status: JOB_STATUS.FAILED, errors: [message], updatedBy: context.userId },
-      }, { companyId: context.companyId });
+      await ImportJobRepository.update(
+        job.id,
+        {
+          $set: { status: JOB_STATUS.FAILED, errors: [message], updatedBy: context.userId },
+        },
+        { companyId: context.companyId },
+      );
       throw error;
     }
   },
@@ -150,6 +178,7 @@ export const ImportPlatformService = {
     context: IntegrationActorContext,
     input: ImportExecuteInput,
     rows: Record<string, string>[],
+    _session?: ClientSession,
   ): Promise<{ successCount: number; errorCount: number; errors: string[] }> {
     const errors: string[] = [];
     let successCount = 0;
@@ -160,10 +189,18 @@ export const ImportPlatformService = {
           throw new BadRequestError('entityKey is required for organization imports');
         }
         try {
-          const created = await MasterDataService.bulkCreate(input.entityKey as MasterDataEntityKey, rows, context);
+          const created = await MasterDataService.bulkCreate(
+            input.entityKey as MasterDataEntityKey,
+            rows,
+            context,
+          );
           successCount = created.length;
-          await CsvService.logImport(input.entityKey as MasterDataEntityKey, created.length, context);
-        } catch (err) {
+          await CsvService.logImport(
+            input.entityKey as MasterDataEntityKey,
+            created.length,
+            context,
+          );
+        } catch {
           errors.push(sanitizeImportBatchError());
         }
         break;
@@ -172,8 +209,14 @@ export const ImportPlatformService = {
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           try {
-            if (!row.email || !row.firstName || !row.lastName || !row.departmentId || !row.designationId) {
-              errors.push(`Row ${i + 2}: missing required fields`);
+            if (
+              !row.email ||
+              !row.firstName ||
+              !row.lastName ||
+              !row.departmentId ||
+              !row.designationId
+            ) {
+              errors.push(`Row ${String(i + 2)}: missing required fields`);
               continue;
             }
             await EmployeeService.create(context, {
@@ -189,7 +232,9 @@ export const ImportPlatformService = {
             });
             successCount++;
           } catch (err) {
-            errors.push(sanitizeImportRowError(i, err instanceof Error ? err.message : 'Unknown error'));
+            errors.push(
+              sanitizeImportRowError(i, err instanceof Error ? err.message : 'Unknown error'),
+            );
           }
         }
         break;
@@ -207,7 +252,10 @@ export const ImportPlatformService = {
     return { successCount, errorCount: errors.length, errors };
   },
 
-  async getHistory(companyId: string, query: { page?: number; pageSize?: number; module?: string }): Promise<PaginatedResult<ImportJobDocument>> {
+  async getHistory(
+    companyId: string,
+    query: { page?: number; pageSize?: number; module?: string },
+  ): Promise<PaginatedResult<ImportJobDocument>> {
     const filter: Record<string, unknown> = {};
     if (query.module) filter.module = query.module;
     return ImportJobRepository.paginate(filter, {

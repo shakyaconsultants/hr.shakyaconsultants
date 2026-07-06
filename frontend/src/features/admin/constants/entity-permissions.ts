@@ -39,11 +39,11 @@ export const ENTITY_PERMISSIONS: Record<MasterEntityKey, EntityPermissionSet> = 
     update: 'holiday.update',
     delete: 'holiday.delete',
   },
-  'employment-type': {
-    read: 'employment-type.read',
-    create: 'employment-type.create',
-    update: 'employment-type.update',
-    delete: 'employment-type.delete',
+  'holiday-module': {
+    read: 'holiday.read',
+    create: 'holiday.create',
+    update: 'holiday.update',
+    delete: 'holiday.delete',
   },
   'salary-grade': {
     read: 'salary-grade.read',

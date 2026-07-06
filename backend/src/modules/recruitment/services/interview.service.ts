@@ -1,4 +1,7 @@
-import { InterviewRepository, InterviewFeedbackRepository } from '@domain/recruitment/recruitment.schemas.js';
+import {
+  InterviewRepository,
+  InterviewFeedbackRepository,
+} from '@domain/recruitment/recruitment.schemas.js';
 import { INTERVIEW_STATUS } from '@shared/constants/status.constants.js';
 import { PIPELINE_STAGE } from '@domain/recruitment/recruitment-extended.schemas.js';
 import { NotFoundError, ValidationError } from '@shared/errors/app.error.js';
@@ -9,11 +12,17 @@ import { CandidatePipelineService } from '@modules/recruitment/services/candidat
 import { RecruitmentTimelineService } from '@modules/recruitment/services/recruitment-timeline.service.js';
 import { RecruitmentAuditService } from '@modules/recruitment/services/recruitment-audit.service.js';
 import { RecruitmentActivityService } from '@modules/recruitment/services/recruitment-activity.service.js';
-import { RecruitmentEmailService, RecruitmentEmailTemplates } from '@modules/recruitment/services/recruitment-email.service.js';
+import {
+  RecruitmentEmailService,
+  RecruitmentEmailTemplates,
+} from '@modules/recruitment/services/recruitment-email.service.js';
 import type { RecruitmentActorContext } from '@modules/recruitment/types/recruitment.types.js';
 
 export const InterviewService = {
-  async list(companyId: string, filters: { candidateLeadId?: string; from?: Date; to?: Date; status?: string } = {}) {
+  async list(
+    companyId: string,
+    filters: { candidateLeadId?: string; from?: Date; to?: Date; status?: string } = {},
+  ) {
     const query: Record<string, unknown> = {};
     if (filters.candidateLeadId) {
       query.candidateLeadId = filters.candidateLeadId;
@@ -42,12 +51,19 @@ export const InterviewService = {
     const candidate = await CandidateService.getById(context.companyId, candidateLeadId);
 
     if (candidate.pipelineStage === PIPELINE_STAGE.REJECTED) {
-      throw new ValidationError('Cannot schedule interview for rejected candidate', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Cannot schedule interview for rejected candidate', [], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
     }
 
-    const scheduledAt = payload.scheduledAt instanceof Date ? payload.scheduledAt : new Date(String(payload.scheduledAt));
+    const scheduledAt =
+      payload.scheduledAt instanceof Date
+        ? payload.scheduledAt
+        : new Date(String(payload.scheduledAt));
     if (scheduledAt.getTime() < Date.now()) {
-      throw new ValidationError('Interview cannot be scheduled in the past', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Interview cannot be scheduled in the past', [], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
     }
 
     const id = generateUuid();
@@ -66,7 +82,15 @@ export const InterviewService = {
       { companyId: context.companyId },
     );
 
-    await CandidatePipelineService.transition(context, candidateLeadId, PIPELINE_STAGE.INTERVIEW_SCHEDULED);
+    await CandidatePipelineService.transition(
+      context,
+      candidateLeadId,
+      PIPELINE_STAGE.INTERVIEW_SCHEDULED,
+      undefined,
+      {
+        skipNotification: true,
+      },
+    );
 
     await RecruitmentTimelineService.record(context, {
       candidateLeadId,
@@ -94,7 +118,10 @@ export const InterviewService = {
       await RecruitmentEmailService.sendInterviewReminder(
         context,
         candidate.email,
-        { candidateName: `${candidate.firstName} ${candidate.lastName}`, date: scheduledAt.toLocaleString() },
+        {
+          candidateName: `${candidate.firstName} ${candidate.lastName}`,
+          date: scheduledAt.toLocaleString(),
+        },
         reminderDelay,
       );
     }
@@ -113,7 +140,12 @@ export const InterviewService = {
     return interview;
   },
 
-  async reschedule(context: RecruitmentActorContext, id: string, scheduledAt: Date, meetingLink?: string) {
+  async reschedule(
+    context: RecruitmentActorContext,
+    id: string,
+    scheduledAt: Date,
+    meetingLink?: string,
+  ) {
     const before = await InterviewRepository.findById(id, { companyId: context.companyId });
     if (!before) {
       throw new NotFoundError('Interview not found', ERROR_CODES.NOT_FOUND);
@@ -184,7 +216,11 @@ export const InterviewService = {
     return updated;
   },
 
-  async complete(context: RecruitmentActorContext, id: string, data: { score?: number; decision?: string; notes?: string }) {
+  async complete(
+    context: RecruitmentActorContext,
+    id: string,
+    data: { score?: number; decision?: string; notes?: string },
+  ) {
     const before = await InterviewRepository.findById(id, { companyId: context.companyId });
     if (!before) {
       throw new NotFoundError('Interview not found', ERROR_CODES.NOT_FOUND);
@@ -196,7 +232,15 @@ export const InterviewService = {
       { companyId: context.companyId },
     );
 
-    await CandidatePipelineService.transition(context, before.candidateLeadId, PIPELINE_STAGE.INTERVIEW_COMPLETED);
+    await CandidatePipelineService.transition(
+      context,
+      before.candidateLeadId,
+      PIPELINE_STAGE.INTERVIEW_SCHEDULED,
+      undefined,
+      {
+        skipNotification: true,
+      },
+    );
     await RecruitmentTimelineService.record(context, {
       candidateLeadId: before.candidateLeadId,
       eventType: RecruitmentTimelineService.EVENT.INTERVIEW_COMPLETED,
@@ -207,8 +251,14 @@ export const InterviewService = {
     return updated;
   },
 
-  async submitFeedback(context: RecruitmentActorContext, interviewId: string, payload: Record<string, unknown>) {
-    const interview = await InterviewRepository.findById(interviewId, { companyId: context.companyId });
+  async submitFeedback(
+    context: RecruitmentActorContext,
+    interviewId: string,
+    payload: Record<string, unknown>,
+  ) {
+    const interview = await InterviewRepository.findById(interviewId, {
+      companyId: context.companyId,
+    });
     if (!interview) {
       throw new NotFoundError('Interview not found', ERROR_CODES.NOT_FOUND);
     }

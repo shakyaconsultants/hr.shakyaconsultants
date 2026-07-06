@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { PIPELINE_STAGE, INTERVIEW_TYPE } from '@domain/recruitment/recruitment-extended.schemas.js';
+import {
+  PIPELINE_STAGE,
+  INTERVIEW_TYPE,
+} from '@domain/recruitment/recruitment-extended.schemas.js';
 import { INTERVIEW_RECOMMENDATION } from '@domain/recruitment/recruitment.schemas.js';
 
 export const idParamSchema = z.object({ id: z.uuid() });
@@ -92,6 +95,11 @@ export const createOfferSchema = z.object({
 export const onboardingDraftSchema = z.object({
   section: z.string().min(1),
   data: z.record(z.string(), z.unknown()),
+});
+
+export const startOnboardingSchema = z.object({
+  offerLetterId: z.uuid(),
+  startDate: z.coerce.date().optional(),
 });
 
 export const conversionSchema = z.object({

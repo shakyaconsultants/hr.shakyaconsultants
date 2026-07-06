@@ -14,6 +14,7 @@ import {
   fetchCompensations,
   fetchDeductions,
   fetchEmployeeCompensation,
+  fetchMyCompensation,
   fetchEnterprisePayrollDashboard,
   fetchFinancePayrollDashboard,
   fetchHrPayrollDashboard,
@@ -232,13 +233,29 @@ export function useEmployeeCompensation(employeeId: string) {
   });
 }
 
+export function useMyCompensation() {
+  return useQuery({
+    queryKey: ['payroll', 'compensation', 'me'],
+    queryFn: fetchMyCompensation,
+  });
+}
+
 export function useAssignCompensation() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: (payload: CreateCompensationPayload) => assignCompensation(payload),
     errorToast: false,
     successMessage: false,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['payroll', 'compensation'] }),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['payroll', 'compensation'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['payroll', 'compensation', 'employee', variables.employeeId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['payroll', 'salary-history', variables.employeeId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['payroll', 'my-salary'] });
+    },
   });
 }
 
@@ -293,8 +310,13 @@ export function useDownloadPayslip() {
 export function useUploadPayslip(employeeId: string) {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: (input: { file: File; periodStart: string; periodEnd: string; grossSalary?: number; netSalary?: number }) =>
-      uploadPayslip(employeeId, input.file, input),
+    mutationFn: (input: {
+      file: File;
+      periodStart: string;
+      periodEnd: string;
+      grossSalary?: number;
+      netSalary?: number;
+    }) => uploadPayslip(employeeId, input.file, input),
     errorToast: false,
     successMessage: false,
     onSuccess: () => {

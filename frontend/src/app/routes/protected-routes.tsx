@@ -7,89 +7,527 @@ import type { RouteObject } from 'react-router-dom';
 
 export const protectedAppRoutes: RouteObject[] = [
   { index: true, element: <PortalIndexRedirect /> },
-  { path: ROUTES.ENTERPRISE.slice(1), ...lazyRoute(() => import('@/features/enterprise/pages/enterprise-dashboard-page'), 'EnterpriseDashboardPage') },
-  { path: ROUTES.MANAGER.slice(1), ...lazyRoute(() => import('@/features/enterprise/pages/manager-dashboard-page'), 'ManagerDashboardPage') },
-  { path: ROUTES.WORKSPACE.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-dashboard-page'), 'WorkspaceDashboardPage') },
-  { path: ROUTES.WORKSPACE_PROFILE.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-profile-page'), 'WorkspaceProfilePage') },
-  { path: ROUTES.WORKSPACE_HIERARCHY.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-hierarchy-page'), 'WorkspaceHierarchyPage') },
-  { path: ROUTES.WORKSPACE_PROJECTS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-projects-page'), 'WorkspaceProjectsPage') },
-  { path: `${ROUTES.WORKSPACE_PROJECTS.slice(1)}/:id`, ...lazyRoute(() => import('@/features/workspace/pages/workspace-project-detail-page'), 'WorkspaceProjectDetailPage') },
-  { path: ROUTES.WORKSPACE_TASKS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-tasks-page'), 'WorkspaceTasksPage') },
-  { path: ROUTES.WORKSPACE_DOCUMENTS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-documents-page'), 'WorkspaceDocumentsPage') },
-  { path: ROUTES.WORKSPACE_NOTIFICATIONS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-notifications-page'), 'WorkspaceNotificationsPage') },
-  { path: ROUTES.WORKSPACE_ANNOUNCEMENTS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-announcements-page'), 'WorkspaceAnnouncementsPage') },
-  { path: ROUTES.WORKSPACE_CALENDAR.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-calendar-page'), 'WorkspaceCalendarPage') },
-  { path: ROUTES.WORKSPACE_SEARCH.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-search-page'), 'WorkspaceSearchPage') },
-  { path: ROUTES.WORKSPACE_MESSAGES.slice(1), ...lazyRoute(() => import('@/features/communication/pages/communication-workspace-page'), 'CommunicationWorkspacePage') },
-  { path: ROUTES.WORKSPACE_LEAVE_APPLY.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-apply-leave-page'), 'WorkspaceApplyLeavePage') },
-  { path: ROUTES.WORKSPACE_LEAVE_REQUESTS.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-leave-requests-page'), 'WorkspaceLeaveRequestsPage') },
-  { path: ROUTES.WORKSPACE_LEAVE_BALANCE.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-leave-balance-page'), 'WorkspaceLeaveBalancePage') },
-  { path: ROUTES.WORKSPACE_RESIGNATION.slice(1), ...lazyRoute(() => import('@/features/workspace/pages/workspace-resignation-page'), 'WorkspaceResignationPage') },
-  { path: ROUTES.ORGANIZATION.slice(1), ...lazyRoute(() => import('@/features/organization/pages/organization-dashboard-page'), 'OrganizationDashboardPage') },
-  { path: `${ROUTES.ORGANIZATION.slice(1)}/chart`, ...lazyRoute(() => import('@/features/admin/pages/organization-chart-page'), 'OrganizationChartPage') },
-  { path: `${ROUTES.ORGANIZATION.slice(1)}/settings`, ...lazyRoute(() => import('@/features/organization/pages/settings-page'), 'SettingsPage') },
-  { path: `${ROUTES.ORGANIZATION.slice(1)}/:entityKey/:id`, ...lazyRoute(() => import('@/features/admin/pages/organization-entity-detail-page'), 'OrganizationEntityDetailPage') },
-  { path: `${ROUTES.ORGANIZATION.slice(1)}/:entityKey`, ...lazyRoute(() => import('@/features/organization/pages/entity-list-page'), 'EntityListPage') },
-  { path: ROUTES.ADMIN_SETTINGS.slice(1), ...lazyRoute(() => import('@/features/organization/pages/settings-page'), 'SettingsPage') },
-  { path: ROUTES.ADMIN_TEMPLATES.slice(1), ...lazyRoute(() => import('@/features/admin/pages/templates-page'), 'TemplatesPage') },
-  { path: ROUTES.RBAC.slice(1), ...lazyRoute(() => import('@/features/rbac/pages/rbac-dashboard-page'), 'RbacDashboardPage') },
-  { path: ROUTES.RBAC_ROLES.slice(1), ...lazyRoute(() => import('@/features/rbac/pages/roles-page'), 'RolesPage') },
-  { path: ROUTES.RBAC_MATRIX.slice(1), ...lazyRoute(() => import('@/features/rbac/pages/permission-matrix-page'), 'PermissionMatrixPage') },
-  { path: ROUTES.RBAC_SIMULATOR.slice(1), ...lazyRoute(() => import('@/features/rbac/pages/simulator-page'), 'SimulatorPage') },
-  { path: ROUTES.RBAC_TEMPLATES.slice(1), ...lazyRoute(() => import('@/features/rbac/pages/role-templates-page'), 'RoleTemplatesPage') },
-  { path: ROUTES.EMPLOYEES.slice(1), ...lazyRoute(() => import('@/features/employee/pages/employees-list-page'), 'EmployeesListPage') },
-  { path: ROUTES.EMPLOYEE_CREATE.slice(1), ...lazyRoute(() => import('@/features/employee/pages/employee-create-page'), 'EmployeeCreatePage') },
-  { path: `${ROUTES.EMPLOYEES.slice(1)}/:id`, ...lazyRoute(() => import('@/features/employee/pages/employee-detail-page'), 'EmployeeDetailPage') },
-  { path: ROUTES.RECRUITMENT.slice(1), ...lazyRoute(() => import('@/features/recruitment/pages/recruitment-dashboard-page'), 'RecruitmentDashboardPage') },
-  { path: ROUTES.RECRUITMENT_CANDIDATES.slice(1), ...lazyRoute(() => import('@/features/recruitment/pages/candidates-list-page'), 'CandidatesListPage') },
-  { path: ROUTES.RECRUITMENT_CANDIDATE_CREATE.slice(1), ...lazyRoute(() => import('@/features/recruitment/pages/candidate-create-page'), 'CandidateCreatePage') },
-  { path: `${ROUTES.RECRUITMENT_CANDIDATES.slice(1)}/:id`, ...lazyRoute(() => import('@/features/recruitment/pages/candidate-detail-page'), 'CandidateDetailPage') },
-  { path: ROUTES.RECRUITMENT_PIPELINE.slice(1), ...lazyRoute(() => import('@/features/recruitment/pages/pipeline-kanban-page'), 'PipelineKanbanPage') },
-  { path: ROUTES.RECRUITMENT_INTERVIEWS.slice(1), ...lazyRoute(() => import('@/features/recruitment/pages/interviews-calendar-page'), 'InterviewsCalendarPage') },
-  { path: ROUTES.PROJECTS.slice(1), ...lazyRoute(() => import('@/features/project/pages/projects-dashboard-page'), 'ProjectsDashboardPage') },
-  { path: ROUTES.PROJECTS_LIST.slice(1), ...lazyRoute(() => import('@/features/project/pages/projects-list-page'), 'ProjectsListPage') },
-  { path: ROUTES.PROJECTS_CREATE.slice(1), ...lazyRoute(() => import('@/features/project/pages/project-create-wizard-page'), 'ProjectCreateWizardPage') },
-  { path: `${ROUTES.PROJECTS.slice(1)}/:id`, ...lazyRoute(() => import('@/features/project/pages/project-detail-page'), 'ProjectDetailPage') },
-  { path: ROUTES.LEAVE_EXIT.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-exit-dashboard-page'), 'LeaveExitDashboardPage') },
-  { path: ROUTES.LEAVE_APPLY.slice(1), element: <LegacyEmployeeLeaveRedirect target={ROUTES.WORKSPACE_LEAVE_APPLY} /> },
-  { path: ROUTES.LEAVE_REQUESTS.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-requests-page'), 'LeaveRequestsPage') },
-  { path: ROUTES.LEAVE_CALENDAR.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-calendar-page'), 'LeaveCalendarPage') },
-  { path: ROUTES.LEAVE_BALANCES.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-balances-page'), 'LeaveBalancesPage') },
-  { path: ROUTES.LEAVE_POLICIES.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/leave-policies-page'), 'LeavePoliciesPage') },
-  { path: ROUTES.RESIGNATION.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/resignations-page'), 'ResignationsPage') },
-  { path: ROUTES.EXIT.slice(1), ...lazyRoute(() => import('@/features/leave-exit/pages/exit-progress-page'), 'ExitProgressPage') },
-  { path: ROUTES.APPROVAL_INBOX.slice(1), ...lazyRoute(() => import('@/features/approval/pages/approval-inbox-page'), 'ApprovalInboxPage') },
-  { path: ROUTES.APPROVAL_HISTORY.slice(1), ...lazyRoute(() => import('@/features/approval/pages/approval-history-page'), 'ApprovalHistoryPage') },
-  { path: ROUTES.APPROVAL_WORKFLOWS.slice(1), ...lazyRoute(() => import('@/features/approval/pages/approval-workflows-page'), 'ApprovalWorkflowsPage') },
-  { path: ROUTES.ATTENDANCE.slice(1), ...lazyRoute(() => import('@/features/attendance/pages/attendance-portal-page'), 'AttendancePortalPage') },
-  { path: ROUTES.ATTENDANCE_ADMIN.slice(1), ...lazyRoute(() => import('@/features/attendance/pages/attendance-enterprise-page'), 'AttendanceEnterprisePage') },
-  { path: ROUTES.ATTENDANCE_HR.slice(1), ...lazyRoute(() => import('@/features/attendance/pages/attendance-hr-page'), 'AttendanceHrPage') },
-  { path: ROUTES.ATTENDANCE_TEAM.slice(1), ...lazyRoute(() => import('@/features/attendance/pages/attendance-manager-page'), 'AttendanceManagerPage') },
-  { path: ROUTES.WORKSPACE_ATTENDANCE.slice(1), ...lazyRoute(() => import('@/features/attendance/pages/attendance-workspace-page'), 'AttendanceWorkspacePage') },
-  { path: ROUTES.PAYROLL.slice(1), ...lazyRoute(() => import('@/features/payroll/pages/payroll-portal-page'), 'PayrollPortalPage') },
-  { path: ROUTES.PAYROLL_ADMIN.slice(1), ...lazyRoute(() => import('@/features/payroll/pages/payroll-enterprise-page'), 'PayrollEnterprisePage') },
-  { path: ROUTES.PAYROLL_FINANCE.slice(1), ...lazyRoute(() => import('@/features/payroll/pages/payroll-finance-page'), 'PayrollFinancePage') },
-  { path: ROUTES.PAYROLL_HR.slice(1), ...lazyRoute(() => import('@/features/payroll/pages/payroll-hr-page'), 'PayrollHrPage') },
-  { path: ROUTES.WORKSPACE_PAYROLL.slice(1), ...lazyRoute(() => import('@/features/payroll/pages/payroll-workspace-page'), 'PayrollWorkspacePage') },
-  { path: ROUTES.SALES.slice(1), ...lazyRoute(() => import('@/features/sales/pages/sales-portal-page'), 'SalesPortalPage') },
-  { path: ROUTES.SALES_ADMIN.slice(1), ...lazyRoute(() => import('@/features/sales/pages/sales-enterprise-page'), 'SalesEnterprisePage') },
-  { path: ROUTES.SALES_MANAGER.slice(1), ...lazyRoute(() => import('@/features/sales/pages/sales-manager-page'), 'SalesManagerPage') },
-  { path: ROUTES.SALES_EXECUTIVE.slice(1), ...lazyRoute(() => import('@/features/sales/pages/sales-executive-page'), 'SalesExecutivePage') },
-  { path: `${ROUTES.SALES.slice(1)}/leads/:id`, ...lazyRoute(() => import('@/features/sales/pages/sales-lead-detail-page'), 'SalesLeadDetailPage') },
-  { path: ROUTES.COMMUNICATION.slice(1), ...lazyRoute(() => import('@/features/communication/pages/communication-portal-page'), 'CommunicationPortalPage') },
-  { path: ROUTES.COMMUNICATION_ADMIN.slice(1), ...lazyRoute(() => import('@/features/communication/pages/communication-enterprise-page'), 'CommunicationEnterprisePage') },
-  { path: ROUTES.COMMUNICATION_MANAGER.slice(1), ...lazyRoute(() => import('@/features/communication/pages/communication-manager-page'), 'CommunicationManagerPage') },
-  { path: ROUTES.COMMUNICATION_INBOX.slice(1), ...lazyRoute(() => import('@/features/communication/pages/communication-inbox-page'), 'CommunicationInboxPage') },
-  { path: ROUTES.COMMUNICATION_SEARCH.slice(1), ...lazyRoute(() => import('@/features/communication/pages/communication-search-page'), 'CommunicationSearchPage') },
-  { path: ROUTES.INTEGRATIONS.slice(1), ...lazyRoute(() => import('@/features/integration/pages/integration-dashboard-page'), 'IntegrationDashboardPage') },
-  { path: ROUTES.INTEGRATION_CONNECTORS.slice(1), ...lazyRoute(() => import('@/features/integration/pages/integration-connectors-page'), 'IntegrationConnectorsPage') },
-  { path: ROUTES.API_KEYS.slice(1), ...lazyRoute(() => import('@/features/integration/pages/api-keys-page'), 'ApiKeysPage') },
-  { path: ROUTES.WEBHOOKS.slice(1), ...lazyRoute(() => import('@/features/integration/pages/webhooks-page'), 'WebhooksPage') },
-  { path: ROUTES.IMPORT_CENTER.slice(1), ...lazyRoute(() => import('@/features/integration/pages/import-center-page'), 'ImportCenterPage') },
-  { path: ROUTES.EXPORT_CENTER.slice(1), ...lazyRoute(() => import('@/features/integration/pages/export-center-page'), 'ExportCenterPage') },
-  { path: ROUTES.SCHEDULER.slice(1), ...lazyRoute(() => import('@/features/integration/pages/scheduler-page'), 'SchedulerPage') },
-  { path: ROUTES.INTEGRATION_LOGS.slice(1), ...lazyRoute(() => import('@/features/integration/pages/integration-logs-page'), 'IntegrationLogsPage') },
-  { path: ROUTES.BACKUPS.slice(1), ...lazyRoute(() => import('@/features/integration/pages/backup-page'), 'BackupPage') },
+  {
+    path: ROUTES.ENTERPRISE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/enterprise/pages/enterprise-dashboard-page'),
+      'EnterpriseDashboardPage',
+    ),
+  },
+  {
+    path: ROUTES.MANAGER.slice(1),
+    ...lazyRoute(
+      () => import('@/features/enterprise/pages/manager-dashboard-page'),
+      'ManagerDashboardPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-dashboard-page'),
+      'WorkspaceDashboardPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_PROFILE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-profile-page'),
+      'WorkspaceProfilePage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_HIERARCHY.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-hierarchy-page'),
+      'WorkspaceHierarchyPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_PROJECTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-projects-page'),
+      'WorkspaceProjectsPage',
+    ),
+  },
+  {
+    path: `${ROUTES.WORKSPACE_PROJECTS.slice(1)}/:id`,
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-project-detail-page'),
+      'WorkspaceProjectDetailPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_TASKS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-tasks-page'),
+      'WorkspaceTasksPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_DOCUMENTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-documents-page'),
+      'WorkspaceDocumentsPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_NOTIFICATIONS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-notifications-page'),
+      'WorkspaceNotificationsPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_ANNOUNCEMENTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-announcements-page'),
+      'WorkspaceAnnouncementsPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_CALENDAR.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-calendar-page'),
+      'WorkspaceCalendarPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_SEARCH.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-search-page'),
+      'WorkspaceSearchPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_MESSAGES.slice(1),
+    ...lazyRoute(
+      () => import('@/features/communication/pages/communication-workspace-page'),
+      'CommunicationWorkspacePage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_LEAVE_APPLY.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-apply-leave-page'),
+      'WorkspaceApplyLeavePage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_LEAVE_REQUESTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-leave-requests-page'),
+      'WorkspaceLeaveRequestsPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_LEAVE_BALANCE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-leave-balance-page'),
+      'WorkspaceLeaveBalancePage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_RESIGNATION.slice(1),
+    ...lazyRoute(
+      () => import('@/features/workspace/pages/workspace-resignation-page'),
+      'WorkspaceResignationPage',
+    ),
+  },
+  {
+    path: ROUTES.ORGANIZATION.slice(1),
+    ...lazyRoute(
+      () => import('@/features/organization/pages/organization-dashboard-page'),
+      'OrganizationDashboardPage',
+    ),
+  },
+  {
+    path: `${ROUTES.ORGANIZATION.slice(1)}/chart`,
+    ...lazyRoute(
+      () => import('@/features/admin/pages/organization-chart-page'),
+      'OrganizationChartPage',
+    ),
+  },
+  {
+    path: `${ROUTES.ORGANIZATION.slice(1)}/settings`,
+    ...lazyRoute(() => import('@/features/organization/pages/settings-page'), 'SettingsPage'),
+  },
+  {
+    path: `${ROUTES.ORGANIZATION.slice(1)}/:entityKey/:id`,
+    ...lazyRoute(
+      () => import('@/features/admin/pages/organization-entity-detail-page'),
+      'OrganizationEntityDetailPage',
+    ),
+  },
+  {
+    path: `${ROUTES.ORGANIZATION.slice(1)}/:entityKey`,
+    ...lazyRoute(() => import('@/features/organization/pages/entity-list-page'), 'EntityListPage'),
+  },
+  {
+    path: ROUTES.ADMIN_SETTINGS.slice(1),
+    ...lazyRoute(() => import('@/features/organization/pages/settings-page'), 'SettingsPage'),
+  },
+  {
+    path: ROUTES.ADMIN_TEMPLATES.slice(1),
+    ...lazyRoute(() => import('@/features/admin/pages/templates-page'), 'TemplatesPage'),
+  },
+  {
+    path: ROUTES.RBAC.slice(1),
+    ...lazyRoute(() => import('@/features/rbac/pages/rbac-dashboard-page'), 'RbacDashboardPage'),
+  },
+  {
+    path: ROUTES.RBAC_ROLES.slice(1),
+    ...lazyRoute(() => import('@/features/rbac/pages/roles-page'), 'RolesPage'),
+  },
+  {
+    path: ROUTES.RBAC_MATRIX.slice(1),
+    ...lazyRoute(
+      () => import('@/features/rbac/pages/permission-matrix-page'),
+      'PermissionMatrixPage',
+    ),
+  },
+  {
+    path: ROUTES.RBAC_SIMULATOR.slice(1),
+    ...lazyRoute(() => import('@/features/rbac/pages/simulator-page'), 'SimulatorPage'),
+  },
+  {
+    path: ROUTES.RBAC_TEMPLATES.slice(1),
+    ...lazyRoute(() => import('@/features/rbac/pages/role-templates-page'), 'RoleTemplatesPage'),
+  },
+  {
+    path: ROUTES.EMPLOYEES.slice(1),
+    ...lazyRoute(
+      () => import('@/features/employee/pages/employees-list-page'),
+      'EmployeesListPage',
+    ),
+  },
+  {
+    path: ROUTES.EMPLOYEE_CREATE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/employee/pages/employee-create-page'),
+      'EmployeeCreatePage',
+    ),
+  },
+  {
+    path: `${ROUTES.EMPLOYEES.slice(1)}/:id`,
+    ...lazyRoute(
+      () => import('@/features/employee/pages/employee-detail-page'),
+      'EmployeeDetailPage',
+    ),
+  },
+  {
+    path: ROUTES.RECRUITMENT.slice(1),
+    ...lazyRoute(
+      () => import('@/features/recruitment/pages/recruitment-dashboard-page'),
+      'RecruitmentDashboardPage',
+    ),
+  },
+  {
+    path: ROUTES.RECRUITMENT_CANDIDATES.slice(1),
+    ...lazyRoute(
+      () => import('@/features/recruitment/pages/candidates-list-page'),
+      'CandidatesListPage',
+    ),
+  },
+  {
+    path: ROUTES.RECRUITMENT_CANDIDATE_CREATE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/recruitment/pages/candidate-create-page'),
+      'CandidateCreatePage',
+    ),
+  },
+  {
+    path: `${ROUTES.RECRUITMENT_CANDIDATES.slice(1)}/:id`,
+    ...lazyRoute(
+      () => import('@/features/recruitment/pages/candidate-detail-page'),
+      'CandidateDetailPage',
+    ),
+  },
+  {
+    path: ROUTES.RECRUITMENT_PIPELINE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/recruitment/pages/pipeline-kanban-page'),
+      'PipelineKanbanPage',
+    ),
+  },
+  {
+    path: ROUTES.RECRUITMENT_INTERVIEWS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/recruitment/pages/interviews-calendar-page'),
+      'InterviewsCalendarPage',
+    ),
+  },
+  {
+    path: ROUTES.PROJECTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/project/pages/projects-dashboard-page'),
+      'ProjectsDashboardPage',
+    ),
+  },
+  {
+    path: ROUTES.PROJECTS_LIST.slice(1),
+    ...lazyRoute(() => import('@/features/project/pages/projects-list-page'), 'ProjectsListPage'),
+  },
+  {
+    path: ROUTES.PROJECTS_CREATE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/project/pages/project-create-wizard-page'),
+      'ProjectCreateWizardPage',
+    ),
+  },
+  {
+    path: `${ROUTES.PROJECTS.slice(1)}/:id`,
+    ...lazyRoute(() => import('@/features/project/pages/project-detail-page'), 'ProjectDetailPage'),
+  },
+  {
+    path: ROUTES.LEAVE_EXIT.slice(1),
+    ...lazyRoute(
+      () => import('@/features/leave-exit/pages/leave-exit-dashboard-page'),
+      'LeaveExitDashboardPage',
+    ),
+  },
+  {
+    path: ROUTES.LEAVE_APPLY.slice(1),
+    element: <LegacyEmployeeLeaveRedirect target={ROUTES.WORKSPACE_LEAVE_APPLY} />,
+  },
+  {
+    path: ROUTES.LEAVE_REQUESTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/leave-exit/pages/leave-requests-page'),
+      'LeaveRequestsPage',
+    ),
+  },
+  {
+    path: ROUTES.LEAVE_CALENDAR.slice(1),
+    ...lazyRoute(
+      () => import('@/features/leave-exit/pages/leave-calendar-page'),
+      'LeaveCalendarPage',
+    ),
+  },
+  {
+    path: ROUTES.LEAVE_BALANCES.slice(1),
+    ...lazyRoute(
+      () => import('@/features/leave-exit/pages/leave-balances-page'),
+      'LeaveBalancesPage',
+    ),
+  },
+  {
+    path: ROUTES.LEAVE_SETUP.slice(1),
+    ...lazyRoute(() => import('@/features/leave-exit/pages/leave-setup-page'), 'LeaveSetupPage'),
+  },
+  {
+    path: ROUTES.LEAVE_OFFBOARDING.slice(1),
+    ...lazyRoute(
+      () => import('@/features/leave-exit/pages/leave-offboarding-page'),
+      'LeaveOffboardingPage',
+    ),
+  },
+  {
+    path: ROUTES.LEAVE_POLICIES.slice(1),
+    element: <Navigate to={ROUTES.LEAVE_SETUP + '?tab=policies'} replace />,
+  },
+  {
+    path: ROUTES.RESIGNATION.slice(1),
+    element: <Navigate to={ROUTES.LEAVE_OFFBOARDING + '?tab=resignations'} replace />,
+  },
+  {
+    path: ROUTES.EXIT.slice(1),
+    element: <Navigate to={ROUTES.LEAVE_OFFBOARDING + '?tab=exit'} replace />,
+  },
+  {
+    path: ROUTES.APPROVAL_INBOX.slice(1),
+    ...lazyRoute(
+      () => import('@/features/approval/pages/approval-inbox-page'),
+      'ApprovalInboxPage',
+    ),
+  },
+  {
+    path: ROUTES.APPROVAL_HISTORY.slice(1),
+    ...lazyRoute(
+      () => import('@/features/approval/pages/approval-history-page'),
+      'ApprovalHistoryPage',
+    ),
+  },
+  {
+    path: ROUTES.APPROVAL_WORKFLOWS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/approval/pages/approval-workflows-page'),
+      'ApprovalWorkflowsPage',
+    ),
+  },
+  {
+    path: ROUTES.ATTENDANCE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/attendance/pages/attendance-portal-page'),
+      'AttendancePortalPage',
+    ),
+  },
+  {
+    path: ROUTES.ATTENDANCE_ADMIN.slice(1),
+    ...lazyRoute(
+      () => import('@/features/attendance/pages/attendance-enterprise-page'),
+      'AttendanceEnterprisePage',
+    ),
+  },
+  {
+    path: ROUTES.ATTENDANCE_HR.slice(1),
+    ...lazyRoute(
+      () => import('@/features/attendance/pages/attendance-hr-page'),
+      'AttendanceHrPage',
+    ),
+  },
+  {
+    path: ROUTES.ATTENDANCE_TEAM.slice(1),
+    ...lazyRoute(
+      () => import('@/features/attendance/pages/attendance-manager-page'),
+      'AttendanceManagerPage',
+    ),
+  },
+  {
+    path: ROUTES.WORKSPACE_ATTENDANCE.slice(1),
+    ...lazyRoute(
+      () => import('@/features/attendance/pages/attendance-workspace-page'),
+      'AttendanceWorkspacePage',
+    ),
+  },
+  { path: ROUTES.PAYROLL.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
+  { path: ROUTES.PAYROLL_ADMIN.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
+  { path: ROUTES.PAYROLL_FINANCE.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
+  { path: ROUTES.PAYROLL_HR.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
+  {
+    path: ROUTES.WORKSPACE_PAYROLL.slice(1),
+    element: <Navigate to={`${ROUTES.WORKSPACE_PROFILE}?tab=payroll`} replace />,
+  },
+  {
+    path: ROUTES.ATTENDANCE_REPORTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/attendance/pages/attendance-reports-page'),
+      'AttendanceReportsPage',
+    ),
+  },
+  {
+    path: ROUTES.PAYROLL_REPORTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/payroll/pages/payroll-reports-page'),
+      'PayrollReportsPage',
+    ),
+  },
+  {
+    path: ROUTES.SALES_REPORTS.slice(1),
+    ...lazyRoute(() => import('@/features/sales/pages/sales-reports-page'), 'SalesReportsPage'),
+  },
+  {
+    path: ROUTES.COMMUNICATION_REPORTS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/communication/pages/communication-reports-page'),
+      'CommunicationReportsPage',
+    ),
+  },
+  {
+    path: ROUTES.SALES.slice(1),
+    ...lazyRoute(
+      () => import('@/features/sales/pages/sales-enterprise-page'),
+      'SalesEnterprisePage',
+    ),
+  },
+  { path: ROUTES.SALES_ADMIN.slice(1), element: <Navigate to={ROUTES.SALES} replace /> },
+  {
+    path: ROUTES.SALES_MANAGER.slice(1),
+    ...lazyRoute(() => import('@/features/sales/pages/sales-manager-page'), 'SalesManagerPage'),
+  },
+  {
+    path: ROUTES.SALES_EXECUTIVE.slice(1),
+    ...lazyRoute(() => import('@/features/sales/pages/sales-executive-page'), 'SalesExecutivePage'),
+  },
+  {
+    path: `${ROUTES.SALES.slice(1)}/leads/:id`,
+    ...lazyRoute(
+      () => import('@/features/sales/pages/sales-lead-detail-page'),
+      'SalesLeadDetailPage',
+    ),
+  },
+  {
+    path: ROUTES.COMMUNICATION.slice(1),
+    ...lazyRoute(
+      () => import('@/features/communication/pages/communication-enterprise-page'),
+      'CommunicationEnterprisePage',
+    ),
+  },
+  {
+    path: ROUTES.COMMUNICATION_ADMIN.slice(1),
+    element: <Navigate to={ROUTES.COMMUNICATION} replace />,
+  },
+  {
+    path: ROUTES.COMMUNICATION_MANAGER.slice(1),
+    ...lazyRoute(
+      () => import('@/features/communication/pages/communication-manager-page'),
+      'CommunicationManagerPage',
+    ),
+  },
+  {
+    path: ROUTES.COMMUNICATION_INBOX.slice(1),
+    ...lazyRoute(
+      () => import('@/features/communication/pages/communication-inbox-page'),
+      'CommunicationInboxPage',
+    ),
+  },
+  {
+    path: ROUTES.COMMUNICATION_SEARCH.slice(1),
+    ...lazyRoute(
+      () => import('@/features/communication/pages/communication-search-page'),
+      'CommunicationSearchPage',
+    ),
+  },
+  {
+    path: ROUTES.INTEGRATIONS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/integration/pages/integration-dashboard-page'),
+      'IntegrationDashboardPage',
+    ),
+  },
+  {
+    path: ROUTES.INTEGRATION_CONNECTORS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/integration/pages/integration-connectors-page'),
+      'IntegrationConnectorsPage',
+    ),
+  },
+  {
+    path: ROUTES.API_KEYS.slice(1),
+    ...lazyRoute(() => import('@/features/integration/pages/api-keys-page'), 'ApiKeysPage'),
+  },
+  {
+    path: ROUTES.WEBHOOKS.slice(1),
+    ...lazyRoute(() => import('@/features/integration/pages/webhooks-page'), 'WebhooksPage'),
+  },
+  {
+    path: ROUTES.IMPORT_CENTER.slice(1),
+    ...lazyRoute(
+      () => import('@/features/integration/pages/import-center-page'),
+      'ImportCenterPage',
+    ),
+  },
+  {
+    path: ROUTES.EXPORT_CENTER.slice(1),
+    ...lazyRoute(
+      () => import('@/features/integration/pages/export-center-page'),
+      'ExportCenterPage',
+    ),
+  },
+  {
+    path: ROUTES.SCHEDULER.slice(1),
+    ...lazyRoute(() => import('@/features/integration/pages/scheduler-page'), 'SchedulerPage'),
+  },
+  {
+    path: ROUTES.INTEGRATION_LOGS.slice(1),
+    ...lazyRoute(
+      () => import('@/features/integration/pages/integration-logs-page'),
+      'IntegrationLogsPage',
+    ),
+  },
+  {
+    path: ROUTES.BACKUPS.slice(1),
+    ...lazyRoute(() => import('@/features/integration/pages/backup-page'), 'BackupPage'),
+  },
   { path: 'system/storage', element: <Navigate to={ROUTES.INTEGRATION_CONNECTORS} replace /> },
   { path: 'system/email', element: <Navigate to={ROUTES.INTEGRATION_CONNECTORS} replace /> },
 ];

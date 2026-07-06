@@ -37,12 +37,14 @@ export class BootstrapProfiler {
       operations: [...this.operations],
     };
 
-    if (import.meta.env.DEV) {
+    if (import.meta.env.VITE_AUTH_DEBUG === 'true') {
       console.group(
-        `[bootstrap] ${report.withinTarget ? '✓' : '⚠'} ${totalMs}ms (target ≤${BOOTSTRAP_TARGET_MS}ms)`,
+        `[session-restore] ${report.withinTarget ? '✓' : '⚠'} ${totalMs}ms (target ≤${BOOTSTRAP_TARGET_MS}ms)`,
       );
       for (const entry of report.operations) {
-        console.log(`  ${entry.operation.padEnd(28)} +${String(entry.deltaMs).padStart(4)}ms  (${entry.elapsedMs}ms)`);
+        console.log(
+          `  ${entry.operation.padEnd(28)} +${String(entry.deltaMs).padStart(4)}ms  (${entry.elapsedMs}ms)`,
+        );
       }
       console.groupEnd();
     }

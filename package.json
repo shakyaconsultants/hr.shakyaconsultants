@@ -5,13 +5,13 @@
   "description": "HR Shakya ERP Platform",
   "scripts": {
     "prepare": "node -e \"try{require('husky').default()}catch(e){}\"",
-    "build:backend": "npm run build --workspace=@hr-shakya/backend",
-    "build": "npm run build:backend",
-    "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:backend": "npm run dev --workspace=@hr-shakya/backend",
     "dev:frontend": "npm run dev --workspace=@hr-shakya/frontend",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "seed": "npm run seed --workspace=@hr-shakya/backend"
   },
   "workspaces": [
     "backend",

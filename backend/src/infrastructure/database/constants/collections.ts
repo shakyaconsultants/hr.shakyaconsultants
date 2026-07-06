@@ -15,6 +15,7 @@ export const COLLECTIONS = {
   BRANCHES: 'branches',
   OFFICE_LOCATIONS: 'office_locations',
   HOLIDAYS: 'holidays',
+  HOLIDAY_MODULES: 'holiday_modules',
   WORK_SHIFTS: 'work_shifts',
   EMPLOYMENT_TYPES: 'employment_types',
   SALARY_GRADES: 'salary_grades',

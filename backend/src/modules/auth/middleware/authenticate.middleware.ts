@@ -69,6 +69,14 @@ export async function authenticateMiddleware(
       throw new AuthenticationError('Account is not active', ERROR_CODES.AUTH_ACCOUNT_INACTIVE);
     }
 
+    if (user.status === USER_STATUS.LOCKED) {
+      const lockedUntil = user.lockedUntil ? new Date(user.lockedUntil) : null;
+      if (lockedUntil && lockedUntil > new Date()) {
+        throw new AuthenticationError('Account is locked', ERROR_CODES.AUTH_ACCOUNT_LOCKED);
+      }
+      await AuthUserRepository.resetFailedAttempts(user.id, user.companyId);
+    }
+
     if (user.status !== USER_STATUS.ACTIVE && user.status !== USER_STATUS.LOCKED) {
       throw new AuthenticationError('Account is disabled', ERROR_CODES.AUTH_UNAUTHORIZED);
     }

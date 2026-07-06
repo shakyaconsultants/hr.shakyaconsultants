@@ -8,6 +8,7 @@ import type {
 } from '@/features/admin/components/org-chart/org-chart.types';
 
 const UNASSIGNED_BRANCH_ID = '__unassigned__';
+const UNASSIGNED_DEPT_ID = '__unassigned_dept__';
 
 function designationLevel(designation: Record<string, unknown>): number {
   return typeof designation.hierarchyLevel === 'number' ? designation.hierarchyLevel : 0;
@@ -30,133 +31,193 @@ function mapEmployee(
   };
 }
 
-function buildDepartmentEmployees(
-  departmentId: string,
-  employees: EmployeeRecord[],
-  designationMap: Map<string, Record<string, unknown>>,
-  headEmployeeId?: string,
-): OrgChartEmployee[] {
-  return employees
-    .filter((employee) => employee.departmentId === departmentId && employee.id !== headEmployeeId)
-    .map((employee) => mapEmployee(employee, designationMap))
-    .sort((a, b) => b.hierarchyLevel - a.hierarchyLevel || a.lastName.localeCompare(b.lastName));
+function sortEmployees(employees: OrgChartEmployee[]): OrgChartEmployee[] {
+  return [...employees].sort(
+    (a, b) => b.hierarchyLevel - a.hierarchyLevel || a.lastName.localeCompare(b.lastName),
+  );
 }
 
-function buildDepartment(
+function resolveEmployeeBranchId(
+  employee: EmployeeRecord,
+  departmentMap: Map<string, Record<string, unknown>>,
+): string {
+  if (employee.branchId) {
+    return String(employee.branchId);
+  }
+  if (employee.departmentId) {
+    const department = departmentMap.get(String(employee.departmentId));
+    if (department?.branchId) {
+      return String(department.branchId);
+    }
+  }
+  return UNASSIGNED_BRANCH_ID;
+}
+
+function buildDepartmentNode(
   department: Record<string, unknown>,
-  employees: EmployeeRecord[],
+  branchEmployees: EmployeeRecord[],
   designationMap: Map<string, Record<string, unknown>>,
 ): OrgChartDepartment {
-  const id = String(department.id);
+  const departmentId = String(department.id);
   const headEmployeeId = department.headEmployeeId ? String(department.headEmployeeId) : undefined;
-  const deptEmployees = buildDepartmentEmployees(id, employees, designationMap, headEmployeeId);
-  const headEmployee = headEmployeeId
-    ? employees.find((employee) => employee.id === headEmployeeId)
+
+  const members = branchEmployees.filter(
+    (employee) => String(employee.departmentId) === departmentId,
+  );
+  const headRecord = headEmployeeId
+    ? members.find((employee) => employee.id === headEmployeeId)
     : undefined;
-  const orderedEmployees = headEmployee
-    ? [mapEmployee(headEmployee, designationMap), ...deptEmployees]
-    : deptEmployees;
+  const otherMembers = members.filter((employee) => employee.id !== headEmployeeId);
+
+  const employees = sortEmployees([
+    ...(headRecord ? [mapEmployee(headRecord, designationMap)] : []),
+    ...otherMembers.map((employee) => mapEmployee(employee, designationMap)),
+  ]);
 
   return {
-    id,
+    id: departmentId,
     name: String(department.name ?? 'Department'),
     code: String(department.code ?? ''),
-    employeeCount: orderedEmployees.length,
-    employees: orderedEmployees,
+    employeeCount: employees.length,
+    employees,
+  };
+}
+
+function buildBranchNode(
+  branch: Record<string, unknown>,
+  departments: Record<string, unknown>[],
+  employees: EmployeeRecord[],
+  designationMap: Map<string, Record<string, unknown>>,
+  departmentMap: Map<string, Record<string, unknown>>,
+): OrgChartBranch {
+  const branchId = String(branch.id);
+  const branchEmployees = employees.filter(
+    (employee) => resolveEmployeeBranchId(employee, departmentMap) === branchId,
+  );
+
+  const branchDepartments = departments.filter(
+    (department) =>
+      String(department.branchId ?? UNASSIGNED_BRANCH_ID) === branchId ||
+      (branchId === UNASSIGNED_BRANCH_ID && !department.branchId),
+  );
+
+  const departmentNodes = branchDepartments
+    .map((department) => buildDepartmentNode(department, branchEmployees, designationMap))
+    .filter((department) => department.employeeCount > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const employeesWithoutDepartment = branchEmployees.filter((employee) => !employee.departmentId);
+  if (employeesWithoutDepartment.length > 0) {
+    departmentNodes.push({
+      id: `${branchId}-${UNASSIGNED_DEPT_ID}`,
+      name: 'Unassigned',
+      code: 'UNASSIGNED',
+      employeeCount: employeesWithoutDepartment.length,
+      employees: sortEmployees(
+        employeesWithoutDepartment.map((employee) => mapEmployee(employee, designationMap)),
+      ),
+    });
+  }
+
+  const branchManagerId = branch.branchManagerId ? String(branch.branchManagerId) : undefined;
+  const branchHeadRecord = branchManagerId
+    ? employees.find((employee) => employee.id === branchManagerId)
+    : undefined;
+  const branchHead = branchHeadRecord ? mapEmployee(branchHeadRecord, designationMap) : undefined;
+
+  const employeeCount =
+    departmentNodes.reduce((sum, department) => sum + department.employeeCount, 0) +
+    (branchHead &&
+    !departmentNodes.some((dept) => dept.employees.some((e) => e.id === branchHead.id))
+      ? 1
+      : 0);
+
+  return {
+    id: branchId,
+    name: String(branch.name ?? 'Branch'),
+    code: String(branch.code ?? ''),
+    branchHead,
+    departments: departmentNodes,
+    employeeCount,
   };
 }
 
 export function buildOrgChartTree(input: OrgChartBuildInput): OrgChartTree {
   const { company, branches, departments, designations, employees } = input;
+  const activeEmployees = employees.filter((employee) => employee.status !== 'archived');
   const designationMap = new Map(designations.map((item) => [String(item.id), item]));
+  const departmentMap = new Map(departments.map((item) => [String(item.id), item]));
 
   const branchRecords = branches.length > 0 ? branches : [];
-  const departmentsByBranch = new Map<string, Record<string, unknown>[]>();
+  const chartBranches: OrgChartBranch[] = [];
 
-  for (const department of departments) {
-    const branchId = department.branchId ? String(department.branchId) : UNASSIGNED_BRANCH_ID;
-    const list = departmentsByBranch.get(branchId) ?? [];
-    list.push(department);
-    departmentsByBranch.set(branchId, list);
-  }
-
-  const chartBranches: OrgChartBranch[] = branchRecords.map((branch) => {
-    const branchDepartments = departmentsByBranch.get(String(branch.id)) ?? [];
-    const deptNodes = branchDepartments.map((department) =>
-      buildDepartment(department, employees, designationMap),
+  for (const branch of branchRecords) {
+    const node = buildBranchNode(
+      branch,
+      departments,
+      activeEmployees,
+      designationMap,
+      departmentMap,
     );
-    const branchManagerId = branch.branchManagerId ? String(branch.branchManagerId) : undefined;
-    const branchHeadEmployee = branchManagerId
-      ? employees.find((employee) => employee.id === branchManagerId)
-      : undefined;
-
-    return {
-      id: String(branch.id),
-      name: String(branch.name ?? 'Branch'),
-      code: String(branch.code ?? ''),
-      departments: deptNodes.sort((a, b) => a.name.localeCompare(b.name)),
-      employeeCount: deptNodes.reduce((sum, dept) => sum + dept.employeeCount, 0),
-      branchHead: branchHeadEmployee ? mapEmployee(branchHeadEmployee, designationMap) : undefined,
-    };
-  });
-
-  const unassignedDepartments = departmentsByBranch.get(UNASSIGNED_BRANCH_ID) ?? [];
-  if (unassignedDepartments.length > 0) {
-    const deptNodes = unassignedDepartments.map((department) =>
-      buildDepartment(department, employees, designationMap),
-    );
-    chartBranches.push({
-      id: UNASSIGNED_BRANCH_ID,
-      name: 'Head Office / Unassigned',
-      code: 'HQ',
-      departments: deptNodes.sort((a, b) => a.name.localeCompare(b.name)),
-      employeeCount: deptNodes.reduce((sum, dept) => sum + dept.employeeCount, 0),
-    });
-  }
-
-  if (chartBranches.length === 0 && departments.length > 0) {
-    const deptNodes = departments.map((department) =>
-      buildDepartment(department, employees, designationMap),
-    );
-    chartBranches.push({
-      id: 'company-wide',
-      name: 'Company Wide',
-      code: 'ALL',
-      departments: deptNodes.sort((a, b) => a.name.localeCompare(b.name)),
-      employeeCount: deptNodes.reduce((sum, dept) => sum + dept.employeeCount, 0),
-    });
-  }
-
-  const unassignedEmployees = employees
-    .filter((e) => !e.departmentId)
-    .map((e) => mapEmployee(e, designationMap))
-    .sort((a, b) => b.hierarchyLevel - a.hierarchyLevel || a.lastName.localeCompare(b.lastName));
-
-  if (unassignedEmployees.length > 0) {
-    const unassignedDept: OrgChartDepartment = {
-      id: '__unassigned_dept__',
-      name: 'Unassigned Employees',
-      code: 'UNASSIGNED',
-      employeeCount: unassignedEmployees.length,
-      employees: unassignedEmployees,
-    };
-
-    const existingUnassignedBranch = chartBranches.find((b) => b.id === UNASSIGNED_BRANCH_ID);
-    if (existingUnassignedBranch) {
-      existingUnassignedBranch.departments.push(unassignedDept);
-      existingUnassignedBranch.employeeCount += unassignedEmployees.length;
-    } else {
-      chartBranches.push({
-        id: UNASSIGNED_BRANCH_ID,
-        name: 'Unassigned',
-        code: 'UNASSIGNED',
-        departments: [unassignedDept],
-        employeeCount: unassignedEmployees.length,
-      });
+    if (node.employeeCount > 0 || node.departments.length > 0) {
+      chartBranches.push(node);
     }
   }
 
-  const totalDepartments = chartBranches.reduce((sum, branch) => sum + branch.departments.length, 0);
+  const unassignedBranchEmployees = activeEmployees.filter(
+    (employee) => resolveEmployeeBranchId(employee, departmentMap) === UNASSIGNED_BRANCH_ID,
+  );
+  if (unassignedBranchEmployees.length > 0 && branchRecords.length === 0) {
+    chartBranches.push(
+      buildBranchNode(
+        { id: UNASSIGNED_BRANCH_ID, name: 'Head Office', code: 'HQ' },
+        departments.filter((department) => !department.branchId),
+        activeEmployees,
+        designationMap,
+        departmentMap,
+      ),
+    );
+  } else if (unassignedBranchEmployees.length > 0) {
+    const existing = chartBranches.find((branch) => branch.id === UNASSIGNED_BRANCH_ID);
+    if (!existing) {
+      chartBranches.push(
+        buildBranchNode(
+          { id: UNASSIGNED_BRANCH_ID, name: 'Unassigned Location', code: 'UNASSIGNED' },
+          [],
+          activeEmployees,
+          designationMap,
+          departmentMap,
+        ),
+      );
+    }
+  }
+
+  if (chartBranches.length === 0 && departments.length > 0) {
+    chartBranches.push(
+      buildBranchNode(
+        {
+          id: 'company-wide',
+          name: String(company?.name ?? 'Company'),
+          code: String(company?.code ?? 'ALL'),
+        },
+        departments,
+        activeEmployees,
+        designationMap,
+        departmentMap,
+      ),
+    );
+  }
+
+  chartBranches.sort((a, b) => {
+    if (a.code.toUpperCase() === 'HQ') return -1;
+    if (b.code.toUpperCase() === 'HQ') return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const totalDepartments = chartBranches.reduce(
+    (sum, branch) => sum + branch.departments.length,
+    0,
+  );
 
   return {
     companyName: String(company?.name ?? 'Company'),
@@ -165,7 +226,7 @@ export function buildOrgChartTree(input: OrgChartBuildInput): OrgChartTree {
     stats: {
       branches: chartBranches.length,
       departments: totalDepartments,
-      employees: employees.length,
+      employees: activeEmployees.length,
     },
   };
 }
@@ -203,12 +264,20 @@ export function filterOrgChartTree(tree: OrgChartTree, query: string): OrgChartT
         })
         .filter((department): department is OrgChartDepartment => department !== null);
 
-      if (!branchMatch && departments.length === 0) return null;
+      const branchHeadMatch = branch.branchHead
+        ? `${branch.branchHead.firstName} ${branch.branchHead.lastName}`
+            .toLowerCase()
+            .includes(q) || branch.branchHead.email.toLowerCase().includes(q)
+        : false;
+
+      if (!branchMatch && !branchHeadMatch && departments.length === 0) return null;
 
       return {
         ...branch,
         departments,
-        employeeCount: departments.reduce((sum, dept) => sum + dept.employeeCount, 0),
+        employeeCount:
+          departments.reduce((sum, dept) => sum + dept.employeeCount, 0) +
+          (branch.branchHead ? 1 : 0),
       };
     })
     .filter((branch): branch is OrgChartBranch => branch !== null);
@@ -220,7 +289,10 @@ export function filterOrgChartTree(tree: OrgChartTree, query: string): OrgChartT
       branches: branches.length,
       departments: branches.reduce((sum, branch) => sum + branch.departments.length, 0),
       employees: branches.reduce(
-        (sum, branch) => sum + branch.departments.reduce((deptSum, dept) => deptSum + dept.employeeCount, 0),
+        (sum, branch) =>
+          sum +
+          branch.departments.reduce((deptSum, dept) => deptSum + dept.employeeCount, 0) +
+          (branch.branchHead ? 1 : 0),
         0,
       ),
     },

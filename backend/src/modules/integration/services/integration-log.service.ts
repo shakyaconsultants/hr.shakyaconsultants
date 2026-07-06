@@ -6,6 +6,7 @@ import {
 import { getCorrelationId } from '@shared/context/request.context.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import type { PaginatedResult } from '@shared/types/api.types.js';
+import { buildRegexFilter } from '@infrastructure/database/query/search.helper.js';
 
 export interface IntegrationLogInput {
   companyId: string;
@@ -40,7 +41,10 @@ export const IntegrationLogService = {
     });
   },
 
-  async list(companyId: string, query: IntegrationLogQuery): Promise<PaginatedResult<IntegrationLogDocument>> {
+  async list(
+    companyId: string,
+    query: IntegrationLogQuery,
+  ): Promise<PaginatedResult<IntegrationLogDocument>> {
     const filter: Record<string, unknown> = {};
     if (query.category) {
       filter.category = query.category;
@@ -54,8 +58,8 @@ export const IntegrationLogService = {
       if (query.endDate) createdAt.$lte = new Date(query.endDate);
       filter.createdAt = createdAt;
     }
-    if (query.search) {
-      filter.message = { $regex: query.search, $options: 'i' };
+    if (query.search?.trim()) {
+      filter.message = buildRegexFilter(query.search);
     }
 
     return IntegrationLogRepository.paginate(filter, {
@@ -82,11 +86,14 @@ export const IntegrationLogService = {
     const headers = Object.keys(rows[0]);
     const lines = [headers.join(',')];
     for (const row of rows) {
-      lines.push(headers.map((h) => {
-        const val = row[h as keyof typeof row] ?? '';
-        const str = String(val);
-        return str.includes(',') ? `"${str.replace(/"/g, '""')}"` : str;
-      }).join(','));
+      lines.push(
+        headers
+          .map((h) => {
+            const str = row[h as keyof typeof row];
+            return str.includes(',') ? `"${str.replace(/"/g, '""')}"` : str;
+          })
+          .join(','),
+      );
     }
     return lines.join('\n');
   },

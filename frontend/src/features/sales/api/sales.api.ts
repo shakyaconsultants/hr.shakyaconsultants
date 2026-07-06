@@ -367,22 +367,29 @@ async function unwrapPaginated<T>(response: {
     return data as PaginatedResult<T>;
   }
   const items = Array.isArray(data) ? data : (data?.items ?? []);
-  const pagination = (response.data as any)?.pagination ?? data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
+  const pagination = (response.data as any)?.pagination ??
+    data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
   return { items, pagination };
 }
 
 export async function fetchEnterpriseSalesDashboard(): Promise<EnterpriseSalesDashboard> {
-  const response = await apiClient.get<ApiSuccessResponse<EnterpriseSalesDashboard>>(`${SALES_PREFIX}/dashboard/enterprise`);
+  const response = await apiClient.get<ApiSuccessResponse<EnterpriseSalesDashboard>>(
+    `${SALES_PREFIX}/dashboard/enterprise`,
+  );
   return unwrap(response);
 }
 
 export async function fetchManagerSalesDashboard(): Promise<ManagerSalesDashboard> {
-  const response = await apiClient.get<ApiSuccessResponse<ManagerSalesDashboard>>(`${SALES_PREFIX}/dashboard/manager`);
+  const response = await apiClient.get<ApiSuccessResponse<ManagerSalesDashboard>>(
+    `${SALES_PREFIX}/dashboard/manager`,
+  );
   return unwrap(response);
 }
 
 export async function fetchExecutiveSalesDashboard(): Promise<ExecutiveSalesDashboard> {
-  const response = await apiClient.get<ApiSuccessResponse<ExecutiveSalesDashboard>>(`${SALES_PREFIX}/dashboard/executive`);
+  const response = await apiClient.get<ApiSuccessResponse<ExecutiveSalesDashboard>>(
+    `${SALES_PREFIX}/dashboard/executive`,
+  );
   return unwrap(response);
 }
 
@@ -392,30 +399,43 @@ export async function fetchSalesPolicy(): Promise<SalesPolicy> {
 }
 
 export async function updateSalesPolicy(payload: Partial<SalesPolicy>): Promise<SalesPolicy> {
-  const response = await apiClient.patch<ApiSuccessResponse<SalesPolicy>>(`${SALES_PREFIX}/policies`, payload);
+  const response = await apiClient.patch<ApiSuccessResponse<SalesPolicy>>(
+    `${SALES_PREFIX}/policies`,
+    payload,
+  );
   return unwrap(response);
 }
 
 export async function fetchPipelines(params: ListParams = {}): Promise<PaginatedResult<Pipeline>> {
-  const response = await apiClient.get<ApiSuccessResponse<Pipeline[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/pipelines`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Pipeline[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/pipelines`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchPipeline(id: string): Promise<Pipeline> {
-  const response = await apiClient.get<ApiSuccessResponse<Pipeline>>(`${SALES_PREFIX}/pipelines/${id}`);
+  const response = await apiClient.get<ApiSuccessResponse<Pipeline>>(
+    `${SALES_PREFIX}/pipelines/${id}`,
+  );
   return unwrap(response);
 }
 
 export async function createPipeline(payload: CreatePipelinePayload): Promise<Pipeline> {
-  const response = await apiClient.post<ApiSuccessResponse<Pipeline>>(`${SALES_PREFIX}/pipelines`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<Pipeline>>(
+    `${SALES_PREFIX}/pipelines`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updatePipeline(id: string, payload: Partial<CreatePipelinePayload>): Promise<Pipeline> {
-  const response = await apiClient.patch<ApiSuccessResponse<Pipeline>>(`${SALES_PREFIX}/pipelines/${id}`, payload);
+export async function updatePipeline(
+  id: string,
+  payload: Partial<CreatePipelinePayload>,
+): Promise<Pipeline> {
+  const response = await apiClient.patch<ApiSuccessResponse<Pipeline>>(
+    `${SALES_PREFIX}/pipelines/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -423,21 +443,31 @@ export async function deletePipeline(id: string): Promise<void> {
   await apiClient.delete(`${SALES_PREFIX}/pipelines/${id}`);
 }
 
-export async function fetchLeadSources(params: ListParams = {}): Promise<PaginatedResult<LeadSource>> {
-  const response = await apiClient.get<ApiSuccessResponse<LeadSource[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/lead-sources`,
-    { params },
-  );
+export async function fetchLeadSources(
+  params: ListParams = {},
+): Promise<PaginatedResult<LeadSource>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<LeadSource[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/lead-sources`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createLeadSource(payload: CreateLeadSourcePayload): Promise<LeadSource> {
-  const response = await apiClient.post<ApiSuccessResponse<LeadSource>>(`${SALES_PREFIX}/lead-sources`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<LeadSource>>(
+    `${SALES_PREFIX}/lead-sources`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updateLeadSource(id: string, payload: Partial<CreateLeadSourcePayload>): Promise<LeadSource> {
-  const response = await apiClient.patch<ApiSuccessResponse<LeadSource>>(`${SALES_PREFIX}/lead-sources/${id}`, payload);
+export async function updateLeadSource(
+  id: string,
+  payload: Partial<CreateLeadSourcePayload>,
+): Promise<LeadSource> {
+  const response = await apiClient.patch<ApiSuccessResponse<LeadSource>>(
+    `${SALES_PREFIX}/lead-sources/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -445,21 +475,31 @@ export async function deleteLeadSource(id: string): Promise<void> {
   await apiClient.delete(`${SALES_PREFIX}/lead-sources/${id}`);
 }
 
-export async function fetchSalesTeams(params: ListParams = {}): Promise<PaginatedResult<SalesTeam>> {
-  const response = await apiClient.get<ApiSuccessResponse<SalesTeam[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/sales-teams`,
-    { params },
-  );
+export async function fetchSalesTeams(
+  params: ListParams = {},
+): Promise<PaginatedResult<SalesTeam>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<SalesTeam[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/sales-teams`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createSalesTeam(payload: CreateSalesTeamPayload): Promise<SalesTeam> {
-  const response = await apiClient.post<ApiSuccessResponse<SalesTeam>>(`${SALES_PREFIX}/sales-teams`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<SalesTeam>>(
+    `${SALES_PREFIX}/sales-teams`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updateSalesTeam(id: string, payload: Partial<CreateSalesTeamPayload>): Promise<SalesTeam> {
-  const response = await apiClient.patch<ApiSuccessResponse<SalesTeam>>(`${SALES_PREFIX}/sales-teams/${id}`, payload);
+export async function updateSalesTeam(
+  id: string,
+  payload: Partial<CreateSalesTeamPayload>,
+): Promise<SalesTeam> {
+  const response = await apiClient.patch<ApiSuccessResponse<SalesTeam>>(
+    `${SALES_PREFIX}/sales-teams/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -467,21 +507,31 @@ export async function deleteSalesTeam(id: string): Promise<void> {
   await apiClient.delete(`${SALES_PREFIX}/sales-teams/${id}`);
 }
 
-export async function fetchTerritories(params: ListParams = {}): Promise<PaginatedResult<Territory>> {
-  const response = await apiClient.get<ApiSuccessResponse<Territory[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/territories`,
-    { params },
-  );
+export async function fetchTerritories(
+  params: ListParams = {},
+): Promise<PaginatedResult<Territory>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<Territory[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/territories`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createTerritory(payload: CreateTerritoryPayload): Promise<Territory> {
-  const response = await apiClient.post<ApiSuccessResponse<Territory>>(`${SALES_PREFIX}/territories`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<Territory>>(
+    `${SALES_PREFIX}/territories`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updateTerritory(id: string, payload: Partial<CreateTerritoryPayload>): Promise<Territory> {
-  const response = await apiClient.patch<ApiSuccessResponse<Territory>>(`${SALES_PREFIX}/territories/${id}`, payload);
+export async function updateTerritory(
+  id: string,
+  payload: Partial<CreateTerritoryPayload>,
+): Promise<Territory> {
+  const response = await apiClient.patch<ApiSuccessResponse<Territory>>(
+    `${SALES_PREFIX}/territories/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -489,21 +539,31 @@ export async function deleteTerritory(id: string): Promise<void> {
   await apiClient.delete(`${SALES_PREFIX}/territories/${id}`);
 }
 
-export async function fetchSalesTargets(params: ListParams = {}): Promise<PaginatedResult<SalesTarget>> {
-  const response = await apiClient.get<ApiSuccessResponse<SalesTarget[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/sales-targets`,
-    { params },
-  );
+export async function fetchSalesTargets(
+  params: ListParams = {},
+): Promise<PaginatedResult<SalesTarget>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<SalesTarget[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/sales-targets`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createSalesTarget(payload: CreateSalesTargetPayload): Promise<SalesTarget> {
-  const response = await apiClient.post<ApiSuccessResponse<SalesTarget>>(`${SALES_PREFIX}/sales-targets`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<SalesTarget>>(
+    `${SALES_PREFIX}/sales-targets`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updateSalesTarget(id: string, payload: Partial<CreateSalesTargetPayload>): Promise<SalesTarget> {
-  const response = await apiClient.patch<ApiSuccessResponse<SalesTarget>>(`${SALES_PREFIX}/sales-targets/${id}`, payload);
+export async function updateSalesTarget(
+  id: string,
+  payload: Partial<CreateSalesTargetPayload>,
+): Promise<SalesTarget> {
+  const response = await apiClient.patch<ApiSuccessResponse<SalesTarget>>(
+    `${SALES_PREFIX}/sales-targets/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -512,26 +572,23 @@ export async function deleteSalesTarget(id: string): Promise<void> {
 }
 
 export async function fetchLeads(params: ListParams = {}): Promise<PaginatedResult<Lead>> {
-  const response = await apiClient.get<ApiSuccessResponse<Lead[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/leads`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Lead[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/leads`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchMyLeads(params: ListParams = {}): Promise<PaginatedResult<Lead>> {
-  const response = await apiClient.get<ApiSuccessResponse<Lead[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/leads/me`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Lead[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/leads/me`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchTeamLeads(params: ListParams = {}): Promise<PaginatedResult<Lead>> {
-  const response = await apiClient.get<ApiSuccessResponse<Lead[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/leads/team`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Lead[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/leads/team`, { params });
   return unwrapPaginated(response);
 }
 
@@ -546,7 +603,10 @@ export async function createLead(payload: CreateLeadPayload): Promise<Lead> {
 }
 
 export async function updateLead(id: string, payload: UpdateLeadPayload): Promise<Lead> {
-  const response = await apiClient.patch<ApiSuccessResponse<Lead>>(`${SALES_PREFIX}/leads/${id}`, payload);
+  const response = await apiClient.patch<ApiSuccessResponse<Lead>>(
+    `${SALES_PREFIX}/leads/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -555,25 +615,36 @@ export async function deleteLead(id: string): Promise<void> {
 }
 
 export async function assignLead(id: string, payload: AssignLeadPayload): Promise<Lead> {
-  const response = await apiClient.post<ApiSuccessResponse<Lead>>(`${SALES_PREFIX}/leads/${id}/assign`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<Lead>>(
+    `${SALES_PREFIX}/leads/${id}/assign`,
+    payload,
+  );
   return unwrap(response);
 }
 
 export async function moveLeadStage(id: string, payload: MoveStagePayload): Promise<Lead> {
-  const response = await apiClient.post<ApiSuccessResponse<Lead>>(`${SALES_PREFIX}/leads/${id}/move-stage`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<Lead>>(
+    `${SALES_PREFIX}/leads/${id}/move-stage`,
+    payload,
+  );
   return unwrap(response);
 }
 
 export async function fetchLeadTimeline(id: string): Promise<LeadActivity[]> {
-  const response = await apiClient.get<ApiSuccessResponse<LeadActivity[]>>(`${SALES_PREFIX}/leads/${id}/timeline`);
+  const response = await apiClient.get<ApiSuccessResponse<LeadActivity[]>>(
+    `${SALES_PREFIX}/leads/${id}/timeline`,
+  );
   return unwrap(response);
 }
 
 export async function fetchLeadKanban(pipelineId?: string): Promise<LeadKanbanBoard> {
   try {
-    const response = await apiClient.get<ApiSuccessResponse<LeadKanbanBoard>>(`${SALES_PREFIX}/leads/kanban`, {
-      params: pipelineId ? { pipelineId } : undefined,
-    });
+    const response = await apiClient.get<ApiSuccessResponse<LeadKanbanBoard>>(
+      `${SALES_PREFIX}/leads/kanban`,
+      {
+        params: pipelineId ? { pipelineId } : undefined,
+      },
+    );
     const board = await unwrap(response);
     return {
       pipelineId: board.pipelineId ?? '',
@@ -600,78 +671,116 @@ export async function importLeads(file: File): Promise<{ imported: number; error
 }
 
 export async function exportLeads(params: ListParams = {}): Promise<Blob> {
-  const response = await apiClient.get(`${SALES_PREFIX}/leads/export`, { params, responseType: 'blob' });
+  const response = await apiClient.get(`${SALES_PREFIX}/leads/export`, {
+    params,
+    responseType: 'blob',
+  });
   return response.data as Blob;
 }
 
-export async function fetchActivities(params: ListParams & { leadId?: string } = {}): Promise<PaginatedResult<LeadActivity>> {
-  const response = await apiClient.get<ApiSuccessResponse<LeadActivity[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/activities`,
-    { params },
-  );
+export async function fetchActivities(
+  params: ListParams & { leadId?: string } = {},
+): Promise<PaginatedResult<LeadActivity>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<LeadActivity[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/activities`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createActivity(payload: CreateActivityPayload): Promise<LeadActivity> {
-  const response = await apiClient.post<ApiSuccessResponse<LeadActivity>>(`${SALES_PREFIX}/activities`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<LeadActivity>>(
+    `${SALES_PREFIX}/activities`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function fetchCallLogs(params: ListParams & { leadId?: string } = {}): Promise<PaginatedResult<CallLog>> {
-  const response = await apiClient.get<ApiSuccessResponse<CallLog[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/call-logs`,
-    { params },
-  );
+export async function fetchCallLogs(
+  params: ListParams & { leadId?: string } = {},
+): Promise<PaginatedResult<CallLog>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<CallLog[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/call-logs`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createCallLog(payload: CreateCallLogPayload): Promise<CallLog> {
-  const response = await apiClient.post<ApiSuccessResponse<CallLog>>(`${SALES_PREFIX}/call-logs`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<CallLog>>(
+    `${SALES_PREFIX}/call-logs`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function fetchFollowUps(params: ListParams & { leadId?: string } = {}): Promise<PaginatedResult<FollowUp>> {
-  const response = await apiClient.get<ApiSuccessResponse<FollowUp[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/follow-ups`,
-    { params },
-  );
+export async function fetchFollowUps(
+  params: ListParams & { leadId?: string } = {},
+): Promise<PaginatedResult<FollowUp>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<FollowUp[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/follow-ups`, { params });
   return unwrapPaginated(response);
 }
 
 export async function createFollowUp(payload: CreateFollowUpPayload): Promise<FollowUp> {
-  const response = await apiClient.post<ApiSuccessResponse<FollowUp>>(`${SALES_PREFIX}/follow-ups`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<FollowUp>>(
+    `${SALES_PREFIX}/follow-ups`,
+    payload,
+  );
   return unwrap(response);
 }
 
 export async function completeFollowUp(id: string): Promise<FollowUp> {
-  const response = await apiClient.post<ApiSuccessResponse<FollowUp>>(`${SALES_PREFIX}/follow-ups/${id}/complete`);
+  const response = await apiClient.patch<ApiSuccessResponse<FollowUp>>(
+    `${SALES_PREFIX}/follow-ups/${id}`,
+    {
+      status: 'completed',
+    },
+  );
   return unwrap(response);
 }
 
 export async function fetchDeals(params: ListParams = {}): Promise<PaginatedResult<Deal>> {
-  const response = await apiClient.get<ApiSuccessResponse<Deal[]> & { pagination?: PaginationMeta }>(
-    `${SALES_PREFIX}/deals`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Deal[]> & { pagination?: PaginationMeta }
+  >(`${SALES_PREFIX}/deals`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchSalesReport(params: ReportParams): Promise<SalesReport> {
-  const response = await apiClient.get<ApiSuccessResponse<SalesReport>>(`${SALES_PREFIX}/reports`, { params });
+  const response = await apiClient.get<ApiSuccessResponse<SalesReport>>(`${SALES_PREFIX}/reports`, {
+    params,
+  });
   return unwrap(response);
 }
 
 export async function exportSalesReport(params: ReportParams): Promise<Blob> {
-  const response = await apiClient.get(`${SALES_PREFIX}/reports/export`, { params, responseType: 'blob' });
+  const response = await apiClient.get(`${SALES_PREFIX}/reports/export`, {
+    params,
+    responseType: 'blob',
+  });
   return response.data as Blob;
 }
 
-export async function fetchConversionAnalytics(params: { startDate: string; endDate: string; pipelineId?: string }): Promise<ConversionAnalytics> {
-  const response = await apiClient.get<ApiSuccessResponse<ConversionAnalytics>>(`${SALES_PREFIX}/analytics/conversion`, { params });
+export async function fetchConversionAnalytics(params: {
+  startDate: string;
+  endDate: string;
+  pipelineId?: string;
+}): Promise<ConversionAnalytics> {
+  const response = await apiClient.get<ApiSuccessResponse<ConversionAnalytics>>(
+    `${SALES_PREFIX}/analytics/conversion`,
+    { params },
+  );
   return unwrap(response);
 }
 
-export async function fetchRevenueAnalytics(params: { startDate: string; endDate: string; teamId?: string }): Promise<RevenueAnalytics> {
-  const response = await apiClient.get<ApiSuccessResponse<RevenueAnalytics>>(`${SALES_PREFIX}/analytics/revenue`, { params });
+export async function fetchRevenueAnalytics(params: {
+  startDate: string;
+  endDate: string;
+  teamId?: string;
+}): Promise<RevenueAnalytics> {
+  const response = await apiClient.get<ApiSuccessResponse<RevenueAnalytics>>(
+    `${SALES_PREFIX}/analytics/revenue`,
+    { params },
+  );
   return unwrap(response);
 }

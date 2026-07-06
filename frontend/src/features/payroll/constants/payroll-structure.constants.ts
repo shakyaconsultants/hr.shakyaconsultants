@@ -13,6 +13,8 @@ export interface PayrollTemplateComponent extends SalaryComponent {
   category: PayrollComponentCategory;
   description?: string;
   isVariable?: boolean;
+  /** When true, HR can skip this component per employee during assignment. */
+  isOptional?: boolean;
 }
 
 /** Company-standard monthly CTC structure aligned with Indian payroll practice. */
@@ -48,6 +50,7 @@ export const INDIA_STANDARD_PAYROLL_TEMPLATE = {
       amount: 1600,
       isTaxable: false,
       category: 'allowance',
+      isOptional: true,
       description: 'Transport reimbursement (tax-exempt up to statutory limit)',
     },
     {
@@ -57,6 +60,7 @@ export const INDIA_STANDARD_PAYROLL_TEMPLATE = {
       amount: 2200,
       isTaxable: false,
       category: 'allowance',
+      isOptional: true,
       description: 'Food / meal coupons or cash allowance',
     },
     {
@@ -67,6 +71,7 @@ export const INDIA_STANDARD_PAYROLL_TEMPLATE = {
       isTaxable: true,
       category: 'incentive',
       isVariable: true,
+      isOptional: true,
       description: 'Variable — paid based on attendance compliance',
     },
     {
@@ -77,6 +82,7 @@ export const INDIA_STANDARD_PAYROLL_TEMPLATE = {
       isTaxable: true,
       category: 'incentive',
       isVariable: true,
+      isOptional: true,
       description: 'Variable — linked to KPIs / performance review',
     },
     {
@@ -100,7 +106,10 @@ export const INDIA_STANDARD_PAYROLL_TEMPLATE = {
   ] satisfies PayrollTemplateComponent[],
 } as const;
 
-export const PAYROLL_COMPONENT_CATEGORIES: Array<{ value: PayrollComponentCategory; label: string }> = [
+export const PAYROLL_COMPONENT_CATEGORIES: Array<{
+  value: PayrollComponentCategory;
+  label: string;
+}> = [
   { value: 'earning', label: 'Earning' },
   { value: 'allowance', label: 'Allowance' },
   { value: 'incentive', label: 'Incentive / Bonus' },
@@ -126,4 +135,23 @@ export function buildTemplateComponents(): PayrollTemplateComponent[] {
 export function suggestBasicFromAnnualCtc(annualCtc: number): number {
   const monthlyCtc = annualCtc / 12;
   return Math.round(monthlyCtc * 0.4);
+}
+
+export function isOptionalComponent(component: SalaryComponent): boolean {
+  const extended = component as PayrollTemplateComponent;
+  return Boolean(extended.isOptional ?? extended.isVariable);
+}
+
+export function buildDefaultComponentEnabled(
+  components: SalaryComponent[],
+): Record<string, boolean> {
+  const enabled: Record<string, boolean> = {};
+  for (const component of components) {
+    if (isOptionalComponent(component)) {
+      enabled[component.code] = !component.isVariable && component.amount > 0;
+    } else {
+      enabled[component.code] = true;
+    }
+  }
+  return enabled;
 }

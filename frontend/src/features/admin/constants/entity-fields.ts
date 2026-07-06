@@ -1,6 +1,16 @@
 import type { MasterEntityKey } from '@/features/organization/constants/entity-catalog';
 
-export type EntityFieldType = 'text' | 'number' | 'textarea' | 'select' | 'date' | 'time' | 'datetime' | 'duration' | 'boolean' | 'json';
+export type EntityFieldType =
+  | 'text'
+  | 'number'
+  | 'textarea'
+  | 'select'
+  | 'date'
+  | 'time'
+  | 'datetime'
+  | 'duration'
+  | 'boolean'
+  | 'json';
 
 export interface EntityFieldDefinition {
   key: string;
@@ -45,7 +55,12 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
   ],
   department: [
     ...BASE_FIELDS.map((field) => (field.key === 'code' ? { ...field, required: false } : field)),
-    { key: 'parentDepartmentId', label: 'Parent Department', type: 'select', refEntity: 'department' },
+    {
+      key: 'parentDepartmentId',
+      label: 'Parent Department',
+      type: 'select',
+      refEntity: 'department',
+    },
     { key: 'headEmployeeId', label: 'Department Head', type: 'text' },
     { key: 'branchId', label: 'Branch', type: 'select', refEntity: 'branch' },
     { key: 'email', label: 'Email', type: 'text' },
@@ -58,20 +73,42 @@ export const ENTITY_FIELD_DEFINITIONS: Record<MasterEntityKey, EntityFieldDefini
     { key: 'salaryGradeId', label: 'Salary Grade', type: 'select', refEntity: 'salary-grade' },
   ],
 
-  'work-shift': [
-    ...BASE_FIELDS,
-  ],
+  'work-shift': [...BASE_FIELDS],
   holiday: [
     ...BASE_FIELDS.filter((field) => field.key !== 'description'),
     { key: 'date', label: 'Holiday Date', type: 'date', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'type', label: 'Type', type: 'select', options: [{ value: 'public', label: 'Public' }, { value: 'company', label: 'Company' }, { value: 'branch', label: 'Branch' }, { value: 'optional', label: 'Optional' }] },
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select',
+      options: [
+        { value: 'public', label: 'Public' },
+        { value: 'festival', label: 'Festival' },
+        { value: 'company', label: 'Company' },
+        { value: 'branch', label: 'Branch' },
+        { value: 'weekly', label: 'Weekly Off' },
+        { value: 'optional', label: 'Optional' },
+      ],
+    },
     { key: 'branchId', label: 'Branch (optional)', type: 'select', refEntity: 'branch' },
     { key: 'isRecurring', label: 'Recurring', type: 'boolean' },
   ],
-  'employment-type': [
+  'holiday-module': [
     ...BASE_FIELDS,
-    { key: 'isDefault', label: 'Default', type: 'boolean' },
+    {
+      key: 'moduleType',
+      label: 'Module Type',
+      type: 'select',
+      options: [
+        { value: 'national', label: 'National' },
+        { value: 'festival', label: 'Festival' },
+        { value: 'weekly', label: 'Weekly' },
+        { value: 'regional', label: 'Regional' },
+        { value: 'custom', label: 'Custom' },
+      ],
+    },
+    { key: 'calendarYear', label: 'Calendar Year', type: 'number' },
   ],
   'salary-grade': [
     ...BASE_FIELDS,

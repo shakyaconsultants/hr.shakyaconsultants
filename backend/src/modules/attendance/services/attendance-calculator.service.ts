@@ -7,18 +7,19 @@ import {
   type AttendancePayrollSnapshot,
 } from '@domain/attendance/attendance.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
-import { HolidayRepository, WorkShiftRepository } from '@domain/organization/organization.schemas.js';
+import { WorkShiftRepository } from '@domain/organization/organization.schemas.js';
+import { HolidayResolverService } from '@modules/organization/services/holiday-resolver.service.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { ATTENDANCE_STATUS } from '@shared/constants/status.constants.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
-import { startOfDay, endOfDay } from '@shared/utils/date.util.js';
+import { startOfDay } from '@shared/utils/date.util.js';
 import { AttendancePolicyService } from '@modules/attendance/services/attendance-policy.service.js';
 
 function parseTimeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
-  return (hours ?? 0) * 60 + (minutes ?? 0);
+  const [hoursStr = '0', minutesStr = '0'] = time.split(':');
+  return Number(hoursStr) * 60 + Number(minutesStr);
 }
 
 function minutesBetween(start: Date, end: Date): number {
@@ -32,27 +33,42 @@ function combineDateAndTime(date: Date, time: string): Date {
   return result;
 }
 
-async function resolveWorkShiftId(companyId: string, employeeId: string, date: Date): Promise<string | undefined> {
+async function resolveWorkShiftId(
+  companyId: string,
+  employeeId: string,
+  date: Date,
+): Promise<string | undefined> {
   const assignments = await ShiftAssignmentRepository.findMany(
     {
       employeeId,
       status: ENTITY_STATUS.ACTIVE,
       effectiveFrom: { $lte: date },
-      $or: [{ effectiveTo: { $exists: false } }, { effectiveTo: null }, { effectiveTo: { $gte: date } }],
+      $or: [
+        { effectiveTo: { $exists: false } },
+        { effectiveTo: null },
+        { effectiveTo: { $gte: date } },
+      ],
     },
     { companyId },
   );
-  const assignment = assignments.sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime())[0];
-  if (assignment) {
-    return assignment.workShiftId;
+  if (assignments.length === 0) {
+    const employee = await EmployeeRepository.findById(employeeId, { companyId });
+    return employee?.shiftId;
   }
 
-  const employee = await EmployeeRepository.findById(employeeId, { companyId });
-  return employee?.shiftId;
+  const assignment = assignments.sort(
+    (a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime(),
+  )[0];
+  return assignment.workShiftId;
 }
 
 export const AttendanceCalculatorService = {
-  async getOrCreateRecord(companyId: string, employeeId: string, date: Date, userId: string): Promise<AttendanceDocument> {
+  async getOrCreateRecord(
+    companyId: string,
+    employeeId: string,
+    date: Date,
+    userId: string,
+  ): Promise<AttendanceDocument> {
     const day = startOfDay(date);
     const existing = await AttendanceRepository.findOne({ employeeId, date: day }, { companyId });
     if (existing) {
@@ -86,7 +102,11 @@ export const AttendanceCalculatorService = {
     );
   },
 
-  async recalculate(companyId: string, attendanceId: string, userId: string): Promise<AttendanceDocument> {
+  async recalculate(
+    companyId: string,
+    attendanceId: string,
+    userId: string,
+  ): Promise<AttendanceDocument> {
     const record = await AttendanceRepository.findById(attendanceId, { companyId });
     if (!record) {
       throw new NotFoundError('Attendance record not found', ERROR_CODES.NOT_FOUND);
@@ -99,20 +119,13 @@ export const AttendanceCalculatorService = {
     const weeklyOffDays = policies.weeklyOffDays;
     const isWeekend = weeklyOffDays.includes(dayOfWeek);
 
-    const holiday = await HolidayRepository.findOne(
-      {
-        date: { $gte: day, $lte: endOfDay(day) },
-        status: ENTITY_STATUS.ACTIVE,
-        $or: [{ branchId: { $exists: false } }, { branchId: null }, { branchId: record.branchId }],
-      },
-      { companyId },
-    );
+    const holiday = await HolidayResolverService.findHoliday(companyId, day, {
+      branchId: record.branchId,
+      departmentId: record.departmentId,
+    });
     const isHoliday = Boolean(holiday);
 
-    const logs = await AttendanceLogRepository.findMany(
-      { attendanceId },
-      { companyId },
-    );
+    const logs = await AttendanceLogRepository.findMany({ attendanceId }, { companyId });
     logs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     const checkInLog = logs.find((l) => l.type === ATTENDANCE_LOG_TYPE.CHECK_IN);
@@ -131,7 +144,7 @@ export const AttendanceCalculatorService = {
       }
     }
 
-    const shiftId = record.shiftId ?? await resolveWorkShiftId(companyId, record.employeeId, day);
+    const shiftId = record.shiftId ?? (await resolveWorkShiftId(companyId, record.employeeId, day));
     const shift = shiftId ? await WorkShiftRepository.findById(shiftId, { companyId }) : null;
 
     let lateMinutes = 0;
@@ -150,17 +163,21 @@ export const AttendanceCalculatorService = {
           shiftEnd.setDate(shiftEnd.getDate() + 1);
         }
 
-        const graceEnd = new Date(shiftStart.getTime() + (shift.gracePeriodMinutes + policies.graceMinutes) * 60000);
+        const graceEnd = new Date(
+          shiftStart.getTime() + (shift.gracePeriodMinutes + policies.graceMinutes) * 60000,
+        );
         if (checkIn > graceEnd) {
           lateMinutes = minutesBetween(graceEnd, checkIn);
         }
 
-        const earlyThreshold = new Date(shiftEnd.getTime() - policies.earlyExitThresholdMinutes * 60000);
+        const earlyThreshold = new Date(
+          shiftEnd.getTime() - policies.earlyExitThresholdMinutes * 60000,
+        );
         if (checkOut < earlyThreshold) {
           earlyExitMinutes = minutesBetween(checkOut, shiftEnd);
         }
 
-        const expectedMinutes = minutesBetween(shiftStart, shiftEnd) - (shift.breakMinutes ?? 0);
+        const expectedMinutes = minutesBetween(shiftStart, shiftEnd) - shift.breakMinutes;
         const overtimeThreshold = expectedMinutes + policies.overtimeThresholdMinutes;
         if (workedMinutes > overtimeThreshold) {
           overtimeMinutes = workedMinutes - expectedMinutes;
@@ -168,7 +185,10 @@ export const AttendanceCalculatorService = {
       }
 
       if (workedMinutes >= policies.halfDayThresholdMinutes) {
-        status = lateMinutes > policies.lateThresholdMinutes ? ATTENDANCE_STATUS.LATE : ATTENDANCE_STATUS.PRESENT;
+        status =
+          lateMinutes > policies.lateThresholdMinutes
+            ? ATTENDANCE_STATUS.LATE
+            : ATTENDANCE_STATUS.PRESENT;
       } else if (workedMinutes > 0) {
         status = ATTENDANCE_STATUS.HALF_DAY;
       }
@@ -196,13 +216,25 @@ export const AttendanceCalculatorService = {
         isWeekend,
         isHoliday,
         status,
-        payrollSnapshot: this.buildPayrollSnapshot(record, status, workedMinutes, lateMinutes, earlyExitMinutes, overtimeMinutes, breakMinutes),
+        payrollSnapshot: this.buildPayrollSnapshot(
+          record,
+          status,
+          workedMinutes,
+          lateMinutes,
+          earlyExitMinutes,
+          overtimeMinutes,
+          breakMinutes,
+        ),
         updatedBy: userId,
       },
       { companyId },
     );
 
-    return updated!;
+    if (!updated) {
+      throw new NotFoundError('Attendance record not found', ERROR_CODES.NOT_FOUND);
+    }
+
+    return updated;
   },
 
   buildPayrollSnapshot(
@@ -214,7 +246,11 @@ export const AttendanceCalculatorService = {
     overtimeMinutes: number,
     breakMinutes: number,
   ): AttendancePayrollSnapshot {
-    const payableStatuses: string[] = [ATTENDANCE_STATUS.PRESENT, ATTENDANCE_STATUS.LATE, ATTENDANCE_STATUS.HOLIDAY];
+    const payableStatuses: string[] = [
+      ATTENDANCE_STATUS.PRESENT,
+      ATTENDANCE_STATUS.LATE,
+      ATTENDANCE_STATUS.HOLIDAY,
+    ];
     const payableDays = payableStatuses.includes(status)
       ? 1
       : status === ATTENDANCE_STATUS.HALF_DAY

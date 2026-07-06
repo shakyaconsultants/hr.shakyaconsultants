@@ -26,9 +26,19 @@ export function normalizeKanbanPayload<TStage, TItem>(payload: {
 
 /** Normalize paginated API payloads that return `{ items, total, page, pageSize }` directly. */
 export function normalizePaginatedItems<T>(
-  payload: T[] | { items?: T[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } } | null | undefined,
+  payload:
+    | T[]
+    | {
+        items?: T[];
+        pagination?: { page: number; pageSize: number; total: number; totalPages: number };
+      }
+    | null
+    | undefined,
   fallbackPageSize = 20,
-): { items: T[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } } {
+): {
+  items: T[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+} {
   if (Array.isArray(payload)) {
     return {
       items: payload,
@@ -37,9 +47,10 @@ export function normalizePaginatedItems<T>(
   }
 
   const items = asArray(payload?.items);
-  const total = payload && 'pagination' in payload && payload.pagination?.total != null
-    ? payload.pagination.total
-    : items.length;
+  const total =
+    payload && 'pagination' in payload && payload.pagination?.total != null
+      ? payload.pagination.total
+      : items.length;
 
   return {
     items,
@@ -50,4 +61,27 @@ export function normalizePaginatedItems<T>(
       totalPages: Math.max(1, Math.ceil(total / fallbackPageSize)),
     },
   };
+}
+
+/**
+ * Unwrap composite API payloads like `{ candidate: {...} }` or `{ employee: {...} }`.
+ * Keeps frontend aligned with backend detail endpoints without duplicating domain data.
+ */
+export function unwrapEntityPayload<T>(
+  payload: T | Record<string, unknown> | null | undefined,
+  entityKeys: string[] = ['candidate', 'employee', 'lead', 'record', 'item', 'data'],
+): T {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return payload as T;
+  }
+
+  const record = payload as Record<string, unknown>;
+  for (const key of entityKeys) {
+    const nested = record[key];
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      return nested as T;
+    }
+  }
+
+  return payload as T;
 }

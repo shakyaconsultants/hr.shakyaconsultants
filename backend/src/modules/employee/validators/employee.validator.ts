@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { EMPLOYEE_BULK_ACTION } from '@modules/employee/constants/employee.constants.js';
-import { DOCUMENT_TYPE, EMPLOYEE_EMPLOYMENT_STATUS, EMPLOYMENT_TYPE, GENDER, REPORTING_RELATIONSHIP_TYPE } from '@domain/employee/employee.schemas.js';
+import {
+  DOCUMENT_TYPE,
+  EMPLOYEE_EMPLOYMENT_STATUS,
+  EMPLOYMENT_TYPE,
+  GENDER,
+  REPORTING_RELATIONSHIP_TYPE,
+} from '@domain/employee/employee.schemas.js';
 
 function optionalUuid() {
   return z.preprocess(
@@ -9,14 +15,16 @@ function optionalUuid() {
   );
 }
 
-const addressSchema = z.object({
-  line1: z.string().min(1),
-  line2: z.string().optional(),
-  city: z.string().min(1),
-  state: z.string().min(1),
-  postalCode: z.string().min(1),
-  country: z.string().min(1),
-}).optional();
+const addressSchema = z
+  .object({
+    line1: z.string().min(1),
+    line2: z.string().optional(),
+    city: z.string().min(1),
+    state: z.string().min(1),
+    postalCode: z.string().min(1),
+    country: z.string().min(1),
+  })
+  .optional();
 
 export const idParamSchema = z.object({ id: z.uuid() });
 
@@ -34,7 +42,9 @@ export const listQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional(),
   search: z.string().optional(),
   status: z.string().optional(),
-  employmentStatus: z.enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]]).optional(),
+  employmentStatus: z
+    .enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]])
+    .optional(),
   departmentId: optionalUuid(),
   branchId: optionalUuid(),
   designationId: optionalUuid(),
@@ -66,7 +76,9 @@ export const adminCreateEmployeeSchema = z.object({
   reportingManagerId: optionalUuid(),
   joinedAt: z.coerce.date(),
   employmentType: z.enum(Object.values(EMPLOYMENT_TYPE) as [string, ...string[]]).optional(),
-  employmentStatus: z.enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]]).optional(),
+  employmentStatus: z
+    .enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]])
+    .optional(),
 });
 
 export const createEmployeeSchema = z.object({
@@ -95,7 +107,10 @@ export const createEmployeeSchema = z.object({
   probationEndDate: z.coerce.date().optional(),
   confirmationDate: z.coerce.date().optional(),
   employmentType: z.enum(Object.values(EMPLOYMENT_TYPE) as [string, ...string[]]).optional(),
-  employmentStatus: z.enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]]).optional(),
+  employmentStatus: z
+    .enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]])
+    .optional(),
+  temporaryPassword: z.string().min(6).optional(),
 });
 
 export const updateEmployeeSchema = createEmployeeSchema.partial();

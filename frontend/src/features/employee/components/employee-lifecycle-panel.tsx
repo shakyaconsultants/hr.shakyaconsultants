@@ -25,57 +25,66 @@ function DeliveryBadge({ status }: { status: 'never_sent' | 'sent' | 'failed' })
 
 export interface EmployeeLifecyclePanelProps {
   lifecycle: EmployeeLifecycleProfile;
-  isSendingActivation: boolean;
+  isSendingWelcome: boolean;
   isSendingOnboarding: boolean;
   isSendingPasswordReset: boolean;
-  onSendActivation: () => void;
+  onSendWelcome: () => void;
   onSendOnboarding: () => void;
   onSendPasswordReset: () => void;
 }
 
 export function EmployeeLifecyclePanel({
   lifecycle,
-  isSendingActivation,
+  isSendingWelcome,
   isSendingOnboarding,
   isSendingPasswordReset,
-  onSendActivation,
+  onSendWelcome,
   onSendOnboarding,
   onSendPasswordReset,
 }: EmployeeLifecyclePanelProps) {
-  const canSendActivation = lifecycle.account.hasUserAccount && !lifecycle.account.isActivated;
-  const canSendOnboarding = lifecycle.account.isActivated && !lifecycle.onboarding.isComplete;
+  const canSendWelcome = lifecycle.account.hasUserAccount;
+  const canSendOnboarding = lifecycle.account.hasUserAccount && !lifecycle.onboarding.isComplete;
   const canSendPasswordReset = lifecycle.account.hasUserAccount;
 
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="mb-4 flex items-center gap-2">
         <Mail className="h-4 w-4 text-primary" />
-        <h3 className="font-semibold">Account & onboarding emails</h3>
+        <h3 className="font-semibold">Portal access & onboarding</h3>
       </div>
 
       <div className="space-y-4">
         <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium">Account activation</p>
+              <p className="text-sm font-medium">Login credentials</p>
               <DeliveryBadge status={lifecycle.account.email.deliveryStatus} />
               {lifecycle.account.isActivated ? (
                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-950 dark:text-green-200">
-                  Activated
+                  Active account
                 </span>
               ) : (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  Pending activation
+                  Inactive account
                 </span>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
+              Default password is set at creation (welcome1). Employee can log in immediately — no
+              activation step.
+            </p>
+            <p className="text-xs text-muted-foreground">
               Last sent: {formatSentAt(lifecycle.account.email.lastSentAt)}
-              {lifecycle.account.email.sendCount > 0 ? ` · ${lifecycle.account.email.sendCount} time(s)` : ''}
+              {lifecycle.account.email.sendCount > 0
+                ? ` · ${lifecycle.account.email.sendCount} time(s)`
+                : ''}
             </p>
             {lifecycle.account.email.lastError ? (
               <p className="text-xs text-destructive">
-                {toUserFacingErrorMessage(lifecycle.account.email.lastError, 'Activation email could not be sent.')}
+                {toUserFacingErrorMessage(
+                  lifecycle.account.email.lastError,
+                  'Welcome email could not be sent.',
+                )}
               </p>
             ) : null}
           </div>
@@ -83,11 +92,11 @@ export function EmployeeLifecyclePanel({
             type="button"
             size="sm"
             variant="outline"
-            disabled={!canSendActivation || isSendingActivation}
-            onClick={onSendActivation}
+            disabled={!canSendWelcome || isSendingWelcome}
+            onClick={onSendWelcome}
           >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSendingActivation ? 'animate-spin' : ''}`} />
-            {isSendingActivation ? 'Sending…' : 'Send activation email'}
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSendingWelcome ? 'animate-spin' : ''}`} />
+            {isSendingWelcome ? 'Sending…' : 'Resend login email'}
           </Button>
         </div>
 
@@ -96,15 +105,26 @@ export function EmployeeLifecyclePanel({
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-medium">Onboarding form</p>
               <DeliveryBadge status={lifecycle.onboarding.email.deliveryStatus} />
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize">{lifecycle.onboarding.status.replace(/_/g, ' ')}</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize">
+                {lifecycle.onboarding.status.replace(/_/g, ' ')}
+              </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Progress: {lifecycle.onboarding.progressPercent}% · Last sent: {formatSentAt(lifecycle.onboarding.email.lastSentAt)}
-              {lifecycle.onboarding.email.sendCount > 0 ? ` · ${lifecycle.onboarding.email.sendCount} time(s)` : ''}
+              Progress: {lifecycle.onboarding.progressPercent}%. Employee can also open the form
+              from their portal. One-time submission.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Last sent: {formatSentAt(lifecycle.onboarding.email.lastSentAt)}
+              {lifecycle.onboarding.email.sendCount > 0
+                ? ` · ${lifecycle.onboarding.email.sendCount} time(s)`
+                : ''}
             </p>
             {lifecycle.onboarding.email.lastError ? (
               <p className="text-xs text-destructive">
-                {toUserFacingErrorMessage(lifecycle.onboarding.email.lastError, 'Onboarding email could not be sent.')}
+                {toUserFacingErrorMessage(
+                  lifecycle.onboarding.email.lastError,
+                  'Onboarding email could not be sent.',
+                )}
               </p>
             ) : null}
           </div>
@@ -115,7 +135,9 @@ export function EmployeeLifecyclePanel({
             disabled={!canSendOnboarding || isSendingOnboarding}
             onClick={onSendOnboarding}
           >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSendingOnboarding ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`mr-1.5 h-3.5 w-3.5 ${isSendingOnboarding ? 'animate-spin' : ''}`}
+            />
             {isSendingOnboarding ? 'Sending…' : 'Send onboarding email'}
           </Button>
         </div>
@@ -128,11 +150,16 @@ export function EmployeeLifecyclePanel({
             </div>
             <p className="text-xs text-muted-foreground">
               Last sent: {formatSentAt(lifecycle.passwordReset.email.lastSentAt)}
-              {lifecycle.passwordReset.email.sendCount > 0 ? ` · ${lifecycle.passwordReset.email.sendCount} time(s)` : ''}
+              {lifecycle.passwordReset.email.sendCount > 0
+                ? ` · ${lifecycle.passwordReset.email.sendCount} time(s)`
+                : ''}
             </p>
             {lifecycle.passwordReset.email.lastError ? (
               <p className="text-xs text-destructive">
-                {toUserFacingErrorMessage(lifecycle.passwordReset.email.lastError, 'Password reset email could not be sent.')}
+                {toUserFacingErrorMessage(
+                  lifecycle.passwordReset.email.lastError,
+                  'Password reset email could not be sent.',
+                )}
               </p>
             ) : null}
           </div>
@@ -143,7 +170,9 @@ export function EmployeeLifecyclePanel({
             disabled={!canSendPasswordReset || isSendingPasswordReset}
             onClick={onSendPasswordReset}
           >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSendingPasswordReset ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`mr-1.5 h-3.5 w-3.5 ${isSendingPasswordReset ? 'animate-spin' : ''}`}
+            />
             {isSendingPasswordReset ? 'Sending…' : 'Send password reset'}
           </Button>
         </div>

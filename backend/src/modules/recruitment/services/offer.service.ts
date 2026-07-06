@@ -10,6 +10,7 @@ import { RecruitmentTimelineService } from '@modules/recruitment/services/recrui
 import { RecruitmentAuditService } from '@modules/recruitment/services/recruitment-audit.service.js';
 import { RecruitmentActivityService } from '@modules/recruitment/services/recruitment-activity.service.js';
 import { RecruitmentEmailService } from '@modules/recruitment/services/recruitment-email.service.js';
+import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
 import { renderOfferLetterHtml } from '@modules/recruitment/templates/offer-letter.template.js';
 import type { RecruitmentActorContext } from '@modules/recruitment/types/recruitment.types.js';
 
@@ -32,14 +33,25 @@ export const OfferService = {
     const candidate = await CandidateService.getById(context.companyId, candidateLeadId);
 
     if (candidate.pipelineStage === PIPELINE_STAGE.REJECTED) {
-      throw new ValidationError('Cannot create offer for rejected candidate', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Cannot create offer for rejected candidate', [], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
     }
 
-    const existing = await OfferLetterRepository.findMany({ candidateLeadId, status: OFFER_STATUS.SENT }, { companyId: context.companyId });
+    const existing = await OfferLetterRepository.findMany(
+      { candidateLeadId, status: OFFER_STATUS.SENT },
+      { companyId: context.companyId },
+    );
     const version = existing.length > 0 ? Math.max(...existing.map((o) => o.version)) + 1 : 1;
 
-    const joiningDate = payload.joiningDate instanceof Date ? payload.joiningDate : new Date(String(payload.joiningDate));
-    const expiryDate = payload.expiryDate instanceof Date ? payload.expiryDate : new Date(String(payload.expiryDate));
+    const joiningDate =
+      payload.joiningDate instanceof Date
+        ? payload.joiningDate
+        : new Date(String(payload.joiningDate));
+    const expiryDate =
+      payload.expiryDate instanceof Date
+        ? payload.expiryDate
+        : new Date(String(payload.expiryDate));
     const salary = typeof payload.salary === 'number' ? payload.salary : Number(payload.salary);
     const salaryBreakdown =
       payload.salaryBreakdown && typeof payload.salaryBreakdown === 'object'
@@ -114,7 +126,15 @@ export const OfferService = {
       { companyId: context.companyId },
     );
 
-    await CandidatePipelineService.transition(context, offer.candidateLeadId, PIPELINE_STAGE.OFFER_SENT);
+    await CandidatePipelineService.transition(
+      context,
+      offer.candidateLeadId,
+      PIPELINE_STAGE.ONBOARDING,
+      undefined,
+      {
+        skipNotification: true,
+      },
+    );
     await RecruitmentTimelineService.record(context, {
       candidateLeadId: offer.candidateLeadId,
       eventType: RecruitmentTimelineService.EVENT.OFFER_SENT,
@@ -142,10 +162,31 @@ export const OfferService = {
     return updated;
   },
 
+  async sendWithOnboarding(context: RecruitmentActorContext, id: string) {
+    const sentOffer = await this.send(context, id);
+    if (!sentOffer) {
+      throw new NotFoundError('Offer not found', ERROR_CODES.NOT_FOUND);
+    }
+
+    await OnboardingService.start(context, sentOffer.candidateLeadId, id, sentOffer.joiningDate);
+    const portal = await OnboardingService.issuePortalLink(context, sentOffer.candidateLeadId);
+
+    await RecruitmentTimelineService.record(context, {
+      candidateLeadId: sentOffer.candidateLeadId,
+      eventType: RecruitmentTimelineService.EVENT.ONBOARDING_STARTED,
+      title: 'Offer and onboarding form sent',
+      metadata: { offerId: id, portalUrl: portal.portalUrl },
+    });
+
+    return { offer: sentOffer, portalUrl: portal.portalUrl, expiresAt: portal.expiresAt };
+  },
+
   async accept(context: RecruitmentActorContext, id: string) {
     const offer = await this.getById(context.companyId, id);
     if (offer.status === OFFER_STATUS.DRAFT) {
-      throw new ValidationError('Offer must be sent before acceptance', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Offer must be sent before acceptance', [], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
     }
     if (offer.expiryDate.getTime() < Date.now()) {
       throw new ValidationError('Offer has expired', [], { code: ERROR_CODES.VALIDATION_FAILED });
@@ -157,7 +198,11 @@ export const OfferService = {
       { companyId: context.companyId },
     );
 
-    await CandidatePipelineService.transition(context, offer.candidateLeadId, PIPELINE_STAGE.OFFER_ACCEPTED);
+    await CandidatePipelineService.transition(
+      context,
+      offer.candidateLeadId,
+      PIPELINE_STAGE.OFFER_ACCEPTED,
+    );
     await RecruitmentTimelineService.record(context, {
       candidateLeadId: offer.candidateLeadId,
       eventType: RecruitmentTimelineService.EVENT.OFFER_ACCEPTED,

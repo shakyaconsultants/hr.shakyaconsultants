@@ -29,15 +29,16 @@ export function EnterpriseDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         icon={<Building2 className="h-6 w-6 text-primary" />}
-        title="Admin Dashboard"
-        description={`How is the company performing? Executive overview for ${company?.name ?? 'your organization'}.`}
+        title="Company Dashboard"
+        description={`Executive overview for ${company?.name ?? 'your organization'} — headcount, approvals, attendance, and leave.`}
       />
 
       <QuickActionCenter />
 
       <WidgetGrid>
         {widgets.map((widget) => {
-          const Component = EnterpriseWidgetComponents[widget.id as keyof typeof EnterpriseWidgetComponents];
+          const Component =
+            EnterpriseWidgetComponents[widget.id as keyof typeof EnterpriseWidgetComponents];
           if (!Component) {
             return null;
           }

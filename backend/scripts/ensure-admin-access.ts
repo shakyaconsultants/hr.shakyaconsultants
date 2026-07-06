@@ -16,7 +16,7 @@ async function main(): Promise<void> {
 
   const company = await CompanyRepository.findOne({ code: env.SEED_COMPANY_CODE ?? 'HRS' });
   if (!company) {
-    console.error('No company found. Run bootstrap first.');
+    console.error('No company found. Run npm run seed once if this is a fresh database.');
     process.exit(1);
   }
 

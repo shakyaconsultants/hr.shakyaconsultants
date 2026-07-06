@@ -2,9 +2,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppMutation } from '@/shared/feedback/use-app-mutation';
 import {
   archiveCandidate,
+  acceptOffer,
   convertCandidate,
   createCandidate,
   createInterview,
+  createOffer,
   exportCandidates,
   fetchCandidate,
   fetchCandidateTimeline,
@@ -15,8 +17,13 @@ import {
   fetchOnboarding,
   fetchPipelineStages,
   fetchRecruitmentDashboard,
+  issueOnboardingPortal,
+  rejectOffer,
   restoreCandidate,
   saveOnboardingDraft,
+  sendOffer,
+  sendOfferWithOnboarding,
+  startOnboarding,
   transitionPipeline,
   updateCandidate,
   uploadResume,
@@ -67,7 +74,9 @@ export function useCandidateTimeline(candidateId: string) {
   });
 }
 
-export function useInterviews(params: { candidateLeadId?: string; from?: string; to?: string } = {}) {
+export function useInterviews(
+  params: { candidateLeadId?: string; from?: string; to?: string } = {},
+) {
   return useQuery({
     queryKey: ['recruitment', 'interviews', params],
     queryFn: () => fetchInterviews(params),
@@ -86,6 +95,7 @@ export function useOnboarding(candidateId: string) {
     queryKey: ['recruitment', 'onboarding', candidateId],
     queryFn: () => fetchOnboarding(candidateId),
     enabled: Boolean(candidateId),
+    retry: false,
   });
 }
 
@@ -104,7 +114,8 @@ export function useCreateCandidate() {
 export function useUpdateCandidate() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) => updateCandidate(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
+      updateCandidate(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: (_data, variables) => {
@@ -141,9 +152,17 @@ export function useRestoreCandidate() {
 export function useTransitionPipeline() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ candidateId, stage, reason }: { candidateId: string; stage: string; reason?: string }) =>
-      transitionPipeline(candidateId, stage, reason),
-    successMessage: 'Updated successfully',
+    mutationFn: ({
+      candidateId,
+      stage,
+      reason,
+    }: {
+      candidateId: string;
+      stage: string;
+      reason?: string;
+    }) => transitionPipeline(candidateId, stage, reason),
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -154,10 +173,95 @@ export function useCreateInterview() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: createInterview,
-    errorToast: false,
-    successMessage: false,
+    successMessage: 'Interview scheduled — invite email sent',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
+    },
+  });
+}
+
+export function useCreateOffer() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: createOffer,
+    successMessage: 'Offer draft created',
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
+    },
+  });
+}
+
+export function useSendOffer() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: sendOffer,
+    successMessage: 'Offer sent — email queued',
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
+    },
+  });
+}
+
+export function useSendOfferWithOnboarding() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: sendOfferWithOnboarding,
+    successMessage: 'Offer and onboarding form sent to candidate',
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
+    },
+  });
+}
+
+export function useAcceptOffer() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: acceptOffer,
+    successMessage: 'Offer marked as accepted',
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
+    },
+  });
+}
+
+export function useRejectOffer() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: rejectOffer,
+    successMessage: 'Offer marked as declined',
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
+    },
+  });
+}
+
+export function useStartOnboarding() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: ({
+      candidateId,
+      payload,
+    }: {
+      candidateId: string;
+      payload: { offerLetterId: string; startDate?: string };
+    }) => startOnboarding(candidateId, payload),
+    successMessage: 'Onboarding started — joining instructions sent',
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['recruitment', 'onboarding', variables.candidateId],
+      });
+    },
+  });
+}
+
+export function useIssueOnboardingPortal() {
+  const queryClient = useQueryClient();
+  return useAppMutation({
+    mutationFn: issueOnboardingPortal,
+    successMessage: 'Onboarding portal link sent',
+    onSuccess: (_data, candidateId) => {
+      void queryClient.invalidateQueries({ queryKey: ['recruitment', 'onboarding', candidateId] });
     },
   });
 }
@@ -177,12 +281,19 @@ export function useConvertCandidate() {
 export function useSaveOnboardingDraft() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ candidateId, payload }: { candidateId: string; payload: Record<string, unknown> }) =>
-      saveOnboardingDraft(candidateId, payload),
+    mutationFn: ({
+      candidateId,
+      payload,
+    }: {
+      candidateId: string;
+      payload: Record<string, unknown>;
+    }) => saveOnboardingDraft(candidateId, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['recruitment', 'onboarding', variables.candidateId] });
+      void queryClient.invalidateQueries({
+        queryKey: ['recruitment', 'onboarding', variables.candidateId],
+      });
     },
   });
 }
@@ -197,12 +308,17 @@ export function useExportCandidates() {
 export function useUploadResume() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ candidateId, file }: { candidateId: string; file: File }) => uploadResume(candidateId, file),
+    mutationFn: ({ candidateId, file }: { candidateId: string; file: File }) =>
+      uploadResume(candidateId, file),
     errorToast: false,
     successMessage: false,
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['recruitment', 'candidate', variables.candidateId] });
-      void queryClient.invalidateQueries({ queryKey: ['recruitment', 'candidate', variables.candidateId, 'timeline'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['recruitment', 'candidate', variables.candidateId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['recruitment', 'candidate', variables.candidateId, 'timeline'],
+      });
     },
   });
 }

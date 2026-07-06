@@ -1,21 +1,50 @@
 import { FormEvent, useState } from 'react';
-import type { ChannelSubtype, CreateChannelPayload } from '@/features/communication/api/communication.api';
+import type {
+  ChannelSubtype,
+  CreateChannelPayload,
+} from '@/features/communication/api/communication.api';
+import { SelectField } from '@/shared/components/select-field';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Select } from '@/shared/components/ui/select';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { formCheckboxClassName } from '@/shared/utils/form-control';
 
-const SUBTYPES: ChannelSubtype[] = ['project', 'department', 'team', 'announcement', 'read_only', 'private'];
+const SUBTYPES: ChannelSubtype[] = [
+  'project',
+  'department',
+  'team',
+  'announcement',
+  'read_only',
+  'private',
+];
 
 interface ChannelFormProps {
-  initial?: { title?: string; description?: string; channelSubtype?: ChannelSubtype; isReadOnly?: boolean; isPrivate?: boolean };
+  initial?: {
+    title?: string;
+    description?: string;
+    channelSubtype?: ChannelSubtype;
+    isReadOnly?: boolean;
+    isPrivate?: boolean;
+  };
   onSubmit: (payload: CreateChannelPayload) => Promise<void>;
   onCancel?: () => void;
   isPending?: boolean;
   showParticipants?: boolean;
 }
 
-export function ChannelForm({ initial, onSubmit, onCancel, isPending, showParticipants = true }: ChannelFormProps) {
+export function ChannelForm({
+  initial,
+  onSubmit,
+  onCancel,
+  isPending,
+  showParticipants = true,
+}: ChannelFormProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [channelSubtype, setChannelSubtype] = useState<ChannelSubtype>(initial?.channelSubtype ?? 'team');
+  const [channelSubtype, setChannelSubtype] = useState<ChannelSubtype>(
+    initial?.channelSubtype ?? 'team',
+  );
   const [participantIds, setParticipantIds] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(initial?.isReadOnly ?? false);
   const [isPrivate, setIsPrivate] = useState(initial?.isPrivate ?? false);
@@ -27,7 +56,10 @@ export function ChannelForm({ initial, onSubmit, onCancel, isPending, showPartic
       description: description || undefined,
       channelSubtype,
       participantIds: showParticipants
-        ? participantIds.split(',').map((id) => id.trim()).filter(Boolean)
+        ? participantIds
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean)
         : [],
       isReadOnly,
       isPrivate,
@@ -37,26 +69,30 @@ export function ChannelForm({ initial, onSubmit, onCancel, isPending, showPartic
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="grid gap-4 sm:grid-cols-2">
-      <Field label="Title" className="sm:col-span-2">
-        <input
-          className="w-full rounded-md border p-2 text-sm"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-      </Field>
+      <div className="sm:col-span-2">
+        <SelectField label="Title" htmlFor="channel-title" required>
+          <Input
+            id="channel-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+        </SelectField>
+      </div>
 
-      <Field label="Description" className="sm:col-span-2">
-        <textarea
-          className="min-h-[80px] w-full rounded-md border p-2 text-sm"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </Field>
+      <div className="sm:col-span-2">
+        <SelectField label="Description" htmlFor="channel-description">
+          <Textarea
+            id="channel-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </SelectField>
+      </div>
 
-      <Field label="Channel Type">
-        <select
-          className="w-full rounded-md border p-2 text-sm"
+      <SelectField label="Channel Type" htmlFor="channel-type">
+        <Select
+          id="channel-type"
           value={channelSubtype}
           onChange={(e) => setChannelSubtype(e.target.value as ChannelSubtype)}
         >
@@ -65,27 +101,39 @@ export function ChannelForm({ initial, onSubmit, onCancel, isPending, showPartic
               {s.replace(/_/g, ' ')}
             </option>
           ))}
-        </select>
-      </Field>
+        </Select>
+      </SelectField>
 
       {showParticipants ? (
-        <Field label="Participant IDs (comma-separated)" className="sm:col-span-2">
-          <input
-            className="w-full rounded-md border p-2 text-sm"
-            value={participantIds}
-            onChange={(e) => setParticipantIds(e.target.value)}
-            placeholder="uuid1, uuid2"
-          />
-        </Field>
+        <div className="sm:col-span-2">
+          <SelectField label="Participant IDs (comma-separated)" htmlFor="channel-participants">
+            <Input
+              id="channel-participants"
+              value={participantIds}
+              onChange={(e) => setParticipantIds(e.target.value)}
+              placeholder="uuid1, uuid2"
+            />
+          </SelectField>
+        </div>
       ) : null}
 
       <div className="flex flex-wrap gap-4 sm:col-span-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isReadOnly} onChange={(e) => setIsReadOnly(e.target.checked)} />
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className={formCheckboxClassName}
+            checked={isReadOnly}
+            onChange={(e) => setIsReadOnly(e.target.checked)}
+          />
           Read only
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className={formCheckboxClassName}
+            checked={isPrivate}
+            onChange={(e) => setIsPrivate(e.target.checked)}
+          />
           Private
         </label>
       </div>
@@ -101,14 +149,5 @@ export function ChannelForm({ initial, onSubmit, onCancel, isPending, showPartic
         ) : null}
       </div>
     </form>
-  );
-}
-
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <label className={className}>
-      <span className="mb-1 block text-sm font-medium">{label}</span>
-      {children}
-    </label>
   );
 }

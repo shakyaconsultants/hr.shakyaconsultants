@@ -114,8 +114,9 @@ export interface CompensationAssignment {
   currency: string;
   effectiveFrom: string;
   effectiveTo?: string;
-  isLocked: boolean;
+  isLocked?: boolean;
   status: string;
+  componentOverrides?: Array<{ code: string; amount: number; type?: string }>;
 }
 
 export interface SalaryRevision {
@@ -230,6 +231,7 @@ export interface CreateCompensationPayload {
   salaryStructureId: string;
   baseSalary: number;
   effectiveFrom: string;
+  componentOverrides?: Array<{ code: string; amount: number; type?: string }>;
 }
 
 export interface CreateRevisionPayload {
@@ -256,50 +258,74 @@ async function unwrapPaginated<T>(response: {
     return data as PaginatedResult<T>;
   }
   const items = Array.isArray(data) ? data : (data?.items ?? []);
-  const pagination = (response.data as any)?.pagination ?? data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
+  const pagination = (response.data as any)?.pagination ??
+    data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
   return { items, pagination };
 }
 
 export async function fetchEnterprisePayrollDashboard(): Promise<PayrollDashboardStats> {
-  const response = await apiClient.get<ApiSuccessResponse<PayrollDashboardStats>>(`${PAYROLL_PREFIX}/dashboard/enterprise`);
+  const response = await apiClient.get<ApiSuccessResponse<PayrollDashboardStats>>(
+    `${PAYROLL_PREFIX}/dashboard/enterprise`,
+  );
   return unwrap(response);
 }
 
 export async function fetchFinancePayrollDashboard(): Promise<FinanceDashboardStats> {
-  const response = await apiClient.get<ApiSuccessResponse<FinanceDashboardStats>>(`${PAYROLL_PREFIX}/dashboard/finance`);
+  const response = await apiClient.get<ApiSuccessResponse<FinanceDashboardStats>>(
+    `${PAYROLL_PREFIX}/dashboard/finance`,
+  );
   return unwrap(response);
 }
 
 export async function fetchHrPayrollDashboard(): Promise<HrPayrollStats> {
-  const response = await apiClient.get<ApiSuccessResponse<HrPayrollStats>>(`${PAYROLL_PREFIX}/dashboard/hr`);
+  const response = await apiClient.get<ApiSuccessResponse<HrPayrollStats>>(
+    `${PAYROLL_PREFIX}/dashboard/hr`,
+  );
   return unwrap(response);
 }
 
 export async function fetchPayrollPolicy(): Promise<PayrollPolicy> {
-  const response = await apiClient.get<ApiSuccessResponse<PayrollPolicy>>(`${PAYROLL_PREFIX}/policies`);
+  const response = await apiClient.get<ApiSuccessResponse<PayrollPolicy>>(
+    `${PAYROLL_PREFIX}/policies`,
+  );
   return unwrap(response);
 }
 
 export async function updatePayrollPolicy(payload: Partial<PayrollPolicy>): Promise<PayrollPolicy> {
-  const response = await apiClient.patch<ApiSuccessResponse<PayrollPolicy>>(`${PAYROLL_PREFIX}/policies`, payload);
+  const response = await apiClient.patch<ApiSuccessResponse<PayrollPolicy>>(
+    `${PAYROLL_PREFIX}/policies`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function fetchSalaryStructures(params: ListParams = {}): Promise<PaginatedResult<SalaryStructure>> {
-  const response = await apiClient.get<ApiSuccessResponse<SalaryStructure[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/salary-structures`,
-    { params },
-  );
+export async function fetchSalaryStructures(
+  params: ListParams = {},
+): Promise<PaginatedResult<SalaryStructure>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<SalaryStructure[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/salary-structures`, { params });
   return unwrapPaginated(response);
 }
 
-export async function createSalaryStructure(payload: CreateSalaryStructurePayload): Promise<SalaryStructure> {
-  const response = await apiClient.post<ApiSuccessResponse<SalaryStructure>>(`${PAYROLL_PREFIX}/salary-structures`, payload);
+export async function createSalaryStructure(
+  payload: CreateSalaryStructurePayload,
+): Promise<SalaryStructure> {
+  const response = await apiClient.post<ApiSuccessResponse<SalaryStructure>>(
+    `${PAYROLL_PREFIX}/salary-structures`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updateSalaryStructure(id: string, payload: Partial<CreateSalaryStructurePayload>): Promise<SalaryStructure> {
-  const response = await apiClient.patch<ApiSuccessResponse<SalaryStructure>>(`${PAYROLL_PREFIX}/salary-structures/${id}`, payload);
+export async function updateSalaryStructure(
+  id: string,
+  payload: Partial<CreateSalaryStructurePayload>,
+): Promise<SalaryStructure> {
+  const response = await apiClient.patch<ApiSuccessResponse<SalaryStructure>>(
+    `${PAYROLL_PREFIX}/salary-structures/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -307,19 +333,21 @@ export async function deleteSalaryStructure(id: string): Promise<void> {
   await apiClient.delete(`${PAYROLL_PREFIX}/salary-structures/${id}`);
 }
 
-export async function fetchAllowances(params: ListParams = {}): Promise<PaginatedResult<Allowance>> {
-  const response = await apiClient.get<ApiSuccessResponse<Allowance[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/components`,
-    { params: { ...params, kind: 'allowance' } },
-  );
+export async function fetchAllowances(
+  params: ListParams = {},
+): Promise<PaginatedResult<Allowance>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<Allowance[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/components`, { params: { ...params, kind: 'allowance' } });
   return unwrapPaginated(response);
 }
 
-export async function fetchDeductions(params: ListParams = {}): Promise<PaginatedResult<Deduction>> {
-  const response = await apiClient.get<ApiSuccessResponse<Deduction[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/components`,
-    { params: { ...params, kind: 'deduction' } },
-  );
+export async function fetchDeductions(
+  params: ListParams = {},
+): Promise<PaginatedResult<Deduction>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<Deduction[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/components`, { params: { ...params, kind: 'deduction' } });
   return unwrapPaginated(response);
 }
 
@@ -327,52 +355,67 @@ export async function fetchPayrollCalendar(_year: number): Promise<PayrollCalend
   return [];
 }
 
-export async function fetchPayrollRuns(params: ListParams = {}): Promise<PaginatedResult<PayrollRun>> {
-  const response = await apiClient.get<ApiSuccessResponse<PayrollRun[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/payroll-runs`,
-    { params },
-  );
+export async function fetchPayrollRuns(
+  params: ListParams = {},
+): Promise<PaginatedResult<PayrollRun>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<PayrollRun[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/payroll-runs`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchPayrollRun(id: string): Promise<PayrollRun> {
-  const response = await apiClient.get<ApiSuccessResponse<PayrollRun>>(`${PAYROLL_PREFIX}/payroll-runs/${id}`);
+  const response = await apiClient.get<ApiSuccessResponse<PayrollRun>>(
+    `${PAYROLL_PREFIX}/payroll-runs/${id}`,
+  );
   return unwrap(response);
 }
 
 export async function createPayrollRun(payload: CreatePayrollRunPayload): Promise<PayrollRun> {
-  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(`${PAYROLL_PREFIX}/payroll-runs`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(
+    `${PAYROLL_PREFIX}/payroll-runs`,
+    payload,
+  );
   return unwrap(response);
 }
 
 export async function processPayrollRun(id: string): Promise<PayrollRun> {
-  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(`${PAYROLL_PREFIX}/payroll-runs/${id}/process`);
+  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(
+    `${PAYROLL_PREFIX}/payroll-runs/${id}/process`,
+  );
   return unwrap(response);
 }
 
 export async function approvePayrollRun(id: string): Promise<PayrollRun> {
-  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(`${PAYROLL_PREFIX}/payroll-runs/${id}/submit`);
+  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(
+    `${PAYROLL_PREFIX}/payroll-runs/${id}/submit`,
+  );
   return unwrap(response);
 }
 
 export async function lockPayrollRun(id: string): Promise<PayrollRun> {
-  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(`${PAYROLL_PREFIX}/payroll-runs/${id}/lock`);
+  const response = await apiClient.post<ApiSuccessResponse<PayrollRun>>(
+    `${PAYROLL_PREFIX}/payroll-runs/${id}/lock`,
+  );
   return unwrap(response);
 }
 
-export async function fetchPayrollLineItems(payrollId: string, params: ListParams = {}): Promise<PaginatedResult<PayrollLineItem>> {
-  const response = await apiClient.get<ApiSuccessResponse<PayrollLineItem[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/payroll-runs/${payrollId}/payslips`,
-    { params },
-  );
+export async function fetchPayrollLineItems(
+  payrollId: string,
+  params: ListParams = {},
+): Promise<PaginatedResult<PayrollLineItem>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<PayrollLineItem[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/payroll-runs/${payrollId}/payslips`, { params });
   return unwrapPaginated(response);
 }
 
-export async function fetchPayrollExceptions(params: ListParams & { payrollId?: string } = {}): Promise<PaginatedResult<PayrollException>> {
-  const response = await apiClient.get<ApiSuccessResponse<PayrollException[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/exceptions`,
-    { params },
-  );
+export async function fetchPayrollExceptions(
+  params: ListParams & { payrollId?: string } = {},
+): Promise<PaginatedResult<PayrollException>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<PayrollException[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/exceptions`, { params });
   return unwrapPaginated(response);
 }
 
@@ -385,60 +428,77 @@ export async function bulkApprovePayrollRuns(ids: string[]): Promise<{ approved:
   return { approved };
 }
 
-export async function fetchCompensations(params: ListParams = {}): Promise<PaginatedResult<CompensationAssignment>> {
-  const response = await apiClient.get<ApiSuccessResponse<CompensationAssignment[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/employee-compensations`,
-    { params },
-  );
+export async function fetchCompensations(
+  params: ListParams = {},
+): Promise<PaginatedResult<CompensationAssignment>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<CompensationAssignment[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/employee-compensations`, { params });
   return unwrapPaginated(response);
 }
 
-export async function fetchEmployeeCompensation(employeeId: string): Promise<CompensationAssignment | null> {
-  const response = await apiClient.get<ApiSuccessResponse<CompensationAssignment[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/employee-compensations`,
-    { params: { employeeId, pageSize: 1 } },
+export async function fetchEmployeeCompensation(
+  employeeId: string,
+): Promise<CompensationAssignment | null> {
+  const response = await apiClient.get<ApiSuccessResponse<CompensationAssignment | null>>(
+    `${PAYROLL_PREFIX}/employees/${employeeId}/compensation`,
   );
-  const result = await unwrapPaginated(response);
-  return result.items[0] ?? null;
-}
-
-export async function assignCompensation(payload: CreateCompensationPayload): Promise<CompensationAssignment> {
-  const response = await apiClient.post<ApiSuccessResponse<CompensationAssignment>>(`${PAYROLL_PREFIX}/employee-compensations`, payload);
   return unwrap(response);
 }
 
-export async function fetchSalaryRevisions(params: ListParams = {}): Promise<PaginatedResult<SalaryRevision>> {
-  const response = await apiClient.get<ApiSuccessResponse<SalaryRevision[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/salary-revisions`,
-    { params },
+export async function fetchMyCompensation(): Promise<CompensationAssignment | null> {
+  const response = await apiClient.get<ApiSuccessResponse<CompensationAssignment | null>>(
+    `${PAYROLL_PREFIX}/me/compensation`,
   );
+  return unwrap(response);
+}
+
+export async function assignCompensation(
+  payload: CreateCompensationPayload,
+): Promise<CompensationAssignment> {
+  const response = await apiClient.post<ApiSuccessResponse<CompensationAssignment>>(
+    `${PAYROLL_PREFIX}/employee-compensations`,
+    payload,
+  );
+  return unwrap(response);
+}
+
+export async function fetchSalaryRevisions(
+  params: ListParams = {},
+): Promise<PaginatedResult<SalaryRevision>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<SalaryRevision[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/salary-revisions`, { params });
   return unwrapPaginated(response);
 }
 
-export async function createSalaryRevision(payload: CreateRevisionPayload): Promise<SalaryRevision> {
-  const response = await apiClient.post<ApiSuccessResponse<SalaryRevision>>(`${PAYROLL_PREFIX}/salary-revisions`, {
-    employeeId: payload.employeeId,
-    revisionType: 'annual_increment',
-    newBaseSalary: payload.newSalary,
-    effectiveFrom: payload.effectiveFrom,
-    reason: payload.reason,
-  });
+export async function createSalaryRevision(
+  payload: CreateRevisionPayload,
+): Promise<SalaryRevision> {
+  const response = await apiClient.post<ApiSuccessResponse<SalaryRevision>>(
+    `${PAYROLL_PREFIX}/salary-revisions`,
+    {
+      employeeId: payload.employeeId,
+      revisionType: 'annual_increment',
+      newBaseSalary: payload.newSalary,
+      effectiveFrom: payload.effectiveFrom,
+      reason: payload.reason,
+    },
+  );
   return unwrap(response);
 }
 
 export async function fetchPayslips(params: ListParams = {}): Promise<PaginatedResult<Payslip>> {
-  const response = await apiClient.get<ApiSuccessResponse<Payslip[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/payslips`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Payslip[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/payslips`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchMyPayslips(params: ListParams = {}): Promise<PaginatedResult<Payslip>> {
-  const response = await apiClient.get<ApiSuccessResponse<Payslip[]> & { pagination?: PaginationMeta }>(
-    `${PAYROLL_PREFIX}/me/payslips`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Payslip[]> & { pagination?: PaginationMeta }
+  >(`${PAYROLL_PREFIX}/me/payslips`, { params });
   return unwrapPaginated(response);
 }
 
@@ -455,6 +515,7 @@ export async function fetchMySalary(): Promise<MySalarySummary> {
   const breakdown = computeCtcBreakdown({
     baseSalary: assignment.baseSalary,
     components,
+    componentOverrides: assignment.componentOverrides,
     currency: assignment.currency,
   });
 
@@ -464,7 +525,7 @@ export async function fetchMySalary(): Promise<MySalarySummary> {
     structureName: assignment.salaryStructure?.name,
     structureCode: assignment.salaryStructure?.code,
     effectiveFrom: assignment.effectiveFrom,
-    isLocked: assignment.isLocked,
+    isLocked: assignment.isLocked ?? false,
     components,
     annualCtc: breakdown.annualCtc,
     monthlyGross: breakdown.grossSalary,
@@ -473,7 +534,9 @@ export async function fetchMySalary(): Promise<MySalarySummary> {
 }
 
 export async function downloadPayslip(id: string): Promise<Blob> {
-  const response = await apiClient.get(`${PAYROLL_PREFIX}/payslips/${id}/download`, { responseType: 'blob' });
+  const response = await apiClient.get(`${PAYROLL_PREFIX}/payslips/${id}/download`, {
+    responseType: 'blob',
+  });
   return response.data as Blob;
 }
 
@@ -486,7 +549,8 @@ export async function uploadPayslip(
   formData.append('file', file);
   formData.append('periodStart', payload.periodStart);
   formData.append('periodEnd', payload.periodEnd);
-  if (payload.grossSalary !== undefined) formData.append('grossSalary', String(payload.grossSalary));
+  if (payload.grossSalary !== undefined)
+    formData.append('grossSalary', String(payload.grossSalary));
   if (payload.netSalary !== undefined) formData.append('netSalary', String(payload.netSalary));
   const response = await apiClient.post<ApiSuccessResponse<Payslip>>(
     `${PAYROLL_PREFIX}/employees/${employeeId}/payslips/upload`,
@@ -496,7 +560,9 @@ export async function uploadPayslip(
   return unwrap(response);
 }
 
-export async function fetchEmployeeSalaryHistory(employeeId: string): Promise<CompensationAssignment[]> {
+export async function fetchEmployeeSalaryHistory(
+  employeeId: string,
+): Promise<CompensationAssignment[]> {
   const response = await apiClient.get<ApiSuccessResponse<CompensationAssignment[]>>(
     `${PAYROLL_PREFIX}/employees/${employeeId}/salary-history`,
   );
@@ -504,11 +570,17 @@ export async function fetchEmployeeSalaryHistory(employeeId: string): Promise<Co
 }
 
 export async function fetchPayrollReport(params: ReportParams): Promise<PayrollReport> {
-  const response = await apiClient.get<ApiSuccessResponse<PayrollReport>>(`${PAYROLL_PREFIX}/reports`, { params });
+  const response = await apiClient.get<ApiSuccessResponse<PayrollReport>>(
+    `${PAYROLL_PREFIX}/reports`,
+    { params },
+  );
   return unwrap(response);
 }
 
 export async function exportPayrollReport(params: ReportParams): Promise<Blob> {
-  const response = await apiClient.get(`${PAYROLL_PREFIX}/reports/export`, { params, responseType: 'blob' });
+  const response = await apiClient.get(`${PAYROLL_PREFIX}/reports/export`, {
+    params,
+    responseType: 'blob',
+  });
   return response.data as Blob;
 }

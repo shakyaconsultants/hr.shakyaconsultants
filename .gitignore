@@ -6,8 +6,8 @@ dist/
 build/
 *.tsbuildinfo
 
-# Local-only init seed (copy from seed.local.example.ts)
-backend/src/scripts/
+# Local-only init seed override (copy from seed.local.example.ts)
+backend/src/scripts/seed.local.ts
 
 # Environment
 .env

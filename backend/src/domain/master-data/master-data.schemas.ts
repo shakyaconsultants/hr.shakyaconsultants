@@ -38,14 +38,6 @@ export const SETTING_GROUP = {
   NAVIGATION: 'navigation',
 } as const;
 
-export interface EmploymentTypeDocument extends BaseDocument {
-  name: string;
-  code: string;
-  description?: string;
-  isDefault: boolean;
-  status: string;
-}
-
 export interface SalaryGradeDocument extends BaseDocument {
   name: string;
   code: string;
@@ -120,14 +112,6 @@ export interface SettingVersionDocument extends BaseDocument {
   createdAt: Date;
 }
 
-const employmentTypeFields: SchemaDefinition = {
-  name: { type: String, required: true, trim: true },
-  code: { type: String, required: true, trim: true, uppercase: true },
-  description: { type: String, trim: true },
-  isDefault: { type: Boolean, default: false },
-  status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
-};
-
 const salaryGradeFields: SchemaDefinition = {
   name: { type: String, required: true, trim: true },
   code: { type: String, required: true, trim: true, uppercase: true },
@@ -181,7 +165,11 @@ const appSettingFields: SchemaDefinition = {
   name: { type: String, trim: true },
   category: { type: String, trim: true, index: true },
   value: { type: Schema.Types.Mixed, default: null },
-  valueType: { type: String, enum: Object.values(SETTING_VALUE_TYPE), default: SETTING_VALUE_TYPE.STRING },
+  valueType: {
+    type: String,
+    enum: Object.values(SETTING_VALUE_TYPE),
+    default: SETTING_VALUE_TYPE.STRING,
+  },
   defaultValue: { type: Schema.Types.Mixed, default: null },
   group: { type: String, enum: Object.values(SETTING_GROUP), required: true, index: true },
   description: { type: String, trim: true },
@@ -202,17 +190,14 @@ const settingVersionFields: SchemaDefinition = {
   createdAt: { type: Date, required: true, default: Date.now, index: true },
 };
 
-const codeUniqueIndex = (prefix: string) => [
-  { fields: { companyId: 1, code: 1 }, options: { unique: true, name: `uq_${prefix}_company_code` } },
-  { fields: { companyId: 1, status: 1 }, options: { name: `idx_${prefix}_company_status` } },
-] as const;
-
-export const employmentTypeModel = defineDomainModel<EmploymentTypeDocument>(
-  'EmploymentType',
-  COLLECTIONS.EMPLOYMENT_TYPES,
-  employmentTypeFields,
-  { searchFields: ['name', 'code'], indexes: [...codeUniqueIndex('employment_types')] },
-);
+const codeUniqueIndex = (prefix: string) =>
+  [
+    {
+      fields: { companyId: 1, code: 1 },
+      options: { unique: true, name: `uq_${prefix}_company_code` },
+    },
+    { fields: { companyId: 1, status: 1 }, options: { name: `idx_${prefix}_company_status` } },
+  ] as const;
 
 export const salaryGradeModel = defineDomainModel<SalaryGradeDocument>(
   'SalaryGrade',
@@ -255,14 +240,19 @@ export const appSettingModel = defineDomainModel<AppSettingDocument>(
   appSettingFields,
   {
     indexes: [
-      { fields: { companyId: 1, key: 1 }, options: { unique: true, name: 'uq_app_settings_company_key' } },
+      {
+        fields: { companyId: 1, key: 1 },
+        options: { unique: true, name: 'uq_app_settings_company_key' },
+      },
       { fields: { companyId: 1, group: 1 }, options: { name: 'idx_app_settings_company_group' } },
-      { fields: { companyId: 1, isPublic: 1 }, options: { name: 'idx_app_settings_company_public' } },
+      {
+        fields: { companyId: 1, isPublic: 1 },
+        options: { name: 'idx_app_settings_company_public' },
+      },
     ],
   },
 );
 
-export const EmploymentTypeRepository = employmentTypeModel.repository;
 export const SalaryGradeRepository = salaryGradeModel.repository;
 export const LeaveTypeRepository = leaveTypeModel.repository;
 export const ProjectCategoryRepository = projectCategoryModel.repository;
@@ -276,8 +266,14 @@ export const settingVersionModel = defineDomainModel<SettingVersionDocument>(
     withSoftDelete: false,
     withVersioning: false,
     indexes: [
-      { fields: { companyId: 1, settingKey: 1, version: -1 }, options: { name: 'idx_setting_versions_company_key_version' } },
-      { fields: { companyId: 1, settingId: 1, version: -1 }, options: { name: 'idx_setting_versions_company_setting_version' } },
+      {
+        fields: { companyId: 1, settingKey: 1, version: -1 },
+        options: { name: 'idx_setting_versions_company_key_version' },
+      },
+      {
+        fields: { companyId: 1, settingId: 1, version: -1 },
+        options: { name: 'idx_setting_versions_company_setting_version' },
+      },
     ],
   },
 );

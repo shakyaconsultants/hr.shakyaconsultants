@@ -15,8 +15,10 @@ export const RECRUITMENT_EMAIL_JOB = {
   INTERVIEW_REMINDER: 'recruitment.interview_reminder',
   INTERVIEW_RESCHEDULE: 'recruitment.interview_reschedule',
   REJECTION: 'recruitment.rejection',
+  STAGE_UPDATE: 'recruitment.stage_update',
   OFFER_LETTER: 'recruitment.offer_letter',
   JOINING_INSTRUCTIONS: 'recruitment.joining_instructions',
+  ACCOUNT_CREDENTIALS: 'recruitment.account_credentials',
   WELCOME: 'recruitment.welcome',
 } as const;
 

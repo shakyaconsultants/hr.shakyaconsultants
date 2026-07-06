@@ -53,7 +53,10 @@ export const getEnterpriseDashboard: RequestHandler = async (req, res, next) => 
   try {
     const authReq = req as AuthenticatedRequest;
     const query = parseDashboardQuery(authReq);
-    const data = await PayrollDashboardService.getEnterpriseDashboard(authReq.user.companyId, query);
+    const data = await PayrollDashboardService.getEnterpriseDashboard(
+      authReq.user.companyId,
+      query,
+    );
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -264,6 +267,21 @@ export const getMyCompensation: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const getActiveEmployeeCompensation: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { employeeId } = validateInput(employeeIdParamSchema, req.params);
+    const data = await EmployeeCompensationService.getActiveWithStructure(
+      authReq.user.companyId,
+      employeeId,
+    );
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const assignEmployeeCompensation: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -305,7 +323,10 @@ export const getEmployeeSalaryHistory: RequestHandler = async (req, res, next) =
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const data = await EmployeeCompensationService.getSalaryHistory(authReq.user.companyId, employeeId);
+    const data = await EmployeeCompensationService.getSalaryHistory(
+      authReq.user.companyId,
+      employeeId,
+    );
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -427,7 +448,8 @@ export const listPayslips: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listPayslipsQuerySchema, req.query);
     const permissions = authReq.auth?.permissions ?? [];
-    const canViewAllPayroll = permissions.includes('payroll.read') || permissions.includes('payroll.update');
+    const canViewAllPayroll =
+      permissions.includes('payroll.read') || permissions.includes('payroll.update');
     const scopedQuery = {
       ...query,
       employeeId:
@@ -479,7 +501,8 @@ export const downloadPayslip: RequestHandler = async (req, res, next) => {
     const { id } = validateInput(idParamSchema, req.params);
     const payslip = await PayslipService.getById(authReq.user.companyId, id);
     if (payslip.pdfUrl) {
-      return res.redirect(payslip.pdfUrl);
+      res.redirect(payslip.pdfUrl);
+      return;
     }
     const html = await PayslipService.getDownloadHtml(authReq.user.companyId, id);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

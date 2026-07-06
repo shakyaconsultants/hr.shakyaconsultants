@@ -10,6 +10,8 @@ import { Input } from '@/shared/components/ui/input';
 import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 import { ROUTES } from '@/config/app.config';
 
+const DEFAULT_TEMP_PASSWORD = 'welcome1';
+
 export interface EmployeeCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,6 +29,7 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
     designationId: '',
     branchId: '',
     joinedAt: new Date().toISOString().slice(0, 10),
+    temporaryPassword: DEFAULT_TEMP_PASSWORD,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +44,7 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
 
     await runFormMutation({
       setError,
-      successMessage: 'Employee created successfully.',
+      successMessage: 'Employee created with active portal account and onboarding form.',
       onNonInlineError: () => onOpenChange(false),
       mutation: () => {
         const payload: Record<string, unknown> = {
@@ -51,6 +54,7 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
           departmentId: form.departmentId,
           designationId: form.designationId,
           joinedAt: new Date(form.joinedAt),
+          temporaryPassword: form.temporaryPassword.trim() || DEFAULT_TEMP_PASSWORD,
         };
         if (form.phone.trim()) {
           payload.phone = form.phone.trim();
@@ -72,14 +76,17 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
       open={open}
       onOpenChange={onOpenChange}
       title="Add Employee"
-      description="Create a new employee record without leaving the directory."
+      description="Creates an active portal account, sends login credentials, and opens the onboarding form."
       submitLabel="Create Employee"
       isSubmitting={createMutation.isPending}
       onSubmit={handleSubmit}
       size="lg"
     >
       <div className="space-y-4">
-        <FormSection title={FORM_SECTIONS.BASIC} description="Personal identity and contact details.">
+        <FormSection
+          title={FORM_SECTIONS.BASIC}
+          description="Personal identity and contact details."
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField label="First Name" htmlFor="employee-first-name" required>
               <Input
@@ -108,7 +115,11 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
             />
           </SelectField>
           <SelectField label="Phone" htmlFor="employee-phone">
-            <Input id="employee-phone" value={form.phone} onChange={(event) => updateField('phone', event.target.value)} />
+            <Input
+              id="employee-phone"
+              value={form.phone}
+              onChange={(event) => updateField('phone', event.target.value)}
+            />
           </SelectField>
         </FormSection>
 
@@ -143,12 +154,29 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
           </SelectField>
         </FormSection>
 
-        <FormSection title={FORM_SECTIONS.BUSINESS} description="Employment start date.">
+        <FormSection
+          title={FORM_SECTIONS.BUSINESS}
+          description="Employment start and portal access."
+        >
           <SelectField label="Joining Date" htmlFor="employee-joined-at" required>
             <DatePicker
               id="employee-joined-at"
               value={form.joinedAt}
               onChange={(value) => updateField('joinedAt', value)}
+              required
+            />
+          </SelectField>
+          <SelectField
+            label="Default Portal Password"
+            htmlFor="employee-temp-password"
+            hint="Active account is created with this password. Credentials are emailed to the employee."
+            required
+          >
+            <Input
+              id="employee-temp-password"
+              type="text"
+              value={form.temporaryPassword}
+              onChange={(event) => updateField('temporaryPassword', event.target.value)}
               required
             />
           </SelectField>

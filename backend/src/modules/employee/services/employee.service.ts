@@ -1,6 +1,9 @@
 import type { EmployeeDocument } from '@domain/employee/employee.schemas.js';
-import { EmployeeRepository, EMPLOYEE_EMPLOYMENT_STATUS } from '@domain/employee/employee.schemas.js';
-import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
+import {
+  EmployeeRepository,
+  EMPLOYEE_EMPLOYMENT_STATUS,
+} from '@domain/employee/employee.schemas.js';
+import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
@@ -10,11 +13,16 @@ import { EmployeeQueryService } from '@modules/employee/services/employee-query.
 import { EmployeeTimelineService } from '@modules/employee/services/employee-timeline.service.js';
 import { EmployeeValidationService } from '@modules/employee/services/employee-validation.service.js';
 import { EMPLOYEE_BULK_ACTION } from '@modules/employee/constants/employee.constants.js';
-import type { EmployeeActorContext, EmployeeListQuery } from '@modules/employee/types/employee.types.js';
-import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
-import { PasswordService } from '@modules/auth/services/password.service.js';
-import { AccountActivationService } from '@modules/auth/services/account-activation.service.js';
-import { EmployeeLifecycleService, EMPLOYEE_LIFECYCLE_EMAIL } from '@modules/employee/services/employee-lifecycle.service.js';
+import type {
+  EmployeeActorContext,
+  EmployeeListQuery,
+} from '@modules/employee/types/employee.types.js';
+import {
+  EmployeeLifecycleService,
+  EMPLOYEE_LIFECYCLE_EMAIL,
+} from '@modules/employee/services/employee-lifecycle.service.js';
+import { EmployeeAccountService } from '@modules/employee/services/employee-account.service.js';
+import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
 import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
 import { logger } from '@logging/winston.logger.js';
 
@@ -40,15 +48,18 @@ const ADMIN_CREATE_FIELD_KEYS = [
 ] as const;
 
 function sanitizeCreatePayload(payload: Record<string, unknown>): Record<string, unknown> {
-  const { employeeNumber: _removed, ...rest } = payload;
-  const sanitized = { ...rest };
-  for (const key of ['aadhaarNumber', 'panNumber', 'branchId', 'phone'] as const) {
-    const value = sanitized[key];
-    if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
-      delete sanitized[key];
-    }
-  }
-  return sanitized;
+  const { employeeNumber: _removed, aadhaarNumber, panNumber, branchId, phone, ...rest } = payload;
+
+  const isEmpty = (value: unknown): boolean =>
+    value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
+
+  return {
+    ...rest,
+    ...(isEmpty(aadhaarNumber) ? {} : { aadhaarNumber }),
+    ...(isEmpty(panNumber) ? {} : { panNumber }),
+    ...(isEmpty(branchId) ? {} : { branchId }),
+    ...(isEmpty(phone) ? {} : { phone }),
+  };
 }
 
 function pickAdminCreatePayload(payload: Record<string, unknown>): Record<string, unknown> {
@@ -78,7 +89,10 @@ export const EmployeeService = {
     return EmployeeQueryService.search(companyId, search, limit);
   },
 
-  async create(context: EmployeeActorContext, payload: Record<string, unknown>): Promise<EmployeeDocument> {
+  async create(
+    context: EmployeeActorContext,
+    payload: Record<string, unknown>,
+  ): Promise<EmployeeDocument> {
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : '';
     const departmentId = typeof payload.departmentId === 'string' ? payload.departmentId : '';
     const designationId = typeof payload.designationId === 'string' ? payload.designationId : '';
@@ -92,42 +106,26 @@ export const EmployeeService = {
     await EmployeeValidationService.assertUniqueEmail(context.companyId, email);
 
     if (typeof payload.reportingManagerId === 'string') {
-      await EmployeeValidationService.assertManagerExists(context.companyId, payload.reportingManagerId);
+      await EmployeeValidationService.assertManagerExists(
+        context.companyId,
+        payload.reportingManagerId,
+      );
     }
 
     const employeeNumber = await EmployeeNumberService.generate(context.companyId, context.userId);
     const id = generateUuid();
     const sanitized = pickAdminCreatePayload(payload);
+    const temporaryPassword = EmployeeAccountService.resolveTemporaryPassword(
+      typeof payload.temporaryPassword === 'string' ? payload.temporaryPassword : undefined,
+    );
 
-    const tempPassword = `Welcome@${generateUuid().slice(0, 8)}`;
-    const passwordHash = await PasswordService.hashPassword(tempPassword);
-
-    const existingUser = await UserRepository.findOne({ email }, { companyId: context.companyId });
-    let userId: string;
-    if (existingUser) {
-      await UserRepository.update(
-        existingUser.id,
-        { employeeId: id, status: USER_STATUS.INACTIVE, updatedBy: context.userId },
-        { companyId: context.companyId },
-      );
-      userId = existingUser.id;
-    } else {
-      userId = generateUuid();
-      await UserRepository.create(
-        {
-          id: userId,
-          companyId: context.companyId,
-          email,
-          passwordHash,
-          employeeId: id,
-          mustChangePassword: true,
-          status: USER_STATUS.INACTIVE,
-          createdBy: context.userId,
-          updatedBy: context.userId,
-        },
-        { companyId: context.companyId },
-      );
-    }
+    const { userId } = await EmployeeAccountService.provisionPortalUser({
+      companyId: context.companyId,
+      userId: context.userId,
+      email,
+      employeeId: id,
+      temporaryPassword,
+    });
 
     const employee = await EmployeeRepository.create(
       {
@@ -180,34 +178,24 @@ export const EmployeeService = {
       userAgent: context.userAgent,
     });
 
+    await OnboardingService.startForEmployee(
+      { companyId: context.companyId, userId: context.userId },
+      id,
+      employee.joinedAt,
+    );
+
     try {
-      await AccountActivationService.issueActivationToken(
-        {
-          companyId: context.companyId,
-          userId: context.userId,
-          ip: context.ip,
-          userAgent: context.userAgent,
-        },
-        id,
-      );
-      await EmployeeLifecycleService.recordEmailSuccess(
+      await EmployeeAccountService.sendWelcomeCredentialsEmail(context, id, temporaryPassword);
+    } catch (emailError) {
+      const message = emailError instanceof Error ? emailError.message : String(emailError);
+      await EmployeeLifecycleService.recordEmailFailure(
         context.companyId,
         id,
         EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
         context.userId,
+        emailError,
       );
-    } catch (activationError) {
-      const message = activationError instanceof Error ? activationError.message : String(activationError);
-      if (!(activationError instanceof ConflictError)) {
-        await EmployeeLifecycleService.recordEmailFailure(
-          context.companyId,
-          id,
-          EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
-          context.userId,
-          activationError,
-        );
-      }
-      logger.error('Failed to issue account activation email', {
+      logger.error('Failed to send welcome credentials email', {
         employeeId: id,
         email,
         message,
@@ -217,7 +205,11 @@ export const EmployeeService = {
     return employee;
   },
 
-  async update(context: EmployeeActorContext, id: string, payload: Record<string, unknown>): Promise<EmployeeDocument> {
+  async update(
+    context: EmployeeActorContext,
+    id: string,
+    payload: Record<string, unknown>,
+  ): Promise<EmployeeDocument> {
     const before = await this.getById(context.companyId, id);
     const { employeeNumber: _removed, ...updates } = payload;
 
@@ -225,8 +217,7 @@ export const EmployeeService = {
       typeof updates.departmentId === 'string' ? updates.departmentId : before.departmentId;
     const nextDesignationId =
       typeof updates.designationId === 'string' ? updates.designationId : before.designationId;
-    const nextBranchId =
-      typeof updates.branchId === 'string' ? updates.branchId : before.branchId;
+    const nextBranchId = typeof updates.branchId === 'string' ? updates.branchId : before.branchId;
 
     if (
       nextDepartmentId !== before.departmentId ||
@@ -244,10 +235,18 @@ export const EmployeeService = {
       await EmployeeValidationService.assertUniqueEmail(context.companyId, updates.email, id);
     }
     if (updates.aadhaarNumber !== undefined) {
-      await EmployeeValidationService.assertUniqueAadhaar(context.companyId, updates.aadhaarNumber as string | undefined, id);
+      await EmployeeValidationService.assertUniqueAadhaar(
+        context.companyId,
+        updates.aadhaarNumber as string | undefined,
+        id,
+      );
     }
     if (updates.panNumber !== undefined) {
-      await EmployeeValidationService.assertUniquePan(context.companyId, updates.panNumber as string | undefined, id);
+      await EmployeeValidationService.assertUniquePan(
+        context.companyId,
+        updates.panNumber as string | undefined,
+        id,
+      );
     }
 
     const managerId = updates.reportingManagerId as string | undefined;
@@ -258,7 +257,11 @@ export const EmployeeService = {
       }
     }
 
-    const updated = await EmployeeRepository.update(id, { ...updates, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await EmployeeRepository.update(
+      id,
+      { ...updates, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
     if (!updated) {
       throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
     }
@@ -451,7 +454,11 @@ export const EmployeeService = {
     });
   },
 
-  async bulkAction(context: EmployeeActorContext, ids: string[], action: string): Promise<{ processed: number }> {
+  async bulkAction(
+    context: EmployeeActorContext,
+    ids: string[],
+    action: string,
+  ): Promise<{ processed: number }> {
     let processed = 0;
     for (const id of ids) {
       switch (action) {

@@ -3,9 +3,11 @@ import type { ListQueryParams } from '@/features/organization/api/organization.a
 import { MASTER_DATA_MAX_PAGE_SIZE } from '@/features/organization/constants/master-data.constants';
 
 export interface HolidayRecord extends MasterDataRecord {
-  date: string;
+  date?: string;
   type?: string;
+  holidayModuleId?: string;
   branchId?: string;
+  dayOfWeek?: number;
   isRecurring?: boolean;
   recurrenceRule?: string;
   isOptional?: boolean;

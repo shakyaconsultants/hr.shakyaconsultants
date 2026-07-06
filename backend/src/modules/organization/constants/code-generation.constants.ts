@@ -24,7 +24,9 @@ export const GLOBAL_CODE_SETTINGS = {
 } as const;
 
 /** Master data entities that store a system `code` field */
-export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeGenerationEntityConfig>> = {
+export const CODE_GENERATION_REGISTRY: Partial<
+  Record<MasterDataEntityKey, CodeGenerationEntityConfig>
+> = {
   [MASTER_DATA_ENTITY.BRANCH]: {
     prefixSettingKey: 'organization.branch_code_prefix',
     defaultPrefix: 'BR',
@@ -58,9 +60,9 @@ export const CODE_GENERATION_REGISTRY: Partial<Record<MasterDataEntityKey, CodeG
     includeYear: false,
     includeMonth: false,
   },
-  [MASTER_DATA_ENTITY.EMPLOYMENT_TYPE]: {
-    prefixSettingKey: 'organization.employment_type_code_prefix',
-    defaultPrefix: 'EMPT',
+  [MASTER_DATA_ENTITY.HOLIDAY_MODULE]: {
+    prefixSettingKey: 'organization.holiday_module_code_prefix',
+    defaultPrefix: 'HMOD',
     slugFromName: false,
     padLength: 3,
     includeYear: false,

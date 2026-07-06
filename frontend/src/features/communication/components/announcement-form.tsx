@@ -6,10 +6,22 @@ import type {
   CreateAnnouncementPayload,
 } from '@/features/communication/api/communication.api';
 import { DateTimePicker, dateTimePickerValueToIso } from '@/shared/components/datetime-picker';
+import { SelectField } from '@/shared/components/select-field';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Select } from '@/shared/components/ui/select';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { formCheckboxClassName } from '@/shared/utils/form-control';
 import { toDateTimeLocalValue } from '@/shared/utils/datetime';
 
-const AUDIENCES: AnnouncementAudience[] = ['all', 'department', 'branch', 'role', 'team', 'project'];
+const AUDIENCES: AnnouncementAudience[] = [
+  'all',
+  'department',
+  'branch',
+  'role',
+  'team',
+  'project',
+];
 const PRIORITIES: AnnouncementPriority[] = ['low', 'normal', 'high', 'urgent'];
 
 interface AnnouncementFormProps {
@@ -19,16 +31,25 @@ interface AnnouncementFormProps {
   isPending?: boolean;
 }
 
-export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: AnnouncementFormProps) {
+export function AnnouncementForm({
+  initial,
+  onSubmit,
+  onCancel,
+  isPending,
+}: AnnouncementFormProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
-  const [targetAudience, setTargetAudience] = useState<AnnouncementAudience>(initial?.targetAudience ?? 'all');
+  const [targetAudience, setTargetAudience] = useState<AnnouncementAudience>(
+    initial?.targetAudience ?? 'all',
+  );
   const [priority, setPriority] = useState<AnnouncementPriority>(initial?.priority ?? 'normal');
   const [scheduledAt, setScheduledAt] = useState(toDateTimeLocalValue(initial?.scheduledAt));
   const [expiresAt, setExpiresAt] = useState(toDateTimeLocalValue(initial?.expiresAt));
   const [isPinned, setIsPinned] = useState(initial?.isPinned ?? false);
   const [isEmergency, setIsEmergency] = useState(initial?.isEmergency ?? false);
-  const [requiresAcknowledgement, setRequiresAcknowledgement] = useState(initial?.requiresAcknowledgement ?? false);
+  const [requiresAcknowledgement, setRequiresAcknowledgement] = useState(
+    initial?.requiresAcknowledgement ?? false,
+  );
   const [templateSlug, setTemplateSlug] = useState(initial?.templateSlug ?? '');
 
   const handleSubmit = async (event: FormEvent) => {
@@ -49,27 +70,32 @@ export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: Ann
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="grid gap-4 sm:grid-cols-2">
-      <Field label="Title" className="sm:col-span-2">
-        <input
-          className="w-full rounded-md border p-2 text-sm"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-      </Field>
+      <div className="sm:col-span-2">
+        <SelectField label="Title" htmlFor="announcement-title" required>
+          <Input
+            id="announcement-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+        </SelectField>
+      </div>
 
-      <Field label="Content" className="sm:col-span-2">
-        <textarea
-          className="min-h-[120px] w-full rounded-md border p-2 text-sm"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          required
-        />
-      </Field>
+      <div className="sm:col-span-2">
+        <SelectField label="Content" htmlFor="announcement-content" required>
+          <Textarea
+            id="announcement-content"
+            className="min-h-[120px]"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            required
+          />
+        </SelectField>
+      </div>
 
-      <Field label="Audience">
-        <select
-          className="w-full rounded-md border p-2 text-sm"
+      <SelectField label="Audience" htmlFor="announcement-audience">
+        <Select
+          id="announcement-audience"
           value={targetAudience}
           onChange={(e) => setTargetAudience(e.target.value as AnnouncementAudience)}
         >
@@ -78,12 +104,12 @@ export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: Ann
               {a}
             </option>
           ))}
-        </select>
-      </Field>
+        </Select>
+      </SelectField>
 
-      <Field label="Priority">
-        <select
-          className="w-full rounded-md border p-2 text-sm"
+      <SelectField label="Priority" htmlFor="announcement-priority">
+        <Select
+          id="announcement-priority"
           value={priority}
           onChange={(e) => setPriority(e.target.value as AnnouncementPriority)}
         >
@@ -92,38 +118,57 @@ export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: Ann
               {p}
             </option>
           ))}
-        </select>
-      </Field>
+        </Select>
+      </SelectField>
 
-      <Field label="Schedule At">
-        <DateTimePicker value={scheduledAt} onChange={setScheduledAt} min={toDateTimeLocalValue(new Date())} />
-      </Field>
+      <SelectField label="Schedule At">
+        <DateTimePicker
+          value={scheduledAt}
+          onChange={setScheduledAt}
+          min={toDateTimeLocalValue(new Date())}
+        />
+      </SelectField>
 
-      <Field label="Expires At">
+      <SelectField label="Expires At">
         <DateTimePicker value={expiresAt} onChange={setExpiresAt} min={scheduledAt || undefined} />
-      </Field>
+      </SelectField>
 
-      <Field label="Template Slug">
-        <input
-          className="w-full rounded-md border p-2 text-sm"
+      <SelectField
+        label="Template Slug"
+        htmlFor="announcement-template"
+        hint="general, policy, emergency, holiday"
+      >
+        <Input
+          id="announcement-template"
           value={templateSlug}
           onChange={(e) => setTemplateSlug(e.target.value)}
           placeholder="general, policy, emergency, holiday"
         />
-      </Field>
+      </SelectField>
 
       <div className="flex flex-wrap gap-4 sm:col-span-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isPinned} onChange={(e) => setIsPinned(e.target.checked)} />
-          Pinned
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isEmergency} onChange={(e) => setIsEmergency(e.target.checked)} />
-          Emergency
-        </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
+            className={formCheckboxClassName}
+            checked={isPinned}
+            onChange={(e) => setIsPinned(e.target.checked)}
+          />
+          Pinned
+        </label>
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className={formCheckboxClassName}
+            checked={isEmergency}
+            onChange={(e) => setIsEmergency(e.target.checked)}
+          />
+          Emergency
+        </label>
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className={formCheckboxClassName}
             checked={requiresAcknowledgement}
             onChange={(e) => setRequiresAcknowledgement(e.target.checked)}
           />
@@ -142,14 +187,5 @@ export function AnnouncementForm({ initial, onSubmit, onCancel, isPending }: Ann
         ) : null}
       </div>
     </form>
-  );
-}
-
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <label className={className}>
-      <span className="mb-1 block text-sm font-medium">{label}</span>
-      {children}
-    </label>
   );
 }

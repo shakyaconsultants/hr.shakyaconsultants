@@ -14,22 +14,13 @@ import { ROUTES } from '@/config/app.config';
 import type { CandidateRecord } from '@/features/recruitment/api/recruitment.api';
 import { useAuthStore } from '@/shared/stores/app.store';
 
-const PIPELINE_STAGE_OPTIONS = [
-  { value: '', label: 'All stages' },
-  { value: 'applied', label: 'Applied' },
-  { value: 'screening', label: 'Screening' },
-  { value: 'interview', label: 'Interview' },
-  { value: 'offer', label: 'Offer' },
-  { value: 'hired', label: 'Hired' },
-  { value: 'rejected', label: 'Rejected' },
-];
+import {
+  formatWorkflowStage,
+  WORKFLOW_STAGE_FILTER_OPTIONS,
+} from '@/features/recruitment/constants/recruitment-workflow.constants';
+import { getCandidateDisplayName } from '@/features/recruitment/utils/recruitment-display.util';
 
-function formatStage(slug: string): string {
-  return (slug ?? '')
-    .split('_')
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(' ');
-}
+const PIPELINE_STAGE_OPTIONS = WORKFLOW_STAGE_FILTER_OPTIONS;
 
 export function CandidatesListPage() {
   const [search, setSearch] = useState('');
@@ -59,8 +50,11 @@ export function CandidatesListPage() {
       key: 'name',
       header: 'Name',
       render: (row: CandidateRecord) => (
-        <Link to={ROUTES.recruitmentCandidateDetail(row.id)} className="font-medium text-primary hover:underline">
-          {row.firstName} {row.lastName}
+        <Link
+          to={ROUTES.recruitmentCandidateDetail(row.id)}
+          className="font-medium text-primary hover:underline"
+        >
+          {getCandidateDisplayName(row)}
         </Link>
       ),
     },
@@ -71,7 +65,7 @@ export function CandidatesListPage() {
       header: 'Stage',
       render: (row: CandidateRecord) => (
         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-          {formatStage(row.pipelineStage ?? '')}
+          {formatWorkflowStage(row.pipelineStage ?? '')}
         </span>
       ),
     },
@@ -98,10 +92,7 @@ export function CandidatesListPage() {
         icon={<Users className="h-6 w-6 text-primary" />}
         title="Candidates"
         description="Search, filter, and manage applicant records."
-        breadcrumbs={[
-          { label: 'Recruitment', href: ROUTES.RECRUITMENT },
-          { label: 'Candidates' },
-        ]}
+        breadcrumbs={[{ label: 'Recruitment', href: ROUTES.RECRUITMENT }, { label: 'Candidates' }]}
         actions={
           canCreate ? (
             <Button onClick={() => setCreateOpen(true)}>

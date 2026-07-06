@@ -11,6 +11,7 @@ import { generateUuid } from '@shared/utils/random-id.util.js';
 import { BROADCAST_PERMISSIONS } from '@modules/communication/constants/communication-permissions.constants.js';
 import { CommunicationAuditService } from '@modules/communication/services/communication-audit.service.js';
 import type { CommunicationActorContext } from '@modules/approval/types/approval.types.js';
+import { buildRegexFilter } from '@infrastructure/database/query/search.helper.js';
 
 interface ChannelListQuery {
   page?: number;
@@ -40,12 +41,20 @@ interface UpdateChannelInput {
 }
 
 async function getDirectReportIds(companyId: string, managerEmployeeId: string): Promise<string[]> {
-  const reports = await EmployeeRepository.findMany({ reportingManagerId: managerEmployeeId }, { companyId });
+  const reports = await EmployeeRepository.findMany(
+    { reportingManagerId: managerEmployeeId },
+    { companyId },
+  );
   return reports.map((r) => r.id);
 }
 
-function isChannelAdmin(conversation: { adminIds: string[]; createdByParticipantId: string }, employeeId: string): boolean {
-  return conversation.adminIds.includes(employeeId) || conversation.createdByParticipantId === employeeId;
+function isChannelAdmin(
+  conversation: { adminIds: string[]; createdByParticipantId: string },
+  employeeId: string,
+): boolean {
+  return (
+    conversation.adminIds.includes(employeeId) || conversation.createdByParticipantId === employeeId
+  );
 }
 
 export const ChannelService = {
@@ -54,18 +63,22 @@ export const ChannelService = {
     const filter: Record<string, unknown> = { type: CONVERSATION_TYPE.CHANNEL };
 
     if (query.channelSubtype) filter.channelSubtype = query.channelSubtype;
-    if (query.search) filter.title = { $regex: query.search, $options: 'i' };
+    if (query.search?.trim()) filter.title = buildRegexFilter(query.search);
 
     if (!canBroadcast && context.employeeId) {
       filter.participantIds = context.employeeId;
     }
 
-    return ConversationRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: 'lastMessageAt',
-      sortOrder: 'desc',
-    }, { companyId: context.companyId });
+    return ConversationRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: 'lastMessageAt',
+        sortOrder: 'desc',
+      },
+      { companyId: context.companyId },
+    );
   },
 
   async getById(context: CommunicationActorContext, permissions: string[], id: string) {
@@ -75,7 +88,11 @@ export const ChannelService = {
     }
 
     const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
-    if (!canBroadcast && context.employeeId && !channel.participantIds.includes(context.employeeId)) {
+    if (
+      !canBroadcast &&
+      context.employeeId &&
+      !channel.participantIds.includes(context.employeeId)
+    ) {
       throw new ForbiddenError('Not a channel member', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -88,7 +105,10 @@ export const ChannelService = {
       throw new NotFoundError('Channel not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const employees = await EmployeeRepository.findMany({ id: { $in: channel.participantIds } }, { companyId });
+    const employees = await EmployeeRepository.findMany(
+      { id: { $in: channel.participantIds } },
+      { companyId },
+    );
     return {
       channelId: id,
       participantIds: channel.participantIds,
@@ -102,25 +122,36 @@ export const ChannelService = {
     };
   },
 
-  async create(context: CommunicationActorContext, permissions: string[], input: CreateChannelInput) {
+  async create(
+    context: CommunicationActorContext,
+    permissions: string[],
+    input: CreateChannelInput,
+  ) {
     if (!context.employeeId && !context.isSuperAdmin) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
-    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
+    const canBroadcast =
+      permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
     const authorEmployeeId = context.employeeId ?? context.userId;
     const participantIds = [...new Set([authorEmployeeId, ...input.participantIds])];
 
     if (!canBroadcast) {
       if (input.channelSubtype === CHANNEL_SUBTYPE.DEPARTMENT) {
-        throw new ForbiddenError('Only admins can create department channels', ERROR_CODES.AUTH_FORBIDDEN);
+        throw new ForbiddenError(
+          'Only admins can create department channels',
+          ERROR_CODES.AUTH_FORBIDDEN,
+        );
       }
       if (input.channelSubtype === CHANNEL_SUBTYPE.TEAM) {
         const directReports = await getDirectReportIds(context.companyId, authorEmployeeId);
         const allowed = new Set([authorEmployeeId, ...directReports]);
         const invalid = participantIds.filter((id) => !allowed.has(id));
         if (invalid.length > 0) {
-          throw new ForbiddenError('Team channels may only include your direct reports', ERROR_CODES.AUTH_FORBIDDEN);
+          throw new ForbiddenError(
+            'Team channels may only include your direct reports',
+            ERROR_CODES.AUTH_FORBIDDEN,
+          );
         }
       }
       if (input.channelSubtype === CHANNEL_SUBTYPE.PROJECT && input.relatedEntityId) {
@@ -129,7 +160,10 @@ export const ChannelService = {
           { companyId: context.companyId },
         );
         if (!membership) {
-          throw new ForbiddenError('You must be a project member to create this channel', ERROR_CODES.AUTH_FORBIDDEN);
+          throw new ForbiddenError(
+            'You must be a project member to create this channel',
+            ERROR_CODES.AUTH_FORBIDDEN,
+          );
         }
       }
     }
@@ -169,20 +203,30 @@ export const ChannelService = {
     return CommunicationAuditService.toRecord(channel);
   },
 
-  async update(context: CommunicationActorContext, permissions: string[], id: string, input: UpdateChannelInput) {
+  async update(
+    context: CommunicationActorContext,
+    permissions: string[],
+    id: string,
+    input: UpdateChannelInput,
+  ) {
     const existing = await ConversationRepository.findById(id, { companyId: context.companyId });
     if (!existing || existing.type !== CONVERSATION_TYPE.CHANNEL) {
       throw new NotFoundError('Channel not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
+    const canBroadcast =
+      permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
     if (!canBroadcast) {
       if (!context.employeeId || !isChannelAdmin(existing, context.employeeId)) {
         throw new ForbiddenError('Channel admin access required', ERROR_CODES.AUTH_FORBIDDEN);
       }
     }
 
-    const updated = await ConversationRepository.update(id, { ...input, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await ConversationRepository.update(
+      id,
+      { ...input, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
 
     await CommunicationAuditService.log({
       companyId: context.companyId,
@@ -205,14 +249,19 @@ export const ChannelService = {
       throw new NotFoundError('Channel not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
+    const canBroadcast =
+      permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) || context.isSuperAdmin;
     if (!canBroadcast) {
       if (!context.employeeId || !isChannelAdmin(existing, context.employeeId)) {
         throw new ForbiddenError('Channel admin access required', ERROR_CODES.AUTH_FORBIDDEN);
       }
     }
 
-    await ConversationRepository.update(id, { isDeleted: true, deletedAt: new Date(), updatedBy: context.userId }, { companyId: context.companyId });
+    await ConversationRepository.update(
+      id,
+      { isDeleted: true, deletedAt: new Date(), updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
 
     await CommunicationAuditService.log({
       companyId: context.companyId,

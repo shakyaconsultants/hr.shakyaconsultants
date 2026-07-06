@@ -1,7 +1,6 @@
 import { usesHttpOnlyCookies, hasStoredAuth, hasSessionHint } from '@/shared/auth/token-storage';
 
-const ENABLED =
-  import.meta.env.DEV || import.meta.env.VITE_AUTH_DEBUG === 'true';
+const ENABLED = import.meta.env.VITE_AUTH_DEBUG === 'true';
 
 export type AuthDiagEvent =
   | 'bootstrap_started'

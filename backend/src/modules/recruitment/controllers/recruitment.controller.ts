@@ -8,6 +8,7 @@ import { CandidateService } from '@modules/recruitment/services/candidate.servic
 import { CandidatePipelineService } from '@modules/recruitment/services/candidate-pipeline.service.js';
 import { InterviewService } from '@modules/recruitment/services/interview.service.js';
 import { OfferService } from '@modules/recruitment/services/offer.service.js';
+import { OnboardingRepository } from '@domain/recruitment/recruitment.schemas.js';
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
 import { CandidateConversionService } from '@modules/recruitment/services/candidate-conversion.service.js';
 import { RecruitmentDashboardService } from '@modules/recruitment/services/recruitment-dashboard.service.js';
@@ -28,6 +29,7 @@ import {
   onboardingDraftSchema,
   pipelineTransitionSchema,
   rescheduleInterviewSchema,
+  startOnboardingSchema,
   updateCandidateSchema,
 } from '@modules/recruitment/validators/recruitment.validator.js';
 
@@ -143,7 +145,10 @@ export const exportCandidates: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(candidateListQuerySchema, req.query);
-    const result = await CandidateService.list(authReq.user.companyId, { ...query, pageSize: 10000 });
+    const result = await CandidateService.list(authReq.user.companyId, {
+      ...query,
+      pageSize: 10000,
+    });
     const csv = CandidateService.exportToCsv(result.items);
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=candidates.csv');
@@ -165,7 +170,9 @@ export const importCandidates: RequestHandler = async (req, res, next) => {
     for (const line of lines.slice(1)) {
       const values = line.split(',');
       const row: Record<string, string> = {};
-      headers.forEach((h, i) => { row[h.trim()] = values[i]?.trim() ?? ''; });
+      headers.forEach((h, i) => {
+        row[h.trim()] = values[i]?.trim() ?? '';
+      });
       if (!row.email || !row.firstName || !row.lastName) continue;
       const c = await CandidateService.create(actor, row);
       created.push(c.id);
@@ -224,7 +231,12 @@ export const transitionPipeline: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const { toStage, reason } = validateInput(pipelineTransitionSchema, req.body);
-    const candidate = await CandidateService.movePipelineStage(buildActor(authReq), id, toStage, reason);
+    const candidate = await CandidateService.movePipelineStage(
+      buildActor(authReq),
+      id,
+      toStage,
+      reason,
+    );
     return ResponseService.success(res, authReq, candidate);
   } catch (error) {
     next(error);
@@ -235,7 +247,8 @@ export const transitionPipeline: RequestHandler = async (req, res, next) => {
 export const listInterviews: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const candidateLeadId = typeof req.query.candidateLeadId === 'string' ? req.query.candidateLeadId : undefined;
+    const candidateLeadId =
+      typeof req.query.candidateLeadId === 'string' ? req.query.candidateLeadId : undefined;
     const interviews = await InterviewService.list(authReq.user.companyId, { candidateLeadId });
     return ResponseService.success(res, authReq, interviews);
   } catch (error) {
@@ -261,7 +274,12 @@ export const rescheduleInterview: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
     const { scheduledAt, meetingLink } = validateInput(rescheduleInterviewSchema, req.body);
-    const interview = await InterviewService.reschedule(buildActor(authReq), id, scheduledAt, meetingLink);
+    const interview = await InterviewService.reschedule(
+      buildActor(authReq),
+      id,
+      scheduledAt,
+      meetingLink,
+    );
     return ResponseService.success(res, authReq, interview);
   } catch (error) {
     next(error);
@@ -298,7 +316,8 @@ export const submitFeedback: RequestHandler = async (req, res, next) => {
 export const listOffers: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const candidateLeadId = typeof req.query.candidateLeadId === 'string' ? req.query.candidateLeadId : undefined;
+    const candidateLeadId =
+      typeof req.query.candidateLeadId === 'string' ? req.query.candidateLeadId : undefined;
     const offers = await OfferService.list(authReq.user.companyId, candidateLeadId);
     return ResponseService.success(res, authReq, offers);
   } catch (error) {
@@ -325,6 +344,18 @@ export const sendOffer: RequestHandler = async (req, res, next) => {
     const { id } = validateInput(idParamSchema, req.params);
     const offer = await OfferService.send(buildActor(authReq), id);
     return ResponseService.success(res, authReq, offer);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const sendOfferWithOnboarding: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { id } = validateInput(idParamSchema, req.params);
+    const result = await OfferService.sendWithOnboarding(buildActor(authReq), id);
+    return ResponseService.success(res, authReq, result);
   } catch (error) {
     next(error);
     return;
@@ -359,8 +390,11 @@ export const getOnboarding: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { candidateId } = validateInput(candidateIdParamSchema, req.params);
-    const onboarding = await OnboardingService.getByCandidate(authReq.user.companyId, candidateId);
-    return ResponseService.success(res, authReq, onboarding);
+    const onboarding = await OnboardingRepository.findOne(
+      { candidateLeadId: candidateId },
+      { companyId: authReq.user.companyId },
+    );
+    return ResponseService.success(res, authReq, onboarding ?? null);
   } catch (error) {
     next(error);
     return;
@@ -372,7 +406,12 @@ export const saveOnboardingDraft: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { candidateId } = validateInput(candidateIdParamSchema, req.params);
     const { section, data } = validateInput(onboardingDraftSchema, req.body);
-    const onboarding = await OnboardingService.saveDraft(buildActor(authReq), candidateId, section, data);
+    const onboarding = await OnboardingService.saveDraft(
+      buildActor(authReq),
+      candidateId,
+      section,
+      data,
+    );
     return ResponseService.success(res, authReq, onboarding);
   } catch (error) {
     next(error);
@@ -385,7 +424,30 @@ export const completeOnboardingSection: RequestHandler = async (req, res, next) 
     const authReq = req as AuthenticatedRequest;
     const { candidateId } = validateInput(candidateIdParamSchema, req.params);
     const { section, data } = validateInput(onboardingDraftSchema, req.body);
-    const onboarding = await OnboardingService.completeSection(buildActor(authReq), candidateId, section, data);
+    const onboarding = await OnboardingService.completeSection(
+      buildActor(authReq),
+      candidateId,
+      section,
+      data,
+    );
+    return ResponseService.success(res, authReq, onboarding);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const startOnboarding: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { candidateId } = validateInput(candidateIdParamSchema, req.params);
+    const { offerLetterId, startDate } = validateInput(startOnboardingSchema, req.body);
+    const onboarding = await OnboardingService.start(
+      buildActor(authReq),
+      candidateId,
+      offerLetterId,
+      startDate ?? new Date(),
+    );
     return ResponseService.success(res, authReq, onboarding);
   } catch (error) {
     next(error);

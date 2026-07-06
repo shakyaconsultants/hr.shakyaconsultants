@@ -12,6 +12,7 @@ import { IntegrationLogService } from '@modules/integration/services/integration
 import { IntegrationAuditService } from '@modules/integration/services/integration-audit.service.js';
 import type { IntegrationActorContext } from '@modules/approval/types/approval.types.js';
 import type { PaginatedResult } from '@shared/types/api.types.js';
+import { buildRegexFilter } from '@infrastructure/database/query/search.helper.js';
 
 export interface CreateApiKeyInput {
   name: string;
@@ -35,10 +36,13 @@ function sanitize(doc: ApiKeyDocument): Omit<ApiKeyDocument, 'keyHash'> {
 }
 
 export const ApiKeyService = {
-  async list(companyId: string, query: { page?: number; pageSize?: number; search?: string }): Promise<PaginatedResult<Omit<ApiKeyDocument, 'keyHash'>>> {
+  async list(
+    companyId: string,
+    query: { page?: number; pageSize?: number; search?: string },
+  ): Promise<PaginatedResult<Omit<ApiKeyDocument, 'keyHash'>>> {
     const filter: Record<string, unknown> = {};
-    if (query.search) {
-      filter.name = { $regex: query.search, $options: 'i' };
+    if (query.search?.trim()) {
+      filter.name = buildRegexFilter(query.search);
     }
     const result = await ApiKeyRepository.paginate(filter, {
       page: query.page,
@@ -53,7 +57,10 @@ export const ApiKeyService = {
     };
   },
 
-  async create(context: IntegrationActorContext, input: CreateApiKeyInput): Promise<{ apiKey: Omit<ApiKeyDocument, 'keyHash'>; plainKey: string }> {
+  async create(
+    context: IntegrationActorContext,
+    input: CreateApiKeyInput,
+  ): Promise<{ apiKey: Omit<ApiKeyDocument, 'keyHash'>; plainKey: string }> {
     const plainKey = generatePlainKey();
     const keyPrefix = plainKey.slice(0, 12);
     const doc = await ApiKeyRepository.create({
@@ -85,19 +92,26 @@ export const ApiKeyService = {
     return { apiKey: sanitize(doc), plainKey };
   },
 
-  async rotate(context: IntegrationActorContext, id: string): Promise<{ apiKey: Omit<ApiKeyDocument, 'keyHash'>; plainKey: string }> {
+  async rotate(
+    context: IntegrationActorContext,
+    id: string,
+  ): Promise<{ apiKey: Omit<ApiKeyDocument, 'keyHash'>; plainKey: string }> {
     const existing = await ApiKeyRepository.findByIdOrFail(id, { companyId: context.companyId });
     if (existing.isRevoked) {
       throw new BadRequestError('Cannot rotate a revoked API key');
     }
     const plainKey = generatePlainKey();
-    const updated = await ApiKeyRepository.update(id, {
-      $set: {
-        keyHash: hashKey(plainKey),
-        keyPrefix: plainKey.slice(0, 12),
-        updatedBy: context.userId,
+    const updated = await ApiKeyRepository.update(
+      id,
+      {
+        $set: {
+          keyHash: hashKey(plainKey),
+          keyPrefix: plainKey.slice(0, 12),
+          updatedBy: context.userId,
+        },
       },
-    }, { companyId: context.companyId });
+      { companyId: context.companyId },
+    );
 
     if (!updated) throw new NotFoundError('API key not found', ERROR_CODES.NOT_FOUND);
 
@@ -116,11 +130,18 @@ export const ApiKeyService = {
     return { apiKey: sanitize(updated), plainKey };
   },
 
-  async revoke(context: IntegrationActorContext, id: string): Promise<Omit<ApiKeyDocument, 'keyHash'>> {
+  async revoke(
+    context: IntegrationActorContext,
+    id: string,
+  ): Promise<Omit<ApiKeyDocument, 'keyHash'>> {
     const existing = await ApiKeyRepository.findByIdOrFail(id, { companyId: context.companyId });
-    const updated = await ApiKeyRepository.update(id, {
-      $set: { isRevoked: true, updatedBy: context.userId },
-    }, { companyId: context.companyId });
+    const updated = await ApiKeyRepository.update(
+      id,
+      {
+        $set: { isRevoked: true, updatedBy: context.userId },
+      },
+      { companyId: context.companyId },
+    );
 
     if (!updated) throw new NotFoundError('API key not found', ERROR_CODES.NOT_FOUND);
 
@@ -139,9 +160,15 @@ export const ApiKeyService = {
     return sanitize(updated);
   },
 
-  async regenerate(context: IntegrationActorContext, id: string): Promise<{ apiKey: Omit<ApiKeyDocument, 'keyHash'>; plainKey: string }> {
+  async regenerate(
+    context: IntegrationActorContext,
+    id: string,
+  ): Promise<{ apiKey: Omit<ApiKeyDocument, 'keyHash'>; plainKey: string }> {
     await this.revoke(context, id);
-    const existing = await ApiKeyRepository.findByIdOrFail(id, { companyId: context.companyId, includeDeleted: false });
+    const existing = await ApiKeyRepository.findByIdOrFail(id, {
+      companyId: context.companyId,
+      includeDeleted: false,
+    });
     return this.create(context, {
       name: `${existing.name} (regenerated)`,
       permissions: existing.permissions,
@@ -160,7 +187,10 @@ export const ApiKeyService = {
     }
 
     if (doc.allowedIps.length > 0 && ip && !doc.allowedIps.includes(ip)) {
-      throw new AuthenticationError('IP not allowed for this API key', ERROR_CODES.AUTH_UNAUTHORIZED);
+      throw new AuthenticationError(
+        'IP not allowed for this API key',
+        ERROR_CODES.AUTH_UNAUTHORIZED,
+      );
     }
 
     await ApiKeyRepository.update(doc.id, { $set: { lastUsedAt: new Date() } }, { companyId });
@@ -189,7 +219,10 @@ export const ApiKeyService = {
     return doc;
   },
 
-  async getUsage(companyId: string, id: string): Promise<{ apiKeyId: string; lastUsedAt?: Date; logCount: number }> {
+  async getUsage(
+    companyId: string,
+    id: string,
+  ): Promise<{ apiKeyId: string; lastUsedAt?: Date; logCount: number }> {
     const doc = await ApiKeyRepository.findByIdOrFail(id, { companyId });
     const logCount = await IntegrationLogService.list(companyId, {
       page: 1,

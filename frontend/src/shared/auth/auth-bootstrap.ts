@@ -9,15 +9,6 @@ import { markSessionHint } from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
 import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 
-/** Client-side navigation build from session shell — no network. */
-export function buildNavigationFromSession(): void {
-  const { portal, permissions, roles, navigation } = useAuthStore.getState();
-  if (!portal || (permissions.length === 0 && roles.length === 0)) {
-    return;
-  }
-  void navigation;
-}
-
 function applySessionFromMe(me: MeResult): void {
   useAuthStore.getState().setSession({
     user: me.user,
@@ -35,16 +26,15 @@ function applySessionFromMe(me: MeResult): void {
 }
 
 /**
- * Application bootstrap — session validation and auth shell restore only.
- * Single network call: GET /auth/me (refresh handled transparently if needed).
+ * Session restore on app load — single network call: GET /auth/me.
  */
 export async function runAuthBootstrap(): Promise<BootstrapResult> {
   const profiler = new BootstrapProfiler();
-  authDiag.log('bootstrap_started');
-  profiler.mark('bootstrap_start');
+  authDiag.log('session_restore_started');
+  profiler.mark('session_restore_start');
 
   if (useAuthStore.getState().authStatus === AUTH_STATUS.AUTHENTICATED) {
-    profiler.mark('bootstrap_complete');
+    profiler.mark('session_restore_complete');
     return { success: true, report: profiler.report() };
   }
 
@@ -55,7 +45,10 @@ export async function runAuthBootstrap(): Promise<BootstrapResult> {
   if (!outcome.ok) {
     profiler.mark(outcome.reason === 'transient' ? 'transient_failure' : 'session_invalid');
     if (outcome.reason === 'transient') {
-      authDiag.log('bootstrap_transient_error', { message: outcome.message, status: outcome.status });
+      authDiag.log('bootstrap_transient_error', {
+        message: outcome.message,
+        status: outcome.status,
+      });
     }
     return {
       success: false,
@@ -68,16 +61,11 @@ export async function runAuthBootstrap(): Promise<BootstrapResult> {
 
   profiler.mark('apply_session');
   applySessionFromMe(outcome.me);
-
-  profiler.mark('build_navigation');
-  buildNavigationFromSession();
-
-  profiler.mark('bootstrap_complete');
+  profiler.mark('session_restore_complete');
   return { success: true, report: profiler.report() };
 }
 
-/** Post-login session apply — same shell fields, no extra module fetches. */
+/** Post-login session apply. */
 export function applyLoginSession(me: MeResult): void {
   applySessionFromMe(me);
-  buildNavigationFromSession();
 }

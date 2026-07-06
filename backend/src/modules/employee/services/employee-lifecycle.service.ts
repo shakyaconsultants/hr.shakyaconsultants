@@ -1,18 +1,24 @@
 import { USER_STATUS } from '@domain/auth/user.schema.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import type { EmployeeLifecycleEmails } from '@domain/employee/employee.schemas.js';
-import { OnboardingRepository, ONBOARDING_STATUS } from '@domain/recruitment/recruitment.schemas.js';
+import {
+  OnboardingRepository,
+  ONBOARDING_STATUS,
+} from '@domain/recruitment/recruitment.schemas.js';
 import { AuthUserRepository } from '@modules/auth/repositories/user.repository.js';
 import { AuthPasswordResetRepository } from '@modules/auth/repositories/password-reset.repository.js';
-import { AccountActivationService } from '@modules/auth/services/account-activation.service.js';
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
-import { NotFoundError, ValidationError, ConflictError } from '@shared/errors/app.error.js';
+import { EmployeeAccountService } from '@modules/employee/services/employee-account.service.js';
+import { NotFoundError, ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { getEnv } from '@config/env.js';
 import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
 import { AUTH_EMAIL_JOBS } from '@modules/auth/constants/auth.constants.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
-import { PASSWORD_RESET_TOKEN_BYTES, PASSWORD_RESET_EXPIRY_MS } from '@modules/auth/constants/auth.constants.js';
+import {
+  PASSWORD_RESET_TOKEN_BYTES,
+  PASSWORD_RESET_EXPIRY_MS,
+} from '@modules/auth/constants/auth.constants.js';
 import { randomBytes } from 'node:crypto';
 import { hashRefreshToken } from '@modules/auth/services/token.service.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
@@ -25,7 +31,8 @@ export const EMPLOYEE_LIFECYCLE_EMAIL = {
   PASSWORD_RESET: 'passwordReset',
 } as const;
 
-export type EmployeeLifecycleEmailType = (typeof EMPLOYEE_LIFECYCLE_EMAIL)[keyof typeof EMPLOYEE_LIFECYCLE_EMAIL];
+export type EmployeeLifecycleEmailType =
+  (typeof EMPLOYEE_LIFECYCLE_EMAIL)[keyof typeof EMPLOYEE_LIFECYCLE_EMAIL];
 
 type EmailDeliveryStatus = 'never_sent' | 'sent' | 'failed';
 
@@ -54,7 +61,9 @@ export interface EmployeeLifecycleProfileView {
   };
 }
 
-function toEmailView(snapshot?: EmployeeLifecycleEmails[keyof EmployeeLifecycleEmails]): EmployeeEmailDeliveryView {
+function toEmailView(
+  snapshot?: EmployeeLifecycleEmails[keyof EmployeeLifecycleEmails],
+): EmployeeEmailDeliveryView {
   const sendCount = snapshot?.sendCount ?? 0;
   const lastSentAt = snapshot?.lastSentAt ? new Date(snapshot.lastSentAt).toISOString() : null;
   const lastError = snapshot?.lastError
@@ -120,7 +129,10 @@ export const EmployeeLifecycleService = {
       return;
     }
 
-    const message = toUserFacingErrorMessage(error, 'Email could not be sent. Please try again later.');
+    const message = toUserFacingErrorMessage(
+      error,
+      'Email could not be sent. Please try again later.',
+    );
     const prefix = lifecycleEmailPath(type);
     const current = employee.lifecycleEmails?.[type];
 
@@ -138,7 +150,10 @@ export const EmployeeLifecycleService = {
     );
   },
 
-  async getProfileStatus(companyId: string, employeeId: string): Promise<EmployeeLifecycleProfileView> {
+  async getProfileStatus(
+    companyId: string,
+    employeeId: string,
+  ): Promise<EmployeeLifecycleProfileView> {
     const employee = await EmployeeRepository.findById(employeeId, { companyId });
     if (!employee) {
       throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
@@ -172,20 +187,27 @@ export const EmployeeLifecycleService = {
   async sendActivationEmail(
     actor: EmployeeActorContext,
     employeeId: string,
-  ): Promise<{ expiresAt: string; message: string; lifecycle: EmployeeLifecycleProfileView }> {
+  ): Promise<{
+    message: string;
+    lifecycle: EmployeeLifecycleProfileView;
+    temporaryPassword: string;
+  }> {
     try {
-      const result = await AccountActivationService.issueActivationToken(actor, employeeId);
-      await this.recordEmailSuccess(actor.companyId, employeeId, EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION, actor.userId);
+      const result = await EmployeeAccountService.sendWelcomeCredentialsEmail(actor, employeeId);
       const lifecycle = await this.getProfileStatus(actor.companyId, employeeId);
       return {
-        expiresAt: result.expiresAt.toISOString(),
-        message: 'Account activation link issued. Email delivery may take a moment.',
+        temporaryPassword: result.temporaryPassword,
+        message: 'Login credentials email sent. Employee can sign in immediately.',
         lifecycle,
       };
     } catch (error) {
-      if (!(error instanceof ConflictError)) {
-        await this.recordEmailFailure(actor.companyId, employeeId, EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION, actor.userId, error);
-      }
+      await this.recordEmailFailure(
+        actor.companyId,
+        employeeId,
+        EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
+        actor.userId,
+        error,
+      );
       throw error;
     }
   },
@@ -200,19 +222,29 @@ export const EmployeeLifecycleService = {
     }
 
     if (!employee.userId) {
-      throw new ValidationError('Employee has no user account', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Employee has no user account', [], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
     }
 
-    const user = await AuthUserRepository.findById(employee.userId, actor.companyId);
-    if (!user || user.status !== USER_STATUS.ACTIVE) {
-      throw new ValidationError('Employee must activate their account before onboarding email can be sent', [], {
+    const onboarding = await OnboardingRepository.findOne(
+      { employeeId },
+      { companyId: actor.companyId },
+    );
+    if (onboarding?.status === ONBOARDING_STATUS.COMPLETED) {
+      throw new ValidationError('Onboarding form already submitted by the employee', [], {
         code: ERROR_CODES.VALIDATION_FAILED,
       });
     }
 
     try {
       const result = await OnboardingService.issuePortalLinkForEmployee(actor, employeeId);
-      await this.recordEmailSuccess(actor.companyId, employeeId, EMPLOYEE_LIFECYCLE_EMAIL.ONBOARDING_PORTAL, actor.userId);
+      await this.recordEmailSuccess(
+        actor.companyId,
+        employeeId,
+        EMPLOYEE_LIFECYCLE_EMAIL.ONBOARDING_PORTAL,
+        actor.userId,
+      );
       const lifecycle = await this.getProfileStatus(actor.companyId, employeeId);
       return {
         expiresAt: result.expiresAt.toISOString(),
@@ -220,7 +252,13 @@ export const EmployeeLifecycleService = {
         lifecycle,
       };
     } catch (error) {
-      await this.recordEmailFailure(actor.companyId, employeeId, EMPLOYEE_LIFECYCLE_EMAIL.ONBOARDING_PORTAL, actor.userId, error);
+      await this.recordEmailFailure(
+        actor.companyId,
+        employeeId,
+        EMPLOYEE_LIFECYCLE_EMAIL.ONBOARDING_PORTAL,
+        actor.userId,
+        error,
+      );
       throw error;
     }
   },
@@ -235,7 +273,9 @@ export const EmployeeLifecycleService = {
     }
 
     if (!employee.userId) {
-      throw new ValidationError('Employee has no user account', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Employee has no user account', [], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
     }
 
     const user = await AuthUserRepository.findById(employee.userId, actor.companyId);
@@ -272,11 +312,22 @@ export const EmployeeLifecycleService = {
         expiresAt: expiresAt.toISOString(),
       });
 
-      await this.recordEmailSuccess(actor.companyId, employeeId, EMPLOYEE_LIFECYCLE_EMAIL.PASSWORD_RESET, actor.userId);
+      await this.recordEmailSuccess(
+        actor.companyId,
+        employeeId,
+        EMPLOYEE_LIFECYCLE_EMAIL.PASSWORD_RESET,
+        actor.userId,
+      );
       const lifecycle = await this.getProfileStatus(actor.companyId, employeeId);
       return { message: 'Password reset email sent successfully.', lifecycle };
     } catch (error) {
-      await this.recordEmailFailure(actor.companyId, employeeId, EMPLOYEE_LIFECYCLE_EMAIL.PASSWORD_RESET, actor.userId, error);
+      await this.recordEmailFailure(
+        actor.companyId,
+        employeeId,
+        EMPLOYEE_LIFECYCLE_EMAIL.PASSWORD_RESET,
+        actor.userId,
+        error,
+      );
       throw error;
     }
   },

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { ClipboardList } from 'lucide-react';
-import { useOnboardingStatus, useRequestOnboardingPortalLink } from '@/features/workspace/hooks/use-workspace';
+import {
+  useOnboardingStatus,
+  useRequestOnboardingPortalLink,
+} from '@/features/workspace/hooks/use-workspace';
 import { Button } from '@/shared/components/ui/button';
 import { runFormMutation } from '@/shared/feedback/run-form-mutation';
 
@@ -20,7 +23,7 @@ export function WorkspaceOnboardingBanner() {
   const openOnboardingForm = async () => {
     await runFormMutation({
       setError,
-      successMessage: 'Onboarding link opened in a new tab. The link is valid for 48 hours.',
+      successMessage: 'Onboarding form opened in a new tab.',
       mutation: () => requestLink.mutateAsync(),
       onSuccess: (result) => {
         window.open(result.portalUrl, '_blank', 'noopener,noreferrer');
@@ -34,10 +37,13 @@ export function WorkspaceOnboardingBanner() {
         <div className="flex gap-3">
           <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
           <div>
-            <h3 className="font-medium text-amber-950 dark:text-amber-100">Complete your onboarding</h3>
+            <h3 className="font-medium text-amber-950 dark:text-amber-100">
+              Complete your onboarding
+            </h3>
             <p className="mt-1 text-sm text-amber-900/80 dark:text-amber-200/80">
-              Add personal details, address, bank information, and documents. Progress: {status.progressPercent}%.
-              Your secure form link is valid for 48 hours each time it is generated.
+              Fill personal details, address, bank information, and documents once. Progress:{' '}
+              {status.progressPercent}%. You can open the secure form here anytime before submission
+              — HR can also email you a link.
             </p>
             {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
           </div>
@@ -45,7 +51,7 @@ export function WorkspaceOnboardingBanner() {
         <Button
           type="button"
           variant="outline"
-          className="shrink-0 border-amber-300 bg-white hover:bg-amber-100 dark:border-amber-800 dark:bg-transparent"
+          className="shrink-0 border-amber-300 hover:bg-amber-100 dark:border-amber-800"
           disabled={requestLink.isPending}
           onClick={() => void openOnboardingForm()}
         >

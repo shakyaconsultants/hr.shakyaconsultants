@@ -19,17 +19,8 @@ export const AUTH_ROUTES = {
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
   ME: '/me',
-  SESSIONS: '/sessions',
-  SESSIONS_HISTORY: '/sessions/history',
-  SESSION_REVOKE: '/sessions/:sessionId/revoke',
-  BOOTSTRAP: '/bootstrap',
   SYSTEM_STATUS: '/system/status',
 } as const;
-
-export const AUTH_BOOTSTRAP_ROUTES = [
-  AUTH_ROUTES.BOOTSTRAP,
-  AUTH_ROUTES.SYSTEM_STATUS,
-] as const;
 
 export const AUTH_ENTITY_TYPES = {
   USER: 'user',

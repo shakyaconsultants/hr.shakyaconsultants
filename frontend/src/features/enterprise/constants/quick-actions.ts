@@ -1,17 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import {
-  Briefcase,
-  Building2,
-  CalendarDays,
-  Clock,
-  FolderKanban,
-  GitBranch,
-  Megaphone,
-  Shield,
-  UserPlus,
-  Users,
-  Workflow,
-} from 'lucide-react';
+import { Briefcase, CalendarDays, FolderKanban, Shield, UserPlus, Workflow } from 'lucide-react';
 import { ROUTES } from '@/config/app.config';
 
 export interface EnterpriseQuickAction {
@@ -24,6 +12,7 @@ export interface EnterpriseQuickAction {
   permissionsAny?: string[];
 }
 
+/** Core admin actions — org master data lives under Organization Setup. */
 export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
   {
     id: 'employee',
@@ -42,30 +31,13 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
     permission: 'candidate.create',
   },
   {
-    id: 'branch',
-    label: 'Branch',
-    description: 'Add a company branch',
-    path: `${ROUTES.organizationEntity('branch')}?action=create`,
-    icon: Building2,
-    permission: 'branch.create',
+    id: 'holiday',
+    label: 'Holiday',
+    description: 'Add a holiday to the calendar',
+    path: `${ROUTES.organizationEntity('holiday')}?action=create`,
+    icon: CalendarDays,
+    permission: 'holiday.create',
   },
-  {
-    id: 'department',
-    label: 'Department',
-    description: 'Add an organizational department',
-    path: `${ROUTES.organizationEntity('department')}?action=create`,
-    icon: GitBranch,
-    permission: 'department.create',
-  },
-  {
-    id: 'designation',
-    label: 'Designation',
-    description: 'Add a job designation',
-    path: `${ROUTES.organizationEntity('designation')}?action=create`,
-    icon: Users,
-    permission: 'designation.create',
-  },
-
   {
     id: 'project',
     label: 'Project',
@@ -89,29 +61,5 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
     path: `${ROUTES.APPROVAL_WORKFLOWS}?action=create`,
     icon: Workflow,
     permission: 'workflow.manage',
-  },
-  {
-    id: 'holiday',
-    label: 'Holiday',
-    description: 'Add a holiday to the calendar',
-    path: `${ROUTES.organizationEntity('holiday')}?action=create`,
-    icon: CalendarDays,
-    permission: 'holiday.create',
-  },
-  {
-    id: 'work-shift',
-    label: 'Work Shift',
-    description: 'Define a work shift schedule',
-    path: `${ROUTES.organizationEntity('work-shift')}?action=create`,
-    icon: Clock,
-    permission: 'work-shift.create',
-  },
-  {
-    id: 'announcement',
-    label: 'Announcement',
-    description: 'Publish a company-wide announcement',
-    path: ROUTES.COMMUNICATION_ADMIN,
-    icon: Megaphone,
-    permissionsAny: ['notifications.broadcast', 'announcement.create'],
   },
 ];

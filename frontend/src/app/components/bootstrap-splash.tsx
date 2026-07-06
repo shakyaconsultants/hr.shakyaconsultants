@@ -10,7 +10,7 @@ interface BootstrapSplashProps {
 
 /** Lightweight full-screen splash shown while AUTH_LOADING — blocks all routes. */
 export function BootstrapSplash({
-  message = 'Starting HR Shakya…',
+  message = 'Loading your session…',
   error = null,
   onRetry,
 }: BootstrapSplashProps) {

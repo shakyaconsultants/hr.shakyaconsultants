@@ -23,16 +23,24 @@ import { EmployeeRolesPanel } from '@/features/employee/components/employee-role
 import { EmployeeMessagesPanel } from '@/features/employee/components/employee-messages-panel';
 import { EmployeeReportingPanel } from '@/features/employee/components/employee-reporting-panel';
 import { EmployeePayrollPanel } from '@/features/payroll/components/employee-payroll-panel';
-import { useAuthStore } from '@/shared/stores/app.store';
 
-const BASE_TABS = ['Overview', 'Documents', 'Education', 'Experience', 'Skills', 'Timeline', 'Assets', 'Reporting', 'Roles & Access', 'Messages'] as const;
-const PAYROLL_TAB = 'Payroll' as const;
+const TABS = [
+  'Overview',
+  'Payroll',
+  'Documents',
+  'Education',
+  'Experience',
+  'Skills',
+  'Timeline',
+  'Assets',
+  'Reporting',
+  'Roles & Access',
+  'Messages',
+] as const;
 
 export function EmployeeDetailPage() {
   const { id = '' } = useParams();
-  const hasPermission = useAuthStore((s) => s.hasPermission);
-  const showPayrollTab = hasPermission('payroll.read') || hasPermission('payslip.read');
-  const tabs = showPayrollTab ? ([...BASE_TABS.slice(0, 1), PAYROLL_TAB, ...BASE_TABS.slice(1)] as const) : BASE_TABS;
+  const tabs = TABS;
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Overview');
   const [editOpen, setEditOpen] = useState(false);
   const { data, isLoading, isError } = useEmployeeDashboard(id);
@@ -104,13 +112,17 @@ export function EmployeeDetailPage() {
     }
     await runActionMutation({
       successMessage: 'Profile photo uploaded successfully.',
-      mutation: () => uploadMutation.mutateAsync({ employeeId: id, file, documentType: 'profile_photo' }),
+      mutation: () =>
+        uploadMutation.mutateAsync({ employeeId: id, file, documentType: 'profile_photo' }),
     });
   }
 
   return (
     <div className="space-y-6">
-      <Link to={ROUTES.EMPLOYEES} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to={ROUTES.EMPLOYEES}
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" />
         Employees
       </Link>
@@ -119,7 +131,11 @@ export function EmployeeDetailPage() {
         <div className="flex flex-wrap items-start gap-6">
           <div className="relative">
             {employee.photoUrl ? (
-              <img src={employee.photoUrl} alt="" className="h-24 w-24 rounded-full object-cover ring-2 ring-primary/20" />
+              <img
+                src={employee.photoUrl}
+                alt=""
+                className="h-24 w-24 rounded-full object-cover ring-2 ring-primary/20"
+              />
             ) : (
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-muted text-2xl font-semibold">
                 {employee.firstName.charAt(0)}
@@ -135,29 +151,70 @@ export function EmployeeDetailPage() {
             <h1 className="text-2xl font-bold">
               {employee.firstName} {employee.lastName}
             </h1>
-            <p className="text-sm font-medium text-primary">{(employee as any).designationName ?? ''}</p>
+            <p className="text-sm font-medium text-primary">
+              {(employee as any).designationName ?? ''}
+            </p>
             <p className="font-mono text-sm text-muted-foreground">{employee.employeeNumber}</p>
             <p className="text-sm text-muted-foreground">{employee.email}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{employee.employmentStatus}</span>
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                {employee.employmentStatus}
+              </span>
               <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs">{employee.status}</span>
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>Edit Profile</Button>
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            Edit Profile
+          </Button>
           {employee.status === 'active' ? (
-            <Button variant="outline" size="sm" className="text-amber-600 hover:text-amber-700" onClick={handleDeactivate}>Deactivate</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-amber-600 hover:text-amber-700"
+              onClick={handleDeactivate}
+            >
+              Deactivate
+            </Button>
           ) : employee.status === 'inactive' ? (
-            <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700" onClick={handleReactivate}>Reactivate</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-green-600 hover:text-green-700"
+              onClick={handleReactivate}
+            >
+              Reactivate
+            </Button>
           ) : null}
           {employee.status !== 'archived' ? (
-            <Button variant="outline" size="sm" className="text-amber-600 hover:text-amber-700" onClick={handleArchive}>Archive</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-amber-600 hover:text-amber-700"
+              onClick={handleArchive}
+            >
+              Archive
+            </Button>
           ) : (
-            <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700" onClick={handleRestore}>Restore</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-green-600 hover:text-green-700"
+              onClick={handleRestore}
+            >
+              Restore
+            </Button>
           )}
-          <Button variant="outline" size="sm" className="text-destructive hover:text-red-700" onClick={handleDelete}>Delete</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-red-700"
+            onClick={handleDelete}
+          >
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -181,12 +238,12 @@ export function EmployeeDetailPage() {
             {data.lifecycle ? (
               <EmployeeLifecyclePanel
                 lifecycle={data.lifecycle}
-                isSendingActivation={sendActivationMutation.isPending}
+                isSendingWelcome={sendActivationMutation.isPending}
                 isSendingOnboarding={sendOnboardingMutation.isPending}
                 isSendingPasswordReset={sendPasswordResetMutation.isPending}
-                onSendActivation={() =>
+                onSendWelcome={() =>
                   void runActionMutation({
-                    successMessage: 'Account activation email sent.',
+                    successMessage: 'Login credentials email sent.',
                     mutation: () => sendActivationMutation.mutateAsync(),
                   })
                 }
@@ -205,16 +262,31 @@ export function EmployeeDetailPage() {
               />
             ) : null}
             <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div><dt className="text-sm text-muted-foreground">Phone</dt><dd>{employee.phone ?? '—'}</dd></div>
-            <div><dt className="text-sm text-muted-foreground">Department</dt><dd>{(employee as any).departmentName ?? '—'}</dd></div>
-            <div><dt className="text-sm text-muted-foreground">Designation</dt><dd>{(employee as any).designationName ?? '—'}</dd></div>
-            <div><dt className="text-sm text-muted-foreground">Joined</dt><dd>{new Date(employee.joinedAt).toLocaleDateString()}</dd></div>
-            <div><dt className="text-sm text-muted-foreground">Employment Type</dt><dd>{employee.employmentType}</dd></div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Phone</dt>
+                <dd>{employee.phone ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Department</dt>
+                <dd>{(employee as any).departmentName ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Designation</dt>
+                <dd>{(employee as any).designationName ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Joined</dt>
+                <dd>{new Date(employee.joinedAt).toLocaleDateString()}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Employment Type</dt>
+                <dd>{employee.employmentType}</dd>
+              </div>
             </dl>
           </div>
         )}
 
-        {activeTab === 'Payroll' && showPayrollTab ? (
+        {activeTab === 'Payroll' ? (
           <EmployeePayrollPanel
             employeeId={id}
             employeeName={`${employee.firstName} ${employee.lastName}`.trim()}
@@ -227,9 +299,19 @@ export function EmployeeDetailPage() {
               <p className="text-sm text-muted-foreground">No documents uploaded.</p>
             ) : (
               data.documents.map((doc) => (
-                <li key={String(doc.id)} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                <li
+                  key={String(doc.id)}
+                  className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                >
                   <span>{String(doc.fileName)}</span>
-                  <a href={String(doc.fileUrl)} target="_blank" rel="noreferrer" className="text-primary hover:underline">Preview</a>
+                  <a
+                    href={String(doc.fileUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Preview
+                  </a>
                 </li>
               ))
             )}
@@ -240,11 +322,17 @@ export function EmployeeDetailPage() {
           <ul className="space-y-3">
             {data.education.map((item) => (
               <li key={String(item.id)} className="rounded border p-3 text-sm">
-                <p className="font-medium">{String(item.degree)} — {String(item.institution)}</p>
-                {item.university ? <p className="text-muted-foreground">{String(item.university)}</p> : null}
+                <p className="font-medium">
+                  {String(item.degree)} — {String(item.institution)}
+                </p>
+                {item.university ? (
+                  <p className="text-muted-foreground">{String(item.university)}</p>
+                ) : null}
               </li>
             ))}
-            {data.education.length === 0 && <p className="text-sm text-muted-foreground">No education records.</p>}
+            {data.education.length === 0 && (
+              <p className="text-sm text-muted-foreground">No education records.</p>
+            )}
           </ul>
         )}
 
@@ -252,10 +340,14 @@ export function EmployeeDetailPage() {
           <ul className="space-y-3">
             {data.experience.map((item) => (
               <li key={String(item.id)} className="rounded border p-3 text-sm">
-                <p className="font-medium">{String(item.title)} at {String(item.company)}</p>
+                <p className="font-medium">
+                  {String(item.title)} at {String(item.company)}
+                </p>
               </li>
             ))}
-            {data.experience.length === 0 && <p className="text-sm text-muted-foreground">No experience records.</p>}
+            {data.experience.length === 0 && (
+              <p className="text-sm text-muted-foreground">No experience records.</p>
+            )}
           </ul>
         )}
 
@@ -266,7 +358,9 @@ export function EmployeeDetailPage() {
                 {String(skill.skillName)} ({String(skill.level)})
               </li>
             ))}
-            {data.skills.length === 0 && <p className="text-sm text-muted-foreground">No skills recorded.</p>}
+            {data.skills.length === 0 && (
+              <p className="text-sm text-muted-foreground">No skills recorded.</p>
+            )}
           </ul>
         )}
 
@@ -276,22 +370,33 @@ export function EmployeeDetailPage() {
               <li key={String(event.id)} className="relative text-sm">
                 <span className="absolute -left-[1.35rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
                 <p className="font-medium">{String(event.title)}</p>
-                <p className="text-xs text-muted-foreground">{new Date(String(event.occurredAt)).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(String(event.occurredAt)).toLocaleString()}
+                </p>
               </li>
             ))}
-            {data.timeline.length === 0 && <p className="text-sm text-muted-foreground">No timeline events.</p>}
+            {data.timeline.length === 0 && (
+              <p className="text-sm text-muted-foreground">No timeline events.</p>
+            )}
           </ol>
         )}
 
         {activeTab === 'Assets' && (
           <ul className="space-y-2">
             {data.assets.map((asset) => (
-              <li key={String(asset.id)} className="flex justify-between rounded border px-3 py-2 text-sm">
-                <span>{String(asset.name)} ({String(asset.assetType)})</span>
+              <li
+                key={String(asset.id)}
+                className="flex justify-between rounded border px-3 py-2 text-sm"
+              >
+                <span>
+                  {String(asset.name)} ({String(asset.assetType)})
+                </span>
                 <span className="text-muted-foreground">{String(asset.status)}</span>
               </li>
             ))}
-            {data.assets.length === 0 && <p className="text-sm text-muted-foreground">No assets assigned.</p>}
+            {data.assets.length === 0 && (
+              <p className="text-sm text-muted-foreground">No assets assigned.</p>
+            )}
           </ul>
         )}
 

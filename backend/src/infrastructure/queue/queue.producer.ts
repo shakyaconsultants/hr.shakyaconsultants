@@ -1,6 +1,7 @@
 import type { JobsOptions } from 'bullmq';
 import { getQueue, isQueuesEnabled } from '@infrastructure/queue/bullmq.connection.js';
 import { deliverEmailPayload } from '@infrastructure/queue/processors/email-queue.processor.js';
+import { isRedisAvailable } from '@infrastructure/redis/redis.client.js';
 import { QUEUE_NAMES, type QueueName } from '@shared/constants/queue.constants.js';
 import { getCorrelationId } from '@shared/context/request.context.js';
 import { queueLogger } from '@logging/winston.logger.js';
@@ -37,7 +38,11 @@ export const QueueProducer = {
     return job.id;
   },
 
-  async addEmailJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string> {
+  async addEmailJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string> {
     const correlationId = getCorrelationId() ?? 'system';
     const data: QueueJobData = {
       correlationId,
@@ -46,53 +51,93 @@ export const QueueProducer = {
       payload,
     };
 
-    if (isQueuesEnabled()) {
-      const jobId = await this.addJob(QUEUE_NAMES.EMAIL, jobName, payload, options);
-      queueLogger.info('Email job queued', { jobName, correlationId, to: payload.to, jobId });
-      return jobId ?? 'queued';
+    if (isQueuesEnabled() && isRedisAvailable()) {
+      try {
+        const jobId = await this.addJob(QUEUE_NAMES.EMAIL, jobName, payload, options);
+        queueLogger.info('Email job queued', { jobName, correlationId, to: payload.to, jobId });
+        return jobId ?? 'queued';
+      } catch (error) {
+        queueLogger.warn('Email queue unavailable — delivering directly', {
+          jobName,
+          correlationId,
+          to: payload.to,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
-    void deliverEmailPayload(data, jobName).catch((error) => {
-      queueLogger.error('Background email delivery failed', {
+    try {
+      await deliverEmailPayload(data, jobName);
+      queueLogger.info('Email delivered directly (queue unavailable)', {
+        jobName,
+        correlationId,
+        to: payload.to,
+      });
+      return 'delivered';
+    } catch (error) {
+      queueLogger.error('Direct email delivery failed', {
         jobName,
         correlationId,
         to: payload.to,
         error: error instanceof Error ? error.message : String(error),
       });
-    });
-    queueLogger.info('Email scheduled for background delivery (Redis unavailable)', {
-      jobName,
-      correlationId,
-      to: payload.to,
-    });
-    return 'pending';
+      throw error;
+    }
   },
 
-  addNotificationJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
+  addNotificationJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string | undefined> {
     return this.addJob(QUEUE_NAMES.NOTIFICATION, jobName, payload, options);
   },
 
-  addPayrollJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
+  addPayrollJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string | undefined> {
     return this.addJob(QUEUE_NAMES.PAYROLL, jobName, payload, options);
   },
 
-  addAttendanceJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
+  addAttendanceJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string | undefined> {
     return this.addJob(QUEUE_NAMES.ATTENDANCE, jobName, payload, options);
   },
 
-  addReportJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
+  addReportJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string | undefined> {
     return this.addJob(QUEUE_NAMES.REPORT, jobName, payload, options);
   },
 
-  addDocumentJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
+  addDocumentJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string | undefined> {
     return this.addJob(QUEUE_NAMES.DOCUMENT, jobName, payload, options);
   },
 
-  addWebhookJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
+  addWebhookJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string | undefined> {
     return this.addJob(QUEUE_NAMES.WEBHOOK, jobName, payload, options);
   },
 
-  addSchedulerJob(jobName: string, payload: Record<string, unknown>, options?: JobsOptions): Promise<string | undefined> {
+  addSchedulerJob(
+    jobName: string,
+    payload: Record<string, unknown>,
+    options?: JobsOptions,
+  ): Promise<string | undefined> {
     return this.addJob(QUEUE_NAMES.WEBHOOK, jobName, payload, options);
   },
 };

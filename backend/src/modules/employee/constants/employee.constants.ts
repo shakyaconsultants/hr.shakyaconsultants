@@ -24,3 +24,6 @@ export const EMPLOYEE_BULK_ACTION = {
   REACTIVATE: 'reactivate',
   DELETE: 'delete',
 } as const;
+
+/** Default portal password for newly created employees (admin can override on create). */
+export const DEFAULT_EMPLOYEE_TEMP_PASSWORD = 'welcome1' as const;

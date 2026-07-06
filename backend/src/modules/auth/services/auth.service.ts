@@ -9,10 +9,7 @@ import { EmployeeProvisioningService } from '@modules/employee/services/employee
 import { NavigationConfigService } from '@modules/settings/services/navigation-config.service.js';
 import { FeatureFlagService } from '@modules/settings/services/feature-flag.service.js';
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
-import {
-  getAuthPortalHomeRoute,
-  resolveAuthPortal,
-} from '@modules/auth/utils/auth-portal.util.js';
+import { getAuthPortalHomeRoute, resolveAuthPortal } from '@modules/auth/utils/auth-portal.util.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
 import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
 import { AuditAction } from '@shared/enums/index.js';
@@ -80,10 +77,7 @@ export const AuthService = {
 
     const user = await AuthUserRepository.findByEmailWithPassword(input.email, company.id);
     perf.mark('user_lookup');
-    const passwordValid = await PasswordService.comparePassword(
-      input.password,
-      user?.passwordHash,
-    );
+    const passwordValid = await PasswordService.comparePassword(input.password, user?.passwordHash);
     perf.mark('password_verify');
 
     if (!user || !passwordValid) {
@@ -238,7 +232,10 @@ export const AuthService = {
     const isReplay = await SessionService.isRefreshReplay(payload.jti);
     if (isReplay) {
       await SessionService.revokeAllUserSessions(payload.companyId, payload.sub, payload.sub);
-      throw new AuthenticationError('Refresh token replay detected', ERROR_CODES.AUTH_REFRESH_REPLAY);
+      throw new AuthenticationError(
+        'Refresh token replay detected',
+        ERROR_CODES.AUTH_REFRESH_REPLAY,
+      );
     }
 
     const session = await SessionService.findActiveSession(payload.companyId, payload.sessionId);
@@ -430,12 +427,7 @@ export const AuthService = {
 
     const passwordHash = await PasswordService.hashPassword(input.password);
 
-    await AuthUserRepository.updatePassword(
-      user.id,
-      resetToken.companyId,
-      passwordHash,
-      user.id,
-    );
+    await AuthUserRepository.updatePassword(user.id, resetToken.companyId, passwordHash, user.id);
     await PasswordService.recordPasswordHistory(
       user.id,
       resetToken.companyId,
@@ -474,8 +466,7 @@ export const AuthService = {
   ): Promise<CurrentUserResponse> {
     const perf = new AuthPerfTimer('auth_me');
 
-    const dbUser =
-      cachedUser ?? (await AuthUserRepository.findById(user.userId, user.companyId));
+    const dbUser = cachedUser ?? (await AuthUserRepository.findById(user.userId, user.companyId));
     perf.mark('user_lookup');
     if (!dbUser) {
       throw new NotFoundError('User not found', ERROR_CODES.NOT_FOUND);
@@ -483,7 +474,10 @@ export const AuthService = {
 
     if (user.employeeId) {
       try {
-        await EmployeeProvisioningService.refreshEmployeePortalAccess(user.companyId, user.employeeId);
+        await EmployeeProvisioningService.refreshEmployeePortalAccess(
+          user.companyId,
+          user.employeeId,
+        );
       } catch (error) {
         logger.warn('Employee portal permission sync failed during auth/me — continuing', {
           companyId: user.companyId,
@@ -566,9 +560,15 @@ export const AuthService = {
     let permissions = permissionsResult;
     if (permissions.length === 0 && resolvedRoleIds.length > 0) {
       if (user.employeeId) {
-        permissions = await PermissionEngineService.getPermissionsForUser(user.companyId, user.employeeId);
+        permissions = await PermissionEngineService.getPermissionsForUser(
+          user.companyId,
+          user.employeeId,
+        );
       } else {
-        permissions = await EffectivePermissionService.calculateForRoleIds(user.companyId, resolvedRoleIds);
+        permissions = await EffectivePermissionService.calculateForRoleIds(
+          user.companyId,
+          resolvedRoleIds,
+        );
       }
       perf.mark('permission_fallback');
     }
@@ -619,7 +619,7 @@ export const AuthService = {
       navigation: {
         items: navigationItems.map((item) => ({
           id: item.id,
-          enabled: item.enabled ?? true,
+          enabled: item.enabled,
           order: item.sortOrder,
           label: item.label,
           icon: item.icon,
@@ -642,31 +642,5 @@ export const AuthService = {
     );
 
     return employeeRoles.map((entry) => entry.roleId);
-  },
-
-  async listSessions(user: AuthenticatedUser) {
-    return SessionService.listActiveSessions(user.companyId, user.userId, user.sessionId);
-  },
-
-  async listSessionHistory(user: AuthenticatedUser) {
-    return SessionService.listSessionHistory(user.companyId, user.userId);
-  },
-
-  async revokeSession(user: AuthenticatedUser, sessionId: string, meta: AuthRequestMeta) {
-    await SessionService.revokeUserSession(user.companyId, user.userId, sessionId, user.userId, user.sessionId);
-
-    AuditLogService.log({
-      who: user.userId,
-      where: AUTH_AUDIT_WHERE.AUTH_SESSION_REVOKE,
-      action: AuditAction.Update,
-      entity: AUTH_ENTITY_TYPES.SESSION,
-      entityId: sessionId,
-      ip: meta.ipAddress,
-      device: meta.userAgent,
-      correlationId: meta.correlationId,
-      tenantId: user.companyId,
-    });
-
-    return { message: 'Session revoked' };
   },
 };

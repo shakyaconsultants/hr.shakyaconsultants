@@ -1,6 +1,6 @@
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { TaskRepository } from '@domain/project/project.schemas.js';
-import { HolidayRepository } from '@domain/organization/organization.schemas.js';
+import { HolidayResolverService } from '@modules/organization/services/holiday-resolver.service.js';
 import { InterviewRepository } from '@domain/recruitment/recruitment.schemas.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import type { WorkspaceActorContext } from '@modules/workspace/types/workspace.types.js';
@@ -10,20 +10,28 @@ export const WorkspaceCalendarService = {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    const employee = await EmployeeRepository.findById(context.employeeId, {
+      companyId: context.companyId,
+    });
+    const holidayScope = {
+      branchId: employee?.branchId,
+      departmentId: employee?.departmentId,
+    };
+
     const [tasks, holidays, interviews, employees] = await Promise.all([
       TaskRepository.findMany(
         { assigneeId: context.employeeId, dueDate: { $gte: start, $lte: end } },
         { companyId: context.companyId },
       ),
-      HolidayRepository.findMany(
-        { date: { $gte: start, $lte: end }, status: ENTITY_STATUS.ACTIVE },
-        { companyId: context.companyId },
-      ),
+      HolidayResolverService.listHolidaysInRange(context.companyId, start, end, holidayScope),
       InterviewRepository.findMany(
         { interviewerIds: context.employeeId, scheduledAt: { $gte: start, $lte: end } },
         { companyId: context.companyId },
       ),
-      EmployeeRepository.findMany({ status: ENTITY_STATUS.ACTIVE }, { companyId: context.companyId }),
+      EmployeeRepository.findMany(
+        { status: ENTITY_STATUS.ACTIVE },
+        { companyId: context.companyId },
+      ),
     ]);
 
     const events: Record<string, unknown>[] = [];
@@ -74,7 +82,11 @@ export const WorkspaceCalendarService = {
       }
 
       const joined = new Date(employee.joinedAt);
-      const anniversaryThisYear = new Date(start.getFullYear(), joined.getMonth(), joined.getDate());
+      const anniversaryThisYear = new Date(
+        start.getFullYear(),
+        joined.getMonth(),
+        joined.getDate(),
+      );
       if (anniversaryThisYear >= start && anniversaryThisYear <= end) {
         const years = start.getFullYear() - joined.getFullYear();
         if (years > 0) {
@@ -89,7 +101,9 @@ export const WorkspaceCalendarService = {
       }
     }
 
-    events.sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
+    events.sort(
+      (a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime(),
+    );
 
     return { events, startDate, endDate };
   },

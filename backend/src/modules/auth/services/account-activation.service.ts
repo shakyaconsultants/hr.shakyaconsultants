@@ -5,7 +5,10 @@ import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
 import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
 import { AuditAction } from '@shared/enums/index.js';
-import { SECURE_TOKEN_ENTITY_TYPE, SECURE_TOKEN_PURPOSE } from '@shared/constants/secure-token.constants.js';
+import {
+  SECURE_TOKEN_ENTITY_TYPE,
+  SECURE_TOKEN_PURPOSE,
+} from '@shared/constants/secure-token.constants.js';
 import { SecureAccessTokenService } from '@modules/approval/services/secure-access-token.service.js';
 import { PasswordService } from '@modules/auth/services/password.service.js';
 import { PermissionEngineService } from '@modules/auth/services/permission-engine.service.js';
@@ -18,7 +21,10 @@ import { NotFoundError, ConflictError, ValidationError } from '@shared/errors/ap
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
-import { EmployeeLifecycleService, EMPLOYEE_LIFECYCLE_EMAIL } from '@modules/employee/services/employee-lifecycle.service.js';
+import {
+  EmployeeLifecycleService,
+  EMPLOYEE_LIFECYCLE_EMAIL,
+} from '@modules/employee/services/employee-lifecycle.service.js';
 import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
 import { logger } from '@logging/winston.logger.js';
 
@@ -30,14 +36,19 @@ export interface AccountActivationActor {
 }
 
 export const AccountActivationService = {
-  async issueActivationToken(actor: AccountActivationActor, employeeId: string): Promise<{ expiresAt: Date }> {
+  async issueActivationToken(
+    actor: AccountActivationActor,
+    employeeId: string,
+  ): Promise<{ expiresAt: Date }> {
     const employee = await EmployeeRepository.findById(employeeId, { companyId: actor.companyId });
     if (!employee) {
       throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
     }
 
     if (!employee.userId) {
-      throw new ValidationError('Employee has no user account', [], { code: ERROR_CODES.VALIDATION_FAILED });
+      throw new ValidationError('Employee has no user account', [], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
     }
 
     const user = await AuthUserRepository.findById(employee.userId, actor.companyId);
@@ -77,6 +88,12 @@ export const AccountActivationService = {
       templateType: EMAIL_TEMPLATE_TYPES.ACCOUNT_ACTIVATION,
       activationUrl,
       expiresAt: expiresAt.toISOString(),
+    }).catch((emailError: unknown) => {
+      logger.error('Account activation email delivery failed', {
+        email: user.email,
+        employeeId,
+        error: emailError instanceof Error ? emailError.message : String(emailError),
+      });
     });
 
     AuditLogService.log({
@@ -94,9 +111,16 @@ export const AccountActivationService = {
     return { expiresAt };
   },
 
-  async activateAccount(rawToken: string, password: string, meta: { ip?: string; userAgent?: string }): Promise<{ message: string }> {
+  async activateAccount(
+    rawToken: string,
+    password: string,
+    meta: { ip?: string; userAgent?: string },
+  ): Promise<{ message: string }> {
     PasswordService.validatePasswordStrength(password);
-    const resolved = await SecureAccessTokenService.assertValid(SECURE_TOKEN_PURPOSE.ACCOUNT_ACTIVATION, rawToken);
+    const resolved = await SecureAccessTokenService.assertValid(
+      SECURE_TOKEN_PURPOSE.ACCOUNT_ACTIVATION,
+      rawToken,
+    );
 
     const user = await AuthUserRepository.findById(resolved.entityId, resolved.companyId);
     if (!user) {
@@ -108,23 +132,37 @@ export const AccountActivationService = {
     }
 
     const passwordHash = await PasswordService.hashPassword(password);
-    await AuthUserRepository.updatePassword(resolved.entityId, resolved.companyId, passwordHash, resolved.entityId);
+    await AuthUserRepository.updatePassword(
+      resolved.entityId,
+      resolved.companyId,
+      passwordHash,
+      resolved.entityId,
+    );
     await UserRepository.update(
       resolved.entityId,
       { status: USER_STATUS.ACTIVE, mustChangePassword: false, updatedBy: resolved.entityId },
       { companyId: resolved.companyId },
     );
-    await PasswordService.recordPasswordHistory(resolved.entityId, resolved.companyId, passwordHash, resolved.entityId);
+    await PasswordService.recordPasswordHistory(
+      resolved.entityId,
+      resolved.companyId,
+      passwordHash,
+      resolved.entityId,
+    );
     await SecureAccessTokenService.consume(resolved, resolved.entityId);
 
     if (user.employeeId) {
-      await EmployeeProvisioningService.ensureDefaultEmployeeRole(resolved.companyId, user.employeeId, {
-        companyId: resolved.companyId,
-        userId: resolved.entityId,
-        employeeId: user.employeeId,
-        ip: meta.ip,
-        userAgent: meta.userAgent,
-      });
+      await EmployeeProvisioningService.ensureDefaultEmployeeRole(
+        resolved.companyId,
+        user.employeeId,
+        {
+          companyId: resolved.companyId,
+          userId: resolved.entityId,
+          employeeId: user.employeeId,
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        },
+      );
       await PermissionEngineService.invalidateUserPermissions(resolved.companyId, user.employeeId);
       try {
         await OnboardingService.issuePortalLinkForEmployee(
@@ -170,9 +208,14 @@ export const AccountActivationService = {
     return { message: 'Account activated successfully. You may now sign in.' };
   },
 
-  async getActivationStatus(rawToken: string): Promise<{ valid: boolean; expired: boolean; email?: string }> {
+  async getActivationStatus(
+    rawToken: string,
+  ): Promise<{ valid: boolean; expired: boolean; email?: string }> {
     try {
-      const resolved = await SecureAccessTokenService.assertValid(SECURE_TOKEN_PURPOSE.ACCOUNT_ACTIVATION, rawToken);
+      const resolved = await SecureAccessTokenService.assertValid(
+        SECURE_TOKEN_PURPOSE.ACCOUNT_ACTIVATION,
+        rawToken,
+      );
       const metadata = resolved.record.metadata;
       const email = typeof metadata.email === 'string' ? metadata.email : undefined;
       return { valid: true, expired: false, email };

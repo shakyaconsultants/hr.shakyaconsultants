@@ -11,10 +11,17 @@ import { DepartmentService } from '@modules/organization/services/department.ser
 import { DepartmentValidationService } from '@modules/organization/services/department-validation.service.js';
 import { DesignationService } from '@modules/organization/services/designation.service.js';
 import { DesignationValidationService } from '@modules/organization/services/designation-validation.service.js';
+import {
+  HolidayModuleValidationService,
+  HolidayValidationService,
+} from '@modules/organization/services/holiday-module-validation.service.js';
 import { DependencyValidatorService } from '@modules/organization/shared/dependency-validator.service.js';
 import { MasterDataAuditService } from '@modules/organization/shared/master-data-audit.service.js';
 import { MasterDataCacheService } from '@modules/organization/shared/master-data-cache.service.js';
-import { MasterDataQueryService, type MasterDataListQuery } from '@modules/organization/shared/master-data-query.service.js';
+import {
+  MasterDataQueryService,
+  type MasterDataListQuery,
+} from '@modules/organization/shared/master-data-query.service.js';
 import {
   serializeCursorMasterData,
   serializeMasterDataRecord,
@@ -185,7 +192,10 @@ export const MasterDataService = {
       if (MasterDataQueryService.shouldEnrichEmployeeCount(entityKey)) {
         return serializeCursorMasterData({
           ...result,
-          items: await MasterDataQueryService.enrichDepartmentEmployeeCount(result.items, context.companyId),
+          items: await MasterDataQueryService.enrichDepartmentEmployeeCount(
+            result.items,
+            context.companyId,
+          ),
         });
       }
       return serializeCursorMasterData(result);
@@ -195,7 +205,10 @@ export const MasterDataService = {
     if (MasterDataQueryService.shouldEnrichEmployeeCount(entityKey)) {
       return serializePaginatedMasterData({
         ...result,
-        items: await MasterDataQueryService.enrichDepartmentEmployeeCount(result.items, context.companyId),
+        items: await MasterDataQueryService.enrichDepartmentEmployeeCount(
+          result.items,
+          context.companyId,
+        ),
       });
     }
     return serializePaginatedMasterData(result);
@@ -217,20 +230,27 @@ export const MasterDataService = {
       finalPayload = await DesignationValidationService.validateWrite(context.companyId, payload);
       await DesignationValidationService.assertUniqueName(
         context.companyId,
-        String(finalPayload.name ?? ''),
+        typeof finalPayload.name === 'string' ? finalPayload.name : '',
         typeof finalPayload.departmentId === 'string' ? finalPayload.departmentId : undefined,
       );
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.HOLIDAY_MODULE) {
+      finalPayload = await HolidayModuleValidationService.validateWrite(context.companyId, payload);
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.HOLIDAY) {
+      finalPayload = await HolidayValidationService.validateWrite(context.companyId, payload);
     }
 
     finalPayload = await ensureAutoCode(entityKey, context.companyId, context.userId, finalPayload);
 
     const { name, code } = extractNameCode(finalPayload);
 
-    await DependencyValidatorService.assertNoDuplicateNameOrCode(
-      entityKey,
-      context.companyId,
-      { name, code },
-    );
+    await DependencyValidatorService.assertNoDuplicateNameOrCode(entityKey, context.companyId, {
+      name,
+      code,
+    });
 
     const id = generateUuid();
     const document = await config.repository.create(
@@ -288,10 +308,11 @@ export const MasterDataService = {
         id,
       );
 
-      const setPayload: Record<string, unknown> = { ...finalPayload, updatedBy: context.userId };
-      for (const field of Object.keys(unset)) {
-        delete setPayload[field];
-      }
+      const setPayload = Object.fromEntries(
+        Object.entries({ ...finalPayload, updatedBy: context.userId }).filter(
+          ([key]) => !(key in unset),
+        ),
+      ) as Record<string, unknown>;
 
       const updated = await config.repository.update(
         id,
@@ -327,13 +348,35 @@ export const MasterDataService = {
 
     if (entityKey === MASTER_DATA_ENTITY.DESIGNATION) {
       const merged = { ...before, ...payload };
-      finalPayload = await DesignationValidationService.validateWrite(context.companyId, merged, id);
+      finalPayload = await DesignationValidationService.validateWrite(
+        context.companyId,
+        merged,
+        id,
+      );
       await DesignationValidationService.assertUniqueName(
         context.companyId,
-        String(finalPayload.name ?? merged.name ?? ''),
+        typeof finalPayload.name === 'string'
+          ? finalPayload.name
+          : typeof merged.name === 'string'
+            ? merged.name
+            : '',
         typeof finalPayload.departmentId === 'string' ? finalPayload.departmentId : undefined,
         id,
       );
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.HOLIDAY_MODULE) {
+      finalPayload = await HolidayModuleValidationService.validateWrite(context.companyId, {
+        ...before,
+        ...payload,
+      });
+    }
+
+    if (entityKey === MASTER_DATA_ENTITY.HOLIDAY) {
+      finalPayload = await HolidayValidationService.validateWrite(context.companyId, {
+        ...before,
+        ...payload,
+      });
     }
 
     finalPayload = stripImmutableCode(finalPayload);
@@ -383,6 +426,10 @@ export const MasterDataService = {
   ): Promise<BaseDocument> {
     const config = resolveEntityConfig(entityKey);
     const existing = await config.repository.findByIdOrFail(id, { companyId: context.companyId });
+
+    if (entityKey === MASTER_DATA_ENTITY.HOLIDAY_MODULE) {
+      await HolidayModuleValidationService.assertCanDelete(context.companyId, id);
+    }
 
     await DependencyValidatorService.assertCanDelete(entityKey, id, context.companyId);
 

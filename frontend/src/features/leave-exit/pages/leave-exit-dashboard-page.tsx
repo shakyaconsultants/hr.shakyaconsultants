@@ -42,20 +42,30 @@ export function LeaveExitDashboardPage() {
       <LeaveExitNav />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={ClipboardList} label="Pending Leave Requests" value={String(pendingLeave)} />
+        <StatCard
+          icon={ClipboardList}
+          label="Pending Leave Requests"
+          value={String(pendingLeave)}
+        />
         <StatCard icon={Scale} label="Pending Approvals" value={String(pendingApprovals)} />
         {isAdmin ? (
           <StatCard icon={Users} label="Active Leave Policies" value={String(activePolicies)} />
         ) : (
           <StatCard icon={CalendarDays} label="Team Calendar" value="View" />
         )}
-        <StatCard icon={CalendarDays} label="Recent Requests" value={String(requests?.items.length ?? 0)} />
+        <StatCard
+          icon={CalendarDays}
+          label="Recent Requests"
+          value={String(requests?.items.length ?? 0)}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-lg border p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">{isAdmin ? 'Recent Leave Requests' : 'Recent Team Requests'}</h2>
+            <h2 className="font-semibold">
+              {isAdmin ? 'Recent Leave Requests' : 'Recent Team Requests'}
+            </h2>
             <Button variant="ghost" size="sm" asChild>
               <Link to={ROUTES.LEAVE_REQUESTS}>View all</Link>
             </Button>
@@ -65,9 +75,13 @@ export function LeaveExitDashboardPage() {
               <li className="text-muted-foreground">No leave requests</li>
             ) : (
               (requests?.items ?? []).slice(0, 5).map((item) => (
-                <li key={item.id} className="flex justify-between gap-2 border-b pb-2 last:border-0">
+                <li
+                  key={item.id}
+                  className="flex justify-between gap-2 border-b pb-2 last:border-0"
+                >
                   <span>
-                    {new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}
+                    {new Date(item.startDate).toLocaleDateString()} –{' '}
+                    {new Date(item.endDate).toLocaleDateString()}
                   </span>
                   <span className="capitalize text-muted-foreground">{item.status}</span>
                 </li>
@@ -83,7 +97,9 @@ export function LeaveExitDashboardPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link to={ROUTES.LEAVE_REQUESTS}>{isAdmin ? 'All Requests' : 'Pending Requests'}</Link>
+              <Link to={ROUTES.LEAVE_REQUESTS}>
+                {isAdmin ? 'All Requests' : 'Pending Requests'}
+              </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to={ROUTES.LEAVE_CALENDAR}>{isAdmin ? 'Leave Calendar' : 'Team Calendar'}</Link>
@@ -94,16 +110,10 @@ export function LeaveExitDashboardPage() {
                   <Link to={ROUTES.LEAVE_BALANCES}>All Balances</Link>
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link to={ROUTES.LEAVE_POLICIES}>Policies & Rules</Link>
+                  <Link to={ROUTES.LEAVE_SETUP}>Leave Setup</Link>
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link to={ROUTES.EXIT}>Exit Management</Link>
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to={ROUTES.RESIGNATION}>Resignations</Link>
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to={ROUTES.APPROVAL_INBOX}>Approval Inbox</Link>
+                  <Link to={ROUTES.LEAVE_OFFBOARDING}>Offboarding</Link>
                 </Button>
               </>
             ) : (
@@ -118,7 +128,15 @@ export function LeaveExitDashboardPage() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: typeof ClipboardList; label: string; value: string }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof ClipboardList;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="mb-2 flex items-center gap-2 text-muted-foreground">

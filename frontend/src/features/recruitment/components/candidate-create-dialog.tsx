@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateCandidate } from '@/features/recruitment/hooks/use-recruitment';
+import { Upload } from 'lucide-react';
+import { useCreateCandidate, useUploadResume } from '@/features/recruitment/hooks/use-recruitment';
 import { FormDialog } from '@/shared/components/form-dialog';
 import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
+import { MasterDataSelect } from '@/shared/components/master-data-select';
 import { SelectField } from '@/shared/components/select-field';
 import { Input } from '@/shared/components/ui/input';
 import { runFormMutation } from '@/shared/feedback/run-form-mutation';
@@ -16,13 +18,19 @@ export interface CandidateCreateDialogProps {
 export function CandidateCreateDialog({ open, onOpenChange }: CandidateCreateDialogProps) {
   const navigate = useNavigate();
   const createMutation = useCreateCandidate();
+  const uploadMutation = useUploadResume();
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     source: '',
+    departmentId: '',
+    designationId: '',
+    expectedSalary: '',
+    notes: '',
   });
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function updateField(field: keyof typeof form, value: string) {
@@ -36,15 +44,26 @@ export function CandidateCreateDialog({ open, onOpenChange }: CandidateCreateDia
 
     await runFormMutation({
       setError,
-      successMessage: 'Candidate created successfully.',
-      mutation: () =>
-        createMutation.mutateAsync({
+      successMessage: 'Application submitted — candidate added to pipeline.',
+      mutation: async () => {
+        const candidate = await createMutation.mutateAsync({
           firstName: form.firstName,
           lastName: form.lastName,
           email: form.email,
           phone: form.phone || undefined,
           source: form.source || undefined,
-        }),
+          departmentId: form.departmentId || undefined,
+          designationId: form.designationId || undefined,
+          expectedSalary: form.expectedSalary ? Number(form.expectedSalary) : undefined,
+          notes: form.notes || undefined,
+        });
+
+        if (resumeFile) {
+          await uploadMutation.mutateAsync({ candidateId: candidate.id, file: resumeFile });
+        }
+
+        return candidate;
+      },
       onSuccess: (candidate) => {
         onOpenChange(false);
         navigate(ROUTES.recruitmentCandidateDetail(candidate.id));
@@ -56,14 +75,17 @@ export function CandidateCreateDialog({ open, onOpenChange }: CandidateCreateDia
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Add Candidate"
-      description="Create a new applicant record in the recruitment pipeline."
-      submitLabel="Create Candidate"
-      isSubmitting={createMutation.isPending}
+      title="New Application"
+      description="Capture applicant details, role interest, and resume for the recruitment pipeline."
+      submitLabel="Submit Application"
+      isSubmitting={createMutation.isPending || uploadMutation.isPending}
       onSubmit={handleSubmit}
     >
       <div className="space-y-4">
-        <FormSection title={FORM_SECTIONS.BASIC} description="Applicant identity and contact details.">
+        <FormSection
+          title={FORM_SECTIONS.BASIC}
+          description="Applicant identity and contact details."
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField label="First Name" htmlFor="candidate-first-name" required>
               <Input
@@ -92,18 +114,81 @@ export function CandidateCreateDialog({ open, onOpenChange }: CandidateCreateDia
             />
           </SelectField>
           <SelectField label="Phone" htmlFor="candidate-phone">
-            <Input id="candidate-phone" value={form.phone} onChange={(event) => updateField('phone', event.target.value)} />
+            <Input
+              id="candidate-phone"
+              value={form.phone}
+              onChange={(event) => updateField('phone', event.target.value)}
+            />
           </SelectField>
         </FormSection>
 
+        <FormSection
+          title={FORM_SECTIONS.RELATIONSHIPS}
+          description="Role the candidate is applying for."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SelectField label="Department">
+              <MasterDataSelect
+                entityKey="department"
+                value={form.departmentId}
+                onChange={(value) => updateField('departmentId', value)}
+              />
+            </SelectField>
+            <SelectField label="Designation">
+              <MasterDataSelect
+                entityKey="designation"
+                value={form.designationId}
+                onChange={(value) => updateField('designationId', value)}
+              />
+            </SelectField>
+          </div>
+        </FormSection>
+
         <FormSection title={FORM_SECTIONS.ADDITIONAL}>
-          <SelectField label="Source" htmlFor="candidate-source" hint="LinkedIn, referral, job board, etc.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SelectField
+              label="Source"
+              htmlFor="candidate-source"
+              hint="LinkedIn, referral, job board, etc."
+            >
+              <Input
+                id="candidate-source"
+                placeholder="LinkedIn, Referral, etc."
+                value={form.source}
+                onChange={(event) => updateField('source', event.target.value)}
+              />
+            </SelectField>
+            <SelectField label="Expected CTC (INR)" htmlFor="candidate-expected-salary">
+              <Input
+                id="candidate-expected-salary"
+                type="number"
+                min={0}
+                placeholder="600000"
+                value={form.expectedSalary}
+                onChange={(event) => updateField('expectedSalary', event.target.value)}
+              />
+            </SelectField>
+          </div>
+          <SelectField label="Notes" htmlFor="candidate-notes">
             <Input
-              id="candidate-source"
-              placeholder="LinkedIn, Referral, etc."
-              value={form.source}
-              onChange={(event) => updateField('source', event.target.value)}
+              id="candidate-notes"
+              placeholder="Skills, experience summary, referral details..."
+              value={form.notes}
+              onChange={(event) => updateField('notes', event.target.value)}
             />
+          </SelectField>
+          <SelectField label="Resume" htmlFor="candidate-resume" hint="PDF or Word document">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted">
+              <Upload className="h-4 w-4" />
+              {resumeFile ? resumeFile.name : 'Choose file'}
+              <input
+                id="candidate-resume"
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="hidden"
+                onChange={(event) => setResumeFile(event.target.files?.[0] ?? null)}
+              />
+            </label>
           </SelectField>
         </FormSection>
 

@@ -6,6 +6,7 @@ import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { PageHeader } from '@/shared/components/page-header';
 import { ROUTES } from '@/config/app.config';
 import type { CandidateRecord } from '@/features/recruitment/api/recruitment.api';
+import { getCandidateDisplayName } from '@/features/recruitment/utils/recruitment-display.util';
 
 export function PipelineKanbanPage() {
   const { data, isLoading, isError, error, refetch } = useKanban();
@@ -16,10 +17,7 @@ export function PipelineKanbanPage() {
         icon={<Kanban className="h-6 w-6 text-primary" />}
         title="Pipeline"
         description="Kanban view of candidates across recruitment stages."
-        breadcrumbs={[
-          { label: 'Recruitment', href: ROUTES.RECRUITMENT },
-          { label: 'Pipeline' },
-        ]}
+        breadcrumbs={[{ label: 'Recruitment', href: ROUTES.RECRUITMENT }, { label: 'Pipeline' }]}
       />
 
       <RecruitmentNav />
@@ -38,7 +36,9 @@ export function PipelineKanbanPage() {
 }
 
 function PipelineBoard({ data }: { data: NonNullable<ReturnType<typeof useKanban>['data']> }) {
-  const sortedStages = [...(data.stages ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const sortedStages = [...(data.stages ?? [])].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+  );
   const columns = data.columns ?? {};
 
   if (sortedStages.length === 0) {
@@ -53,15 +53,15 @@ function PipelineBoard({ data }: { data: NonNullable<ReturnType<typeof useKanban
           <div key={stage.id} className="min-w-[280px] flex-shrink-0 rounded-lg border bg-muted/30">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <h2 className="text-sm font-semibold">{stage.name ?? stage.slug}</h2>
-              <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium">{cards.length}</span>
+              <span className="rounded-full bg-background px-2 py-0.5 text-xs font-medium">
+                {cards.length}
+              </span>
             </div>
             <div className="space-y-2 p-3">
               {cards.length === 0 ? (
                 <p className="px-2 py-4 text-center text-xs text-muted-foreground">No candidates</p>
               ) : (
-                cards.map((candidate) => (
-                  <KanbanCard key={candidate.id} candidate={candidate} />
-                ))
+                cards.map((candidate) => <KanbanCard key={candidate.id} candidate={candidate} />)
               )}
             </div>
           </div>
@@ -78,9 +78,7 @@ function KanbanCard({ candidate }: { candidate: CandidateRecord }) {
       to={ROUTES.recruitmentCandidateDetail(candidate.id)}
       className="block rounded-md border bg-card p-3 shadow-sm transition-shadow hover:shadow-md"
     >
-      <p className="font-medium">
-        {candidate.firstName ?? ''} {candidate.lastName ?? ''}
-      </p>
+      <p className="font-medium">{getCandidateDisplayName(candidate)}</p>
       <p className="truncate text-xs text-muted-foreground">{candidate.email ?? ''}</p>
       {tags.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1">

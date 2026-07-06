@@ -10,8 +10,6 @@ import { AuthSessionRepository } from '@modules/auth/repositories/session.reposi
 import { SessionCacheService } from '@modules/auth/services/session-cache.service.js';
 import { hashRefreshToken, parseExpiresInToMs } from '@modules/auth/services/token.service.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
-import { NotFoundError } from '@shared/errors/app.error.js';
-import { ERROR_CODES } from '@shared/constants/error-codes.js';
 
 export interface ParsedUserAgent {
   browser: string;
@@ -128,11 +126,7 @@ export const SessionService = {
     return session;
   },
 
-  async revokeSession(
-    companyId: string,
-    sessionId: string,
-    updatedBy: string,
-  ): Promise<void> {
+  async revokeSession(companyId: string, sessionId: string, updatedBy: string): Promise<void> {
     SessionCacheService.invalidate(companyId, sessionId);
     await AuthSessionRepository.revokeSession(companyId, sessionId, updatedBy);
   },
@@ -175,55 +169,6 @@ export const SessionService = {
 
   async updateLastActivity(companyId: string, sessionId: string): Promise<void> {
     await AuthSessionRepository.updateLastActivity(companyId, sessionId);
-  },
-
-  async listActiveSessions(companyId: string, userId: string, currentSessionId: string) {
-    const sessions = await AuthSessionRepository.findActiveForUser(companyId, userId);
-    return sessions.map((session) => ({
-      sessionId: session.sessionId,
-      deviceName: session.deviceName,
-      browser: session.browser,
-      os: session.os,
-      platform: session.platform,
-      ipAddress: session.ipAddress,
-      loggedInAt: session.loggedInAt,
-      lastActiveAt: session.lastActiveAt,
-      expiresAt: session.expiresAt,
-      isCurrent: session.sessionId === currentSessionId,
-    }));
-  },
-
-  async listSessionHistory(companyId: string, userId: string) {
-    const sessions = await AuthSessionRepository.findHistoryForUser(companyId, userId);
-    return sessions.map((session) => ({
-      sessionId: session.sessionId,
-      deviceName: session.deviceName,
-      browser: session.browser,
-      os: session.os,
-      platform: session.platform,
-      ipAddress: session.ipAddress,
-      loggedInAt: session.loggedInAt,
-      lastActiveAt: session.lastActiveAt,
-      revoked: session.revoked,
-      revokedAt: session.revokedAt,
-    }));
-  },
-
-  async revokeUserSession(
-    companyId: string,
-    userId: string,
-    sessionId: string,
-    updatedBy: string,
-    currentSessionId: string,
-  ): Promise<void> {
-    const session = await AuthSessionRepository.findBySessionId(companyId, sessionId);
-    if (!session || session.userId !== userId) {
-      throw new NotFoundError('Session not found', ERROR_CODES.NOT_FOUND);
-    }
-    await AuthSessionRepository.revokeSession(companyId, sessionId, updatedBy);
-    if (sessionId === currentSessionId) {
-      return;
-    }
   },
 };
 

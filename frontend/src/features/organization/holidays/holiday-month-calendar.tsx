@@ -1,7 +1,11 @@
 import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { HolidayRecord } from '@/features/organization/holidays/holiday.api';
-import { HOLIDAY_TYPE_COLORS, holidayTypeLabel, toDateKey } from '@/features/organization/holidays/holiday.constants';
+import {
+  HOLIDAY_TYPE_COLORS,
+  holidayTypeLabel,
+  toDateKey,
+} from '@/features/organization/holidays/holiday.constants';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
 
@@ -35,6 +39,7 @@ export function HolidayMonthCalendar({
   const holidaysByDate = useMemo(() => {
     const map = new Map<string, HolidayRecord[]>();
     for (const holiday of holidays) {
+      if (!holiday.date) continue;
       const key = toDateKey(holiday.date);
       const existing = map.get(key) ?? [];
       existing.push(holiday);
@@ -54,13 +59,30 @@ export function HolidayMonthCalendar({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-lg font-semibold">{monthLabel}</h3>
         <div className="flex items-center gap-1">
-          <Button type="button" variant="outline" size="icon" onClick={() => shiftMonth(-1)} aria-label="Previous month">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => shiftMonth(-1)}
+            aria-label="Previous month"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => onMonthChange(new Date())}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onMonthChange(new Date())}
+          >
             Today
           </Button>
-          <Button type="button" variant="outline" size="icon" onClick={() => shiftMonth(1)} aria-label="Next month">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => shiftMonth(1)}
+            aria-label="Next month"
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -91,7 +113,9 @@ export function HolidayMonthCalendar({
               type="button"
               className={cn(
                 'min-h-[88px] rounded-md border p-1.5 text-left text-xs transition-colors',
-                dayHolidays.length > 0 ? 'border-primary/30 bg-primary/5 hover:bg-primary/10' : 'bg-background hover:bg-muted/40',
+                dayHolidays.length > 0
+                  ? 'border-primary/30 bg-primary/5 hover:bg-primary/10'
+                  : 'bg-background hover:bg-muted/40',
                 isToday && 'ring-2 ring-primary/40',
               )}
               onClick={() => {

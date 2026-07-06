@@ -26,3 +26,24 @@ export const getHealth = asyncHandler(async (req: Request, res: Response) => {
   const statusCode = mongodb === MONGODB_HEALTH.HEALTHY ? 200 : 503;
   ResponseService.success(res, req, data, HTTP_MESSAGES.OK, statusCode);
 });
+
+/** Readiness probe — MongoDB and Redis must be healthy. */
+export const getReadiness = asyncHandler(async (req: Request, res: Response) => {
+  const redis = await checkRedisHealth();
+  const mongodb = getMongoHealthStatus();
+  const ready = mongodb === MONGODB_HEALTH.HEALTHY && redis === 'healthy';
+
+  const data: HealthCheckData = {
+    mongodb,
+    redis,
+    queue: getQueueHealthStatus(),
+  };
+
+  ResponseService.success(
+    res,
+    req,
+    data,
+    ready ? HTTP_MESSAGES.OK : 'Service Unavailable',
+    ready ? 200 : 503,
+  );
+});

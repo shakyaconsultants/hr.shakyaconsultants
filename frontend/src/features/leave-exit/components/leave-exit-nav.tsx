@@ -8,51 +8,79 @@ import { cn } from '@/shared/utils/cn';
 type NavItem = {
   label: string;
   path: string;
+  matchPaths?: string[];
   permission?: string;
   permissionsAny?: string[];
+  portals?: PortalType[];
 };
 
-const ADMIN_NAV: NavItem[] = [
-  { label: 'Leave Management', path: ROUTES.LEAVE_EXIT, permissionsAny: ['leave.read', 'resignation.read'] },
-  { label: 'All Requests', path: ROUTES.LEAVE_REQUESTS, permission: 'leave.read' },
-  { label: 'Resignations', path: ROUTES.RESIGNATION, permission: 'resignation.read' },
-  { label: 'Leave Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.calendar.read' },
-  { label: 'Holiday Calendar', path: ROUTES.organizationEntity('holiday'), permission: 'holiday.read' },
-  { label: 'All Balances', path: ROUTES.LEAVE_BALANCES, permission: 'leave.balance.read' },
-  { label: 'Policies & Rules', path: ROUTES.LEAVE_POLICIES, permission: 'leave.read' },
-  { label: 'Approval Inbox', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read' },
-  { label: 'Exit Management', path: ROUTES.EXIT, permission: 'exit.read' },
+const ENTERPRISE_NAV: NavItem[] = [
+  {
+    label: 'Overview',
+    path: ROUTES.LEAVE_EXIT,
+    permissionsAny: ['leave.read', 'resignation.read'],
+  },
+  {
+    label: 'Setup',
+    path: ROUTES.LEAVE_SETUP,
+    matchPaths: [
+      ROUTES.LEAVE_SETUP,
+      ROUTES.LEAVE_POLICIES,
+      ROUTES.organizationEntity('leave-type'),
+    ],
+    permissionsAny: ['leave-type.read', 'leave.policy.read'],
+    portals: [PORTAL.ENTERPRISE],
+  },
+  { label: 'Requests', path: ROUTES.LEAVE_REQUESTS, permission: 'leave.read' },
+  {
+    label: 'Balances',
+    path: ROUTES.LEAVE_BALANCES,
+    permission: 'leave.balance.read',
+    portals: [PORTAL.ENTERPRISE],
+  },
+  { label: 'Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.calendar.read' },
+  {
+    label: 'Offboarding',
+    path: ROUTES.LEAVE_OFFBOARDING,
+    matchPaths: [ROUTES.LEAVE_OFFBOARDING, ROUTES.RESIGNATION, ROUTES.EXIT],
+    permissionsAny: ['resignation.read', 'exit.read'],
+    portals: [PORTAL.ENTERPRISE],
+  },
 ];
 
-const HR_NAV: NavItem[] = [
-  { label: 'Leave Management', path: ROUTES.LEAVE_EXIT, permissionsAny: ['leave.read', 'leave.approve'] },
-  { label: 'Pending Requests', path: ROUTES.LEAVE_REQUESTS, permissionsAny: ['leave.read', 'leave.approve'] },
+const MANAGER_NAV: NavItem[] = [
+  { label: 'Overview', path: ROUTES.LEAVE_EXIT, permissionsAny: ['leave.read', 'leave.approve'] },
+  {
+    label: 'Team Requests',
+    path: ROUTES.LEAVE_REQUESTS,
+    permissionsAny: ['leave.read', 'leave.approve'],
+  },
   { label: 'Team Calendar', path: ROUTES.LEAVE_CALENDAR, permission: 'leave.calendar.read' },
-  { label: 'Approvals', path: ROUTES.APPROVAL_INBOX, permission: 'approval.read' },
 ];
 
 function navForPortal(portal: PortalType): NavItem[] {
-  if (portal === PORTAL.ENTERPRISE) {
-    return ADMIN_NAV;
-  }
-  if (portal === PORTAL.MANAGER) {
-    return HR_NAV;
-  }
+  if (portal === PORTAL.ENTERPRISE) return ENTERPRISE_NAV;
+  if (portal === PORTAL.MANAGER) return MANAGER_NAV;
   return [];
 }
 
 function canSeeNavItem(
   item: NavItem,
+  portal: PortalType,
   hasPermission: (code: string) => boolean,
   hasAnyPermission: (codes: string[]) => boolean,
 ): boolean {
-  if (item.permission) {
-    return hasPermission(item.permission);
-  }
-  if (item.permissionsAny) {
-    return hasAnyPermission(item.permissionsAny);
-  }
+  if (item.portals && !item.portals.includes(portal)) return false;
+  if (item.permission) return hasPermission(item.permission);
+  if (item.permissionsAny) return hasAnyPermission(item.permissionsAny);
   return true;
+}
+
+function isNavActive(item: NavItem, pathname: string): boolean {
+  const paths = item.matchPaths ?? [item.path];
+  return paths.some(
+    (path) => pathname === path || (path !== ROUTES.LEAVE_EXIT && pathname.startsWith(`${path}/`)),
+  );
 }
 
 export function LeaveExitNav() {
@@ -61,18 +89,16 @@ export function LeaveExitNav() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const hasAnyPermission = useAuthStore((s) => s.hasAnyPermission);
 
-  const visibleItems = navForPortal(portal).filter((item) => canSeeNavItem(item, hasPermission, hasAnyPermission));
+  const visibleItems = navForPortal(portal).filter((item) =>
+    canSeeNavItem(item, portal, hasPermission, hasAnyPermission),
+  );
 
-  if (visibleItems.length === 0) {
-    return null;
-  }
+  if (visibleItems.length === 0) return null;
 
   return (
     <nav className="flex flex-wrap gap-1 border-b pb-px">
       {visibleItems.map((item) => {
-        const isActive =
-          location.pathname === item.path ||
-          (item.path !== ROUTES.LEAVE_EXIT && location.pathname.startsWith(item.path));
+        const isActive = isNavActive(item, location.pathname);
         return (
           <Link
             key={item.path}
@@ -92,7 +118,13 @@ export function LeaveExitNav() {
   );
 }
 
-export function LeaveExitPageHeader({ title, description }: { title: string; description?: string }) {
+export function LeaveExitPageHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
   return (
     <div>
       <h1 className="text-2xl font-bold">{title}</h1>
@@ -111,7 +143,11 @@ function StatusBadge({ status }: { status: string }) {
           ? 'bg-amber-100 text-amber-800'
           : 'bg-muted text-muted-foreground';
 
-  return <span className={cn('rounded px-2 py-0.5 text-xs font-medium capitalize', tone)}>{status.replace(/_/g, ' ')}</span>;
+  return (
+    <span className={cn('rounded px-2 py-0.5 text-xs font-medium capitalize', tone)}>
+      {status.replace(/_/g, ' ')}
+    </span>
+  );
 }
 
 export { StatusBadge };

@@ -33,7 +33,7 @@ export const MASTER_DATA_ENTITY = {
   DESIGNATION: 'designation',
   WORK_SHIFT: 'work-shift',
   HOLIDAY: 'holiday',
-  EMPLOYMENT_TYPE: 'employment-type',
+  HOLIDAY_MODULE: 'holiday-module',
   SALARY_GRADE: 'salary-grade',
   LEAVE_TYPE: 'leave-type',
   PROJECT_CATEGORY: 'project-category',

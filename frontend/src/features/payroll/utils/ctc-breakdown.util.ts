@@ -4,6 +4,12 @@ import {
   type PayrollComponentCategory,
 } from '@/features/payroll/constants/payroll-structure.constants';
 
+export interface ComponentOverrideInput {
+  code: string;
+  amount: number;
+  type?: string;
+}
+
 export interface CtcLineItem {
   code: string;
   name: string;
@@ -31,7 +37,11 @@ export interface CtcBreakdown {
 function resolveCategory(component: SalaryComponent): PayrollComponentCategory | 'deduction' {
   const extended = component as SalaryComponent & { category?: PayrollComponentCategory };
   if (extended.category) return extended.category;
-  if (component.code.startsWith('DED_') || component.code.includes('PF_EE') || component.code === 'PROF_TAX') {
+  if (
+    component.code.startsWith('DED_') ||
+    component.code.includes('PF_EE') ||
+    component.code === 'PROF_TAX'
+  ) {
     return 'deduction';
   }
   if (component.code === 'PF_EE') return 'employee_contribution';
@@ -49,14 +59,61 @@ function isVariableComponent(component: SalaryComponent): boolean {
   return Boolean((component as SalaryComponent & { isVariable?: boolean }).isVariable);
 }
 
+/** Apply employee-level overrides; amount 0 means component is skipped. */
+export function resolveEffectiveComponents(
+  components: SalaryComponent[],
+  componentOverrides?: ComponentOverrideInput[],
+): SalaryComponent[] {
+  const overrideMap = new Map(componentOverrides?.map((item) => [item.code, item]) ?? []);
+
+  return components
+    .map((component) => {
+      const override = overrideMap.get(component.code);
+      if (override && override.amount === 0) {
+        return null;
+      }
+      if (override) {
+        return {
+          ...component,
+          amount: override.amount,
+          type: (override.type as SalaryComponent['type']) ?? component.type,
+        };
+      }
+      return component;
+    })
+    .filter((component): component is SalaryComponent => component !== null);
+}
+
+export function buildComponentOverrides(
+  components: SalaryComponent[],
+  enabled: Record<string, boolean>,
+  customAmounts: Record<string, number>,
+): ComponentOverrideInput[] {
+  const overrides: ComponentOverrideInput[] = [];
+
+  for (const component of components) {
+    if (enabled[component.code] === false) {
+      overrides.push({ code: component.code, amount: 0, type: component.type });
+      continue;
+    }
+    const customAmount = customAmounts[component.code];
+    if (customAmount !== undefined && customAmount !== component.amount) {
+      overrides.push({ code: component.code, amount: customAmount, type: component.type });
+    }
+  }
+
+  return overrides;
+}
+
 export function computeCtcBreakdown(input: {
   baseSalary: number;
   components?: SalaryComponent[];
+  componentOverrides?: ComponentOverrideInput[];
   currency?: string;
 }): CtcBreakdown {
   const basicSalary = input.baseSalary;
   const currency = input.currency ?? 'INR';
-  const components = input.components ?? [];
+  const components = resolveEffectiveComponents(input.components ?? [], input.componentOverrides);
 
   const fixedEarnings: CtcLineItem[] = [
     {
