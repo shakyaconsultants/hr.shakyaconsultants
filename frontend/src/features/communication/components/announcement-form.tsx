@@ -5,6 +5,7 @@ import type {
   AnnouncementPriority,
   CreateAnnouncementPayload,
 } from '@/features/communication/api/communication.api';
+import { AnnouncementAudienceFields } from '@/features/communication/components/announcement-audience-fields';
 import { DateTimePicker, dateTimePickerValueToIso } from '@/shared/components/datetime-picker';
 import { SelectField } from '@/shared/components/select-field';
 import { Button } from '@/shared/components/ui/button';
@@ -14,14 +15,6 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { formCheckboxClassName } from '@/shared/utils/form-control';
 import { toDateTimeLocalValue } from '@/shared/utils/datetime';
 
-const AUDIENCES: AnnouncementAudience[] = [
-  'all',
-  'department',
-  'branch',
-  'role',
-  'team',
-  'project',
-];
 const PRIORITIES: AnnouncementPriority[] = ['low', 'normal', 'high', 'urgent'];
 
 interface AnnouncementFormProps {
@@ -29,6 +22,7 @@ interface AnnouncementFormProps {
   onSubmit: (payload: CreateAnnouncementPayload) => Promise<void>;
   onCancel?: () => void;
   isPending?: boolean;
+  lockAudience?: AnnouncementAudience;
 }
 
 export function AnnouncementForm({
@@ -36,11 +30,16 @@ export function AnnouncementForm({
   onSubmit,
   onCancel,
   isPending,
+  lockAudience,
 }: AnnouncementFormProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [targetAudience, setTargetAudience] = useState<AnnouncementAudience>(
-    initial?.targetAudience ?? 'all',
+    lockAudience ?? initial?.targetAudience ?? 'all',
+  );
+  const [targetIds, setTargetIds] = useState<string[]>(initial?.targetIds ?? []);
+  const [secondaryTargetIds, setSecondaryTargetIds] = useState<string[]>(
+    initial?.secondaryTargetIds ?? [],
   );
   const [priority, setPriority] = useState<AnnouncementPriority>(initial?.priority ?? 'normal');
   const [scheduledAt, setScheduledAt] = useState(toDateTimeLocalValue(initial?.scheduledAt));
@@ -51,13 +50,28 @@ export function AnnouncementForm({
     initial?.requiresAcknowledgement ?? false,
   );
   const [templateSlug, setTemplateSlug] = useState(initial?.templateSlug ?? '');
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    setError(null);
+
+    const audience = lockAudience ?? targetAudience;
+    if (audience !== 'all' && audience !== 'team' && targetIds.length === 0) {
+      setError('Select at least one target for the chosen audience.');
+      return;
+    }
+    if (audience === 'department_role' && secondaryTargetIds.length === 0) {
+      setError('Select at least one designation for department & designation audience.');
+      return;
+    }
+
     await onSubmit({
       title,
       content,
-      targetAudience,
+      targetAudience: audience,
+      targetIds: audience === 'all' ? [] : targetIds,
+      secondaryTargetIds: audience === 'department_role' ? secondaryTargetIds : [],
       priority,
       scheduledAt: scheduledAt ? dateTimePickerValueToIso(scheduledAt) : undefined,
       expiresAt: expiresAt ? dateTimePickerValueToIso(expiresAt) : undefined,
@@ -70,6 +84,8 @@ export function AnnouncementForm({
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="grid gap-4 sm:grid-cols-2">
+      {error ? <p className="text-sm text-destructive sm:col-span-2">{error}</p> : null}
+
       <div className="sm:col-span-2">
         <SelectField label="Title" htmlFor="announcement-title" required>
           <Input
@@ -93,19 +109,15 @@ export function AnnouncementForm({
         </SelectField>
       </div>
 
-      <SelectField label="Audience" htmlFor="announcement-audience">
-        <Select
-          id="announcement-audience"
-          value={targetAudience}
-          onChange={(e) => setTargetAudience(e.target.value as AnnouncementAudience)}
-        >
-          {AUDIENCES.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </Select>
-      </SelectField>
+      <AnnouncementAudienceFields
+        targetAudience={targetAudience}
+        targetIds={targetIds}
+        secondaryTargetIds={secondaryTargetIds}
+        onAudienceChange={setTargetAudience}
+        onTargetIdsChange={setTargetIds}
+        onSecondaryTargetIdsChange={setSecondaryTargetIds}
+        lockAudience={lockAudience}
+      />
 
       <SelectField label="Priority" htmlFor="announcement-priority">
         <Select

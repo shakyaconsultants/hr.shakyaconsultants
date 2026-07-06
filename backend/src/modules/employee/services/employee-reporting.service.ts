@@ -4,8 +4,13 @@ import {
   REPORTING_RELATIONSHIP_TYPE,
   ReportingHierarchyRepository,
 } from '@domain/employee/employee.schemas.js';
-import { DepartmentRepository, DesignationRepository, BranchRepository } from '@domain/organization/organization.schemas.js';
+import {
+  DepartmentRepository,
+  DesignationRepository,
+  BranchRepository,
+} from '@domain/organization/organization.schemas.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
+import { WorkforceScopeService } from '@modules/employee/services/workforce-scope.service.js';
 
 const DIRECT_TYPES = new Set([
   REPORTING_RELATIONSHIP_TYPE.DIRECT,
@@ -49,8 +54,8 @@ async function enrichEmployees(companyId: string, employees: EnrichableEmployee[
   const designationIds = new Set<string>();
 
   for (const employee of employees) {
-    if (employee.departmentId) departmentIds.add(String(employee.departmentId));
-    if (employee.designationId) designationIds.add(String(employee.designationId));
+    if (employee.departmentId) departmentIds.add(employee.departmentId);
+    if (employee.designationId) designationIds.add(employee.designationId);
   }
 
   const [departments, designations] = await Promise.all([
@@ -66,16 +71,16 @@ async function enrichEmployees(companyId: string, employees: EnrichableEmployee[
   const designationMap = new Map(designations.map((d) => [d.id, d.name]));
 
   return employees.map((employee) => ({
-    id: String(employee.id),
-    firstName: String(employee.firstName ?? ''),
-    lastName: String(employee.lastName ?? ''),
-    email: String(employee.email ?? ''),
-    photoUrl: employee.photoUrl ? String(employee.photoUrl) : undefined,
-    designationId: employee.designationId ? String(employee.designationId) : undefined,
-    designationName: employee.designationId ? designationMap.get(String(employee.designationId)) : undefined,
-    departmentId: employee.departmentId ? String(employee.departmentId) : undefined,
-    departmentName: employee.departmentId ? departmentMap.get(String(employee.departmentId)) : undefined,
-    jobTitle: employee.jobTitle ? String(employee.jobTitle) : undefined,
+    id: employee.id,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    email: employee.email,
+    photoUrl: employee.photoUrl,
+    designationId: employee.designationId,
+    designationName: designationMap.get(employee.designationId),
+    departmentId: employee.departmentId,
+    departmentName: departmentMap.get(employee.departmentId),
+    jobTitle: employee.jobTitle,
   })) satisfies ReportingPersonView[];
 }
 
@@ -89,7 +94,10 @@ export interface DirectReportView extends ReportingPersonView {
 }
 
 export const EmployeeReportingService = {
-  async listManagersEnriched(companyId: string, employeeId: string): Promise<ReportingRelationshipView[]> {
+  async listManagersEnriched(
+    companyId: string,
+    employeeId: string,
+  ): Promise<ReportingRelationshipView[]> {
     const relationships = await ReportingHierarchyRepository.findMany(
       { employeeId, effectiveTo: null },
       { companyId },
@@ -115,7 +123,10 @@ export const EmployeeReportingService = {
     }));
   },
 
-  async listDirectReportsEnriched(companyId: string, managerId: string): Promise<DirectReportView[]> {
+  async listDirectReportsEnriched(
+    companyId: string,
+    managerId: string,
+  ): Promise<DirectReportView[]> {
     const relationships = await ReportingHierarchyRepository.findMany(
       {
         managerId,
@@ -148,7 +159,7 @@ export const EmployeeReportingService = {
   },
 
   async getReportingTree(companyId: string, companyName: string) {
-    const [employees, relationships, departments, branches] = await Promise.all([
+    const [allEmployees, relationships, departments, branches] = await Promise.all([
       EmployeeRepository.findMany(
         { status: { $ne: ENTITY_STATUS.ARCHIVED }, isDeleted: { $ne: true } },
         { companyId },
@@ -164,30 +175,40 @@ export const EmployeeReportingService = {
       BranchRepository.findMany({ status: { $ne: ENTITY_STATUS.ARCHIVED } }, { companyId }),
     ]);
 
+    const employees = await WorkforceScopeService.filterWorkforceEmployees(companyId, allEmployees);
+    const workforceIds = new Set(employees.map((employee) => employee.id));
+
     const personViews = await enrichEmployees(companyId, employees);
     const personMap = new Map(personViews.map((p) => [p.id, p]));
-    const deptById = new Map(departments.map((dept) => [String(dept.id), dept]));
-    const branchById = new Map(branches.map((branch) => [String(branch.id), branch]));
+    const deptById = new Map(departments.map((dept) => [dept.id, dept]));
+    const branchById = new Map(branches.map((branch) => [branch.id, branch]));
 
     const managerByEmployee = new Map<string, string>();
 
     for (const rel of relationships) {
+      if (!workforceIds.has(rel.employeeId) || !workforceIds.has(rel.managerId)) {
+        continue;
+      }
       if (rel.isPrimary || !managerByEmployee.has(rel.employeeId)) {
         managerByEmployee.set(rel.employeeId, rel.managerId);
       }
     }
 
     for (const employee of employees) {
-      if (employee.reportingManagerId && !managerByEmployee.has(employee.id)) {
+      if (
+        employee.reportingManagerId &&
+        workforceIds.has(employee.reportingManagerId) &&
+        !managerByEmployee.has(employee.id)
+      ) {
         managerByEmployee.set(employee.id, employee.reportingManagerId);
       }
     }
 
     function resolveBranchId(employee: (typeof employees)[number]): string | undefined {
-      if (employee.branchId) return String(employee.branchId);
+      if (employee.branchId) return employee.branchId;
       if (employee.departmentId) {
-        const dept = deptById.get(String(employee.departmentId));
-        if (dept?.branchId) return String(dept.branchId);
+        const dept = deptById.get(employee.departmentId);
+        if (dept?.branchId) return dept.branchId;
       }
       return undefined;
     }
@@ -197,8 +218,8 @@ export const EmployeeReportingService = {
 
       let inferredManager: string | undefined;
       if (employee.departmentId) {
-        const dept = deptById.get(String(employee.departmentId));
-        const headId = dept?.headEmployeeId ? String(dept.headEmployeeId) : undefined;
+        const dept = deptById.get(employee.departmentId);
+        const headId = dept?.headEmployeeId;
         if (headId && headId !== employee.id && personMap.has(headId)) {
           inferredManager = headId;
         }
@@ -208,8 +229,12 @@ export const EmployeeReportingService = {
         const branchId = resolveBranchId(employee);
         if (branchId) {
           const branch = branchById.get(branchId);
-          const branchManagerId = branch?.branchManagerId ? String(branch.branchManagerId) : undefined;
-          if (branchManagerId && branchManagerId !== employee.id && personMap.has(branchManagerId)) {
+          const branchManagerId = branch?.branchManagerId;
+          if (
+            branchManagerId &&
+            branchManagerId !== employee.id &&
+            personMap.has(branchManagerId)
+          ) {
             inferredManager = branchManagerId;
           }
         }
@@ -221,23 +246,38 @@ export const EmployeeReportingService = {
     }
 
     const branchManagerIds = branches
-      .map((branch) => (branch.branchManagerId ? String(branch.branchManagerId) : undefined))
-      .filter((id): id is string => Boolean(id && personMap.has(id)));
+      .map((branch) => branch.branchManagerId)
+      .filter((id): id is string => Boolean(id && workforceIds.has(id)));
 
-    const companyRootId = branchManagerIds.find((id) => !managerByEmployee.has(id))
-      ?? branchManagerIds[0];
+    let companyRootId =
+      branchManagerIds.find((id) => !managerByEmployee.has(id)) ?? branchManagerIds[0];
+
+    if (!companyRootId) {
+      const deptHeadIds = departments
+        .map((dept) => dept.headEmployeeId)
+        .filter((id): id is string => Boolean(id && workforceIds.has(id)));
+      companyRootId = deptHeadIds.find((id) => !managerByEmployee.has(id)) ?? deptHeadIds[0];
+    }
 
     if (companyRootId) {
       for (const branch of branches) {
-        const branchManagerId = branch.branchManagerId ? String(branch.branchManagerId) : undefined;
+        const branchManagerId = branch.branchManagerId;
         if (
-          branchManagerId
-          && branchManagerId !== companyRootId
-          && !managerByEmployee.has(branchManagerId)
-          && personMap.has(companyRootId)
+          branchManagerId &&
+          branchManagerId !== companyRootId &&
+          !managerByEmployee.has(branchManagerId) &&
+          workforceIds.has(branchManagerId) &&
+          workforceIds.has(companyRootId)
         ) {
           managerByEmployee.set(branchManagerId, companyRootId);
         }
+      }
+
+      for (const employee of employees) {
+        if (managerByEmployee.has(employee.id) || employee.id === companyRootId) {
+          continue;
+        }
+        managerByEmployee.set(employee.id, companyRootId);
       }
     }
 
@@ -263,19 +303,23 @@ export const EmployeeReportingService = {
       const directReports = childIds
         .map((id) => buildNode(id, nextVisited))
         .filter((node): node is ReportingChartNode => node !== null)
-        .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+        .sort(
+          (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
+        );
 
       return { ...toPersonView(person), directReports };
     }
 
-    const rootIds = personViews
-      .map((p) => p.id)
-      .filter((id) => !hasManager.has(id));
+    const rootIds = companyRootId
+      ? [companyRootId]
+      : personViews.map((p) => p.id).filter((id) => !hasManager.has(id));
 
     const roots = rootIds
       .map((id) => buildNode(id, new Set()))
       .filter((node): node is ReportingChartNode => node !== null)
-      .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+      .sort(
+        (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
+      );
 
     return {
       companyName,

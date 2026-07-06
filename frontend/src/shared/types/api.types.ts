@@ -39,7 +39,7 @@ export interface PaginatedResult<T> {
   pagination: PaginationMeta;
 }
 
-export interface ApiSuccessResponseWithPagination<T> extends ApiSuccessResponse<T> {
+export interface ApiSuccessResponseWithPagination<T> extends ApiSuccessResponse<T[]> {
   pagination?: PaginationMeta;
 }
 

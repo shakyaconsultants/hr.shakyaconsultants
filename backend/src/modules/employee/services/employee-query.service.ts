@@ -1,16 +1,36 @@
 import type { EmployeeDocument } from '@domain/employee/employee.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
-import { DepartmentRepository, DesignationRepository } from '@domain/organization/organization.schemas.js';
+import {
+  DepartmentRepository,
+  DesignationRepository,
+} from '@domain/organization/organization.schemas.js';
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { buildExactFilter, mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
 import type { DomainQueryFilter } from '@infrastructure/database/types/domain-query.types.js';
 import type { PaginatedResult } from '@shared/types/api.types.js';
 import type { EmployeeListQuery } from '@modules/employee/types/employee.types.js';
+import { WorkforceScopeService } from '@modules/employee/services/workforce-scope.service.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 
 const SEARCH_FIELDS = ['firstName', 'lastName', 'employeeNumber', 'email', 'phone'];
 
-export async function enrichEmployeeRecords(companyId: string, items: any[]): Promise<any[]> {
+export type EnrichedEmployeeRecord = EmployeeDocument & {
+  departmentName?: string;
+  designationName?: string;
+};
+
+function toPlainEmployee(item: EmployeeDocument): EmployeeDocument {
+  const maybeDoc = item as EmployeeDocument & { toObject?: () => EmployeeDocument };
+  if (typeof maybeDoc.toObject === 'function') {
+    return maybeDoc.toObject();
+  }
+  return item;
+}
+
+export async function enrichEmployeeRecords(
+  companyId: string,
+  items: EmployeeDocument[],
+): Promise<EnrichedEmployeeRecord[]> {
   const departmentIds = new Set<string>();
   const designationIds = new Set<string>();
 
@@ -32,11 +52,11 @@ export async function enrichEmployeeRecords(companyId: string, items: any[]): Pr
   const designationMap = new Map(designations.map((d) => [d.id, d.name]));
 
   return items.map((item) => {
-    const raw = typeof item.toObject === 'function' ? item.toObject() : item;
+    const raw = toPlainEmployee(item);
     return {
       ...raw,
-      departmentName: item.departmentId ? departmentMap.get(item.departmentId) : undefined,
-      designationName: item.designationId ? designationMap.get(item.designationId) : undefined,
+      departmentName: departmentMap.get(item.departmentId),
+      designationName: designationMap.get(item.designationId),
     };
   });
 }
@@ -77,9 +97,23 @@ function buildEmployeeFilter(query: EmployeeListQuery): DomainQueryFilter {
   return mergeFilters(...filters);
 }
 
+async function applyWorkforceScope(
+  companyId: string,
+  filter: DomainQueryFilter,
+): Promise<DomainQueryFilter> {
+  const excluded = await WorkforceScopeService.getSystemOperatorEmployeeIds(companyId);
+  if (excluded.size === 0) {
+    return filter;
+  }
+  return mergeFilters(filter, { id: { $nin: [...excluded] } });
+}
+
 export const EmployeeQueryService = {
-  async list(companyId: string, query: EmployeeListQuery): Promise<PaginatedResult<EmployeeDocument>> {
-    const filter = buildEmployeeFilter(query);
+  async list(
+    companyId: string,
+    query: EmployeeListQuery,
+  ): Promise<PaginatedResult<EnrichedEmployeeRecord>> {
+    const filter = await applyWorkforceScope(companyId, buildEmployeeFilter(query));
     const result = await EmployeeRepository.paginate(filter, {
       page: query.page,
       pageSize: query.pageSize,
@@ -91,11 +125,14 @@ export const EmployeeQueryService = {
     return {
       ...result,
       items: await enrichEmployeeRecords(companyId, result.items),
-    } as any;
+    };
   },
 
-  async search(companyId: string, search: string, limit = 20): Promise<EmployeeDocument[]> {
-    const filter = mergeFilters(buildSearchFilter(search, SEARCH_FIELDS));
+  async search(companyId: string, search: string, limit = 20): Promise<EnrichedEmployeeRecord[]> {
+    const filter = await applyWorkforceScope(
+      companyId,
+      mergeFilters(buildSearchFilter(search, SEARCH_FIELDS)),
+    );
     const results = await EmployeeRepository.findMany(filter, { companyId });
     const sliced = results.slice(0, limit);
     return enrichEmployeeRecords(companyId, sliced);

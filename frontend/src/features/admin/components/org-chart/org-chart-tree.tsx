@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { OrgChartTree } from '@/features/admin/components/org-chart/org-chart.types';
+import type {
+  OrgChartDepartment,
+  OrgChartTree,
+} from '@/features/admin/components/org-chart/org-chart.types';
 import {
   OrgChartBranchNode,
   OrgChartCompanyNode,
@@ -20,10 +23,56 @@ interface OrgChartTreeViewProps {
   className?: string;
 }
 
+function DepartmentEmployees({ department }: { department: OrgChartDepartment }) {
+  const [showAllMembers, setShowAllMembers] = useState(false);
+  const visibleMembers = showAllMembers
+    ? department.members
+    : department.members.slice(0, EMPLOYEE_PREVIEW);
+  const hiddenMemberCount = department.members.length - visibleMembers.length;
+  const hasPeople = Boolean(department.head) || department.members.length > 0;
+
+  if (!hasPeople) {
+    return (
+      <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+        No employees assigned
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      {department.head ? (
+        <>
+          <OrgChartEmployeeCard employee={department.head} />
+          {department.members.length > 0 ? <OrgChartConnector /> : null}
+        </>
+      ) : null}
+
+      {department.members.length > 0 ? (
+        <div className="flex flex-col items-stretch gap-2">
+          {visibleMembers.map((employee) => (
+            <OrgChartEmployeeCard key={employee.id} employee={employee} compact />
+          ))}
+          {hiddenMemberCount > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => setShowAllMembers((value) => !value)}
+            >
+              {showAllMembers ? 'Show fewer' : `+${hiddenMemberCount} more`}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeViewProps) {
   const [collapsedBranches, setCollapsedBranches] = useState<Set<string>>(new Set());
   const [collapsedDepartments, setCollapsedDepartments] = useState<Set<string>>(new Set());
-  const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
 
   function toggleBranch(branchId: string) {
     setCollapsedBranches((prev) => {
@@ -36,15 +85,6 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
 
   function toggleDepartment(deptId: string) {
     setCollapsedDepartments((prev) => {
-      const next = new Set(prev);
-      if (next.has(deptId)) next.delete(deptId);
-      else next.add(deptId);
-      return next;
-    });
-  }
-
-  function toggleEmployeeExpand(deptId: string) {
-    setExpandedDepartments((prev) => {
       const next = new Set(prev);
       if (next.has(deptId)) next.delete(deptId);
       else next.add(deptId);
@@ -125,19 +165,20 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
                     {branch.branchHead ? (
                       <>
                         <OrgChartConnector />
-                        <OrgChartEmployeeCard employee={branch.branchHead} variant="admin" />
+                        <OrgChartEmployeeCard employee={branch.branchHead} variant="leader" />
                       </>
                     ) : null}
-                    <OrgChartHorizontalRail childCount={branch.departments.length} />
+
+                    {branch.departments.length > 0 ? (
+                      <>
+                        <OrgChartConnector />
+                        <OrgChartHorizontalRail childCount={branch.departments.length} />
+                      </>
+                    ) : null}
 
                     <div className="flex items-start justify-center gap-4">
                       {branch.departments.map((department) => {
                         const deptCollapsed = collapsedDepartments.has(department.id);
-                        const showAllEmployees = expandedDepartments.has(department.id);
-                        const visibleEmployees = showAllEmployees
-                          ? department.employees
-                          : department.employees.slice(0, EMPLOYEE_PREVIEW);
-                        const hiddenCount = department.employees.length - visibleEmployees.length;
 
                         return (
                           <div key={department.id} className="flex flex-col items-center">
@@ -171,32 +212,8 @@ export function OrgChartTreeView({ tree, scale = 1, className }: OrgChartTreeVie
 
                             {!deptCollapsed ? (
                               <>
-                                {department.employees.length > 0 ? <OrgChartConnector /> : null}
-                                <div className="flex flex-col items-stretch gap-2">
-                                  {visibleEmployees.map((employee) => (
-                                    <OrgChartEmployeeCard
-                                      key={employee.id}
-                                      employee={employee}
-                                      compact
-                                    />
-                                  ))}
-                                  {hiddenCount > 0 ? (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-xs"
-                                      onClick={() => toggleEmployeeExpand(department.id)}
-                                    >
-                                      {showAllEmployees ? 'Show fewer' : `+${hiddenCount} more`}
-                                    </Button>
-                                  ) : null}
-                                  {department.employees.length === 0 ? (
-                                    <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
-                                      No employees assigned
-                                    </p>
-                                  ) : null}
-                                </div>
+                                {department.employeeCount > 0 ? <OrgChartConnector /> : null}
+                                <DepartmentEmployees department={department} />
                               </>
                             ) : null}
                           </div>
@@ -235,7 +252,7 @@ export function OrgChartLegend() {
       </span>
       <span className="inline-flex items-center gap-2">
         <span className="h-2.5 w-2.5 rounded-full bg-primary/40 ring-1 ring-primary/40" />
-        Admin
+        Branch manager
       </span>
     </div>
   );

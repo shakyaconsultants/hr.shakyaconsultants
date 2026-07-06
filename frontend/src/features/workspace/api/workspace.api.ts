@@ -1,6 +1,10 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
-import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginatedResult,
+} from '@/shared/types/api.types';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 
 const WORKSPACE_PREFIX = '/api/v1/workspace';
 
@@ -91,6 +95,7 @@ export interface AnnouncementRecord {
   content: string;
   priority: string;
   isPinned: boolean;
+  isEmergency?: boolean;
   isRead?: boolean;
   isAcknowledged?: boolean;
   publishedAt?: string;
@@ -131,33 +136,54 @@ export async function fetchWorkspaceLayout(): Promise<WorkspaceLayout> {
 }
 
 export async function fetchWidgetData(slug: string): Promise<Record<string, unknown>> {
-  const { data } = await apiClient.get<ApiSuccessResponse<Record<string, unknown>>>(`${WORKSPACE_PREFIX}/widgets/${slug}`);
+  const { data } = await apiClient.get<ApiSuccessResponse<Record<string, unknown>>>(
+    `${WORKSPACE_PREFIX}/widgets/${slug}`,
+  );
   return data.data;
 }
 
-export async function updateWidgetConfig(widgets: Partial<WidgetConfig>[]): Promise<{ widgets: WidgetConfig[] }> {
-  const { data } = await apiClient.put<ApiSuccessResponse<{ widgets: WidgetConfig[] }>>(`${WORKSPACE_PREFIX}/widgets/config`, { widgets });
+export async function updateWidgetConfig(
+  widgets: Partial<WidgetConfig>[],
+): Promise<{ widgets: WidgetConfig[] }> {
+  const { data } = await apiClient.put<ApiSuccessResponse<{ widgets: WidgetConfig[] }>>(
+    `${WORKSPACE_PREFIX}/widgets/config`,
+    { widgets },
+  );
   return data.data;
 }
 
 export async function fetchProfile(): Promise<WorkspaceProfile> {
-  const { data } = await apiClient.get<ApiSuccessResponse<WorkspaceProfile>>(`${WORKSPACE_PREFIX}/profile`);
+  const { data } = await apiClient.get<ApiSuccessResponse<WorkspaceProfile>>(
+    `${WORKSPACE_PREFIX}/profile`,
+  );
   return data.data;
 }
 
-export async function updateProfile(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<Record<string, unknown>>>(`${WORKSPACE_PREFIX}/profile`, payload);
+export async function updateProfile(
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data } = await apiClient.patch<ApiSuccessResponse<Record<string, unknown>>>(
+    `${WORKSPACE_PREFIX}/profile`,
+    payload,
+  );
   return data.data;
 }
 
 export async function fetchHierarchy(): Promise<OrgChart> {
-  const { data } = await apiClient.get<ApiSuccessResponse<OrgChart>>(`${WORKSPACE_PREFIX}/hierarchy`);
+  const { data } = await apiClient.get<ApiSuccessResponse<OrgChart>>(
+    `${WORKSPACE_PREFIX}/hierarchy`,
+  );
   return data.data;
 }
 
-export async function fetchMyProjects(params: ListParams = {}): Promise<{ items: MyProjectItem[]; total: number }> {
-  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/projects`, { params });
-  const normalized = normalizePaginatedItems<MyProjectItem>(data.data);
+export async function fetchMyProjects(
+  params: ListParams = {},
+): Promise<{ items: MyProjectItem[]; total: number }> {
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<MyProjectItem>>(
+    `${WORKSPACE_PREFIX}/projects`,
+    { params },
+  );
+  const normalized = unwrapApiPaginated<MyProjectItem>(data, params.pageSize ?? 20);
   return { items: normalized.items, total: normalized.pagination.total };
 }
 
@@ -178,61 +204,110 @@ export interface MyProjectDetail {
 }
 
 export async function fetchMyProject(id: string): Promise<MyProjectDetail> {
-  const { data } = await apiClient.get<ApiSuccessResponse<MyProjectDetail>>(`${WORKSPACE_PREFIX}/projects/${id}`);
+  const { data } = await apiClient.get<ApiSuccessResponse<MyProjectDetail>>(
+    `${WORKSPACE_PREFIX}/projects/${id}`,
+  );
   return data.data;
 }
 
-export async function fetchMyTasks(params: ListParams & { status?: string; projectId?: string } = {}): Promise<PaginatedResult<TaskRecord>> {
-  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/tasks`, { params });
-  return normalizePaginatedItems<TaskRecord>(data.data);
+export async function fetchMyTasks(
+  params: ListParams & { status?: string; projectId?: string } = {},
+): Promise<PaginatedResult<TaskRecord>> {
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<TaskRecord>>(
+    `${WORKSPACE_PREFIX}/tasks`,
+    { params },
+  );
+  return unwrapApiPaginated<TaskRecord>(data, params.pageSize ?? 20);
 }
 
-export async function fetchMyTasksKanban(projectId?: string): Promise<{ columns: Record<string, TaskRecord[]>; total: number }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<{ columns: Record<string, TaskRecord[]>; total: number }>>(`${WORKSPACE_PREFIX}/tasks/kanban`, { params: { projectId } });
+export async function fetchMyTasksKanban(
+  projectId?: string,
+): Promise<{ columns: Record<string, TaskRecord[]>; total: number }> {
+  const { data } = await apiClient.get<
+    ApiSuccessResponse<{ columns: Record<string, TaskRecord[]>; total: number }>
+  >(`${WORKSPACE_PREFIX}/tasks/kanban`, { params: { projectId } });
   return data.data;
 }
 
-export async function bulkUpdateTaskStatus(taskIds: string[], status: string): Promise<{ count: number }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{ count: number }>>(`${WORKSPACE_PREFIX}/tasks/bulk-status`, { taskIds, status });
+export async function bulkUpdateTaskStatus(
+  taskIds: string[],
+  status: string,
+): Promise<{ count: number }> {
+  const { data } = await apiClient.post<ApiSuccessResponse<{ count: number }>>(
+    `${WORKSPACE_PREFIX}/tasks/bulk-status`,
+    { taskIds, status },
+  );
   return data.data;
 }
 
-export async function quickUpdateTask(id: string, payload: { status?: string; progressPercent?: number }): Promise<TaskRecord> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<TaskRecord>>(`${WORKSPACE_PREFIX}/tasks/${id}`, payload);
+export async function quickUpdateTask(
+  id: string,
+  payload: { status?: string; progressPercent?: number },
+): Promise<TaskRecord> {
+  const { data } = await apiClient.patch<ApiSuccessResponse<TaskRecord>>(
+    `${WORKSPACE_PREFIX}/tasks/${id}`,
+    payload,
+  );
   return data.data;
 }
 
 export async function submitTaskForVerification(id: string): Promise<TaskRecord> {
-  const { data } = await apiClient.post<ApiSuccessResponse<TaskRecord>>(`${WORKSPACE_PREFIX}/tasks/${id}/submit-verification`);
+  const { data } = await apiClient.post<ApiSuccessResponse<TaskRecord>>(
+    `${WORKSPACE_PREFIX}/tasks/${id}/submit-verification`,
+  );
   return data.data;
 }
 
-export async function fetchDocuments(params: ListParams = {}): Promise<{ items: Record<string, unknown>[]; total: number }> {
-  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/documents`, { params });
-  const normalized = normalizePaginatedItems<Record<string, unknown>>(data.data);
+export async function fetchDocuments(
+  params: ListParams = {},
+): Promise<{ items: Record<string, unknown>[]; total: number }> {
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<Record<string, unknown>>>(
+    `${WORKSPACE_PREFIX}/documents`,
+    { params },
+  );
+  const normalized = unwrapApiPaginated<Record<string, unknown>>(data, params.pageSize ?? 20);
   return { items: normalized.items, total: normalized.pagination.total };
 }
 
 export async function downloadDocument(id: string): Promise<{ fileUrl: string; fileName: string }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{ fileUrl: string; fileName: string }>>(`${WORKSPACE_PREFIX}/documents/${id}/download`);
+  const { data } = await apiClient.post<ApiSuccessResponse<{ fileUrl: string; fileName: string }>>(
+    `${WORKSPACE_PREFIX}/documents/${id}/download`,
+  );
   return data.data;
 }
 
-export async function fetchAnnouncements(params: ListParams = {}): Promise<{ items: AnnouncementRecord[]; total: number }> {
-  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/announcements`, { params });
-  const normalized = normalizePaginatedItems<AnnouncementRecord>(data.data);
+export async function fetchAnnouncements(
+  params: ListParams = {},
+): Promise<{ items: AnnouncementRecord[]; total: number }> {
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<AnnouncementRecord>>(
+    `${WORKSPACE_PREFIX}/announcements`,
+    { params },
+  );
+  const normalized = unwrapApiPaginated<AnnouncementRecord>(data, params.pageSize ?? 20);
   return { items: normalized.items, total: normalized.pagination.total };
 }
 
 export async function acknowledgeAnnouncement(id: string): Promise<Record<string, unknown>> {
-  const { data } = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(`${WORKSPACE_PREFIX}/announcements/${id}/acknowledge`);
+  const { data } = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
+    `${WORKSPACE_PREFIX}/announcements/${id}/acknowledge`,
+  );
   return data.data;
 }
 
-export async function fetchNotifications(params: ListParams & { isRead?: boolean; isArchived?: boolean } = {}): Promise<PaginatedResult<NotificationRecord> & { grouped?: Record<string, NotificationRecord[]> }> {
-  const { data } = await apiClient.get<any>(`${WORKSPACE_PREFIX}/notifications`, { params });
-  const normalized = normalizePaginatedItems<NotificationRecord>(data.data);
-  const grouped = data.data?.grouped ?? {};
+export async function fetchNotifications(
+  params: ListParams & { isRead?: boolean; isArchived?: boolean } = {},
+): Promise<
+  PaginatedResult<NotificationRecord> & { grouped?: Record<string, NotificationRecord[]> }
+> {
+  const { data } = await apiClient.get<
+    ApiSuccessResponseWithPagination<NotificationRecord> & {
+      data?: NotificationRecord[] & { grouped?: Record<string, NotificationRecord[]> };
+    }
+  >(`${WORKSPACE_PREFIX}/notifications`, { params });
+  const normalized = unwrapApiPaginated<NotificationRecord>(data, params.pageSize ?? 20);
+  const grouped =
+    (data.data as NotificationRecord[] & { grouped?: Record<string, NotificationRecord[]> })
+      ?.grouped ?? {};
   return {
     items: normalized.items,
     pagination: normalized.pagination,
@@ -241,27 +316,44 @@ export async function fetchNotifications(params: ListParams & { isRead?: boolean
 }
 
 export async function markNotificationRead(id: string): Promise<NotificationRecord> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<NotificationRecord>>(`${WORKSPACE_PREFIX}/notifications/${id}/read`);
+  const { data } = await apiClient.patch<ApiSuccessResponse<NotificationRecord>>(
+    `${WORKSPACE_PREFIX}/notifications/${id}/read`,
+  );
   return data.data;
 }
 
 export async function markAllNotificationsRead(): Promise<{ count: number }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{ count: number }>>(`${WORKSPACE_PREFIX}/notifications/mark-all-read`);
+  const { data } = await apiClient.post<ApiSuccessResponse<{ count: number }>>(
+    `${WORKSPACE_PREFIX}/notifications/mark-all-read`,
+  );
   return data.data;
 }
 
 export async function archiveNotification(id: string): Promise<NotificationRecord> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<NotificationRecord>>(`${WORKSPACE_PREFIX}/notifications/${id}/archive`);
+  const { data } = await apiClient.patch<ApiSuccessResponse<NotificationRecord>>(
+    `${WORKSPACE_PREFIX}/notifications/${id}/archive`,
+  );
   return data.data;
 }
 
-export async function fetchCalendar(startDate: string, endDate: string): Promise<{ events: CalendarEvent[] }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<{ events: CalendarEvent[] }>>(`${WORKSPACE_PREFIX}/calendar`, { params: { startDate, endDate } });
+export async function fetchCalendar(
+  startDate: string,
+  endDate: string,
+): Promise<{ events: CalendarEvent[] }> {
+  const { data } = await apiClient.get<ApiSuccessResponse<{ events: CalendarEvent[] }>>(
+    `${WORKSPACE_PREFIX}/calendar`,
+    { params: { startDate, endDate } },
+  );
   return data.data;
 }
 
-export async function workspaceSearch(q: string, types?: string[]): Promise<{ results: SearchResult[]; total: number }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<{ results: SearchResult[]; total: number }>>(`${WORKSPACE_PREFIX}/search`, { params: { q, types: types?.join(',') } });
+export async function workspaceSearch(
+  q: string,
+  types?: string[],
+): Promise<{ results: SearchResult[]; total: number }> {
+  const { data } = await apiClient.get<
+    ApiSuccessResponse<{ results: SearchResult[]; total: number }>
+  >(`${WORKSPACE_PREFIX}/search`, { params: { q, types: types?.join(',') } });
   return data.data;
 }
 
@@ -274,11 +366,18 @@ export interface WorkspaceOnboardingStatus {
 }
 
 export async function fetchOnboardingStatus(): Promise<WorkspaceOnboardingStatus> {
-  const { data } = await apiClient.get<ApiSuccessResponse<WorkspaceOnboardingStatus>>(`${WORKSPACE_PREFIX}/onboarding/status`);
+  const { data } = await apiClient.get<ApiSuccessResponse<WorkspaceOnboardingStatus>>(
+    `${WORKSPACE_PREFIX}/onboarding/status`,
+  );
   return data.data;
 }
 
-export async function requestOnboardingPortalLink(): Promise<{ portalUrl: string; expiresAt: string }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{ portalUrl: string; expiresAt: string }>>(`${WORKSPACE_PREFIX}/onboarding/portal-link`);
+export async function requestOnboardingPortalLink(): Promise<{
+  portalUrl: string;
+  expiresAt: string;
+}> {
+  const { data } = await apiClient.post<
+    ApiSuccessResponse<{ portalUrl: string; expiresAt: string }>
+  >(`${WORKSPACE_PREFIX}/onboarding/portal-link`);
   return data.data;
 }

@@ -5,7 +5,6 @@ import { ConversationList } from '@/features/communication/components/conversati
 import { MessageComposer } from '@/features/communication/components/message-composer';
 import { MessageThread } from '@/features/communication/components/message-thread';
 import {
-  useAnnouncements,
   useChannels,
   useCreateDirectConversation,
   useDirectConversations,
@@ -13,6 +12,7 @@ import {
   useSendMessage,
   useWorkspaceCommunicationDashboard,
 } from '@/features/communication/hooks/use-communication';
+import { useAnnouncements } from '@/features/workspace/hooks/use-workspace';
 import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { Loading } from '@/shared/components/loading';
@@ -35,11 +35,18 @@ export function CommunicationWorkspacePage() {
   const currentEmployeeId = employee?.id ?? '';
 
   const { data: dashboard, isLoading: dashboardLoading } = useWorkspaceCommunicationDashboard();
-  const { data: directConversations, isLoading: dmLoading } = useDirectConversations({ pageSize: 50 });
+  const { data: directConversations, isLoading: dmLoading } = useDirectConversations({
+    pageSize: 50,
+  });
   const { data: channels, isLoading: channelsLoading } = useChannels({ pageSize: 50 });
-  const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({ pageSize: 20 });
+  const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({
+    pageSize: 20,
+  });
   const { data: employees } = useAllEmployees();
-  const { data: messages, isLoading: messagesLoading } = useMessages(selectedConversation?.id ?? '', { pageSize: 100 });
+  const { data: messages, isLoading: messagesLoading } = useMessages(
+    selectedConversation?.id ?? '',
+    { pageSize: 100 },
+  );
   const sendMessage = useSendMessage();
   const createConversation = useCreateDirectConversation();
 
@@ -65,7 +72,9 @@ export function CommunicationWorkspacePage() {
     return peerId ? (employeeNameMap.get(peerId) ?? 'Direct Message') : 'Direct Message';
   };
 
-  const mentionMessages = (messages?.items ?? []).filter((m) => m.mentionIds && m.mentionIds.length > 0);
+  const mentionMessages = (messages?.items ?? []).filter(
+    (m) => m.mentionIds && m.mentionIds.length > 0,
+  );
 
   async function handleStartConversation() {
     if (!targetEmployeeId) return;
@@ -89,8 +98,16 @@ export function CommunicationWorkspacePage() {
       {dashboard ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard icon={MessageSquare} label="Unread Messages" value={dashboard.unreadMessages} />
-          <StatCard icon={Megaphone} label="Unread Notifications" value={dashboard.unreadNotifications} />
-          <StatCard icon={MessageSquare} label="Active Conversations" value={dashboard.activeConversations} />
+          <StatCard
+            icon={Megaphone}
+            label="Unread Notifications"
+            value={dashboard.unreadNotifications}
+          />
+          <StatCard
+            icon={MessageSquare}
+            label="Active Conversations"
+            value={dashboard.activeConversations}
+          />
         </div>
       ) : null}
 
@@ -176,7 +193,10 @@ export function CommunicationWorkspacePage() {
                 />
               </>
             ) : (
-              <EmptyState title="Select a conversation" description="Choose a direct message or start a new one." />
+              <EmptyState
+                title="Select a conversation"
+                description="Choose a direct message or start a new one."
+              />
             )}
           </div>
         </div>
@@ -199,7 +219,9 @@ export function CommunicationWorkspacePage() {
           <div className="rounded-lg border bg-card lg:col-span-2">
             {selectedConversation ? (
               <>
-                <div className="border-b px-4 py-3 font-medium">{selectedConversation.title ?? 'Channel'}</div>
+                <div className="border-b px-4 py-3 font-medium">
+                  {selectedConversation.title ?? 'Channel'}
+                </div>
                 <MessageThread
                   messages={messages?.items ?? []}
                   currentUserId={currentEmployeeId}
@@ -217,7 +239,10 @@ export function CommunicationWorkspacePage() {
                 />
               </>
             ) : (
-              <EmptyState title="Select a channel" description="Choose a team channel to view messages." />
+              <EmptyState
+                title="Select a channel"
+                description="Choose a team channel to view messages."
+              />
             )}
           </div>
         </div>

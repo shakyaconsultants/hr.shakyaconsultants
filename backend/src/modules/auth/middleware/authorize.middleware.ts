@@ -1,12 +1,16 @@
 import type { Response, NextFunction, RequestHandler } from 'express';
 import { PermissionEngineService } from '@modules/auth/services/permission-engine.service.js';
+import { EffectivePermissionService } from '@modules/rbac/services/effective-permission.service.js';
 import {
   isAuthenticatedRequest,
   type AuthenticatedRequest,
 } from '@modules/auth/interfaces/auth-request.interface.js';
 import { isSuperAdminRequest } from '@modules/auth/utils/super-admin-auth.util.js';
+import { ENTERPRISE_PERMISSION_CATALOG } from '@modules/rbac/constants/enterprise-permission-catalog.constants.js';
 import { AuthorizationError, AuthenticationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+
+const ALL_PERMISSION_CODES = ENTERPRISE_PERMISSION_CATALOG.map((permission) => permission.code);
 
 async function loadPermissions(req: AuthenticatedRequest): Promise<string[]> {
   if (Array.isArray(req.auth?.permissions)) {
@@ -15,7 +19,15 @@ async function loadPermissions(req: AuthenticatedRequest): Promise<string[]> {
 
   if (!req.user.employeeId) {
     if (await isSuperAdminRequest(req)) {
-      return req.auth?.permissions ?? [];
+      return ALL_PERMISSION_CODES;
+    }
+    if (req.user.roleIds.length > 0) {
+      const permissions = await EffectivePermissionService.calculateForRoleIds(
+        req.user.companyId,
+        req.user.roleIds,
+      );
+      req.auth = { ...req.auth, permissions };
+      return permissions;
     }
     return [];
   }

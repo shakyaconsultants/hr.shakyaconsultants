@@ -14,11 +14,17 @@ import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 export const EmployeeValidationService = {
   async assertUniqueEmail(companyId: string, email: string, excludeId?: string): Promise<void> {
     const normalizedEmail = email.toLowerCase();
-    const existing = await EmployeeRepository.findOne(
+    const matches = await EmployeeRepository.findMany(
       { email: normalizedEmail },
-      { companyId, includeDeleted: false },
+      { companyId, includeDeleted: true },
     );
-    if (existing && existing.id !== excludeId) {
+    const existing = matches.find(
+      (employee) =>
+        employee.id !== excludeId &&
+        employee.status === ENTITY_STATUS.ACTIVE &&
+        !employee.isDeleted,
+    );
+    if (existing) {
       throw new ConflictError(
         `Email "${normalizedEmail}" is already assigned to another employee`,
         ERROR_CODES.EMAIL_ALREADY_EXISTS,
@@ -27,37 +33,66 @@ export const EmployeeValidationService = {
     }
   },
 
-  async assertUniqueAadhaar(companyId: string, aadhaarNumber: string | undefined, excludeId?: string): Promise<void> {
+  async assertUniqueAadhaar(
+    companyId: string,
+    aadhaarNumber: string | undefined,
+    excludeId?: string,
+  ): Promise<void> {
     if (!aadhaarNumber?.trim()) {
       return;
     }
-    const existing = await EmployeeRepository.findOne(
+    const existing = await EmployeeRepository.findMany(
       { aadhaarNumber: aadhaarNumber.trim() },
-      { companyId },
+      { companyId, includeDeleted: true },
     );
-    if (existing && existing.id !== excludeId) {
-      throw new ConflictError('An employee with this Aadhaar number already exists', ERROR_CODES.CONFLICT);
+    const blocker = existing.find(
+      (employee) =>
+        employee.id !== excludeId &&
+        employee.status === ENTITY_STATUS.ACTIVE &&
+        !employee.isDeleted,
+    );
+    if (blocker) {
+      throw new ConflictError(
+        'An employee with this Aadhaar number already exists',
+        ERROR_CODES.CONFLICT,
+      );
     }
   },
 
-  async assertUniquePan(companyId: string, panNumber: string | undefined, excludeId?: string): Promise<void> {
+  async assertUniquePan(
+    companyId: string,
+    panNumber: string | undefined,
+    excludeId?: string,
+  ): Promise<void> {
     if (!panNumber?.trim()) {
       return;
     }
     const normalized = panNumber.trim().toUpperCase();
-    const existing = await EmployeeRepository.findOne(
+    const existing = await EmployeeRepository.findMany(
       { panNumber: normalized },
-      { companyId },
+      { companyId, includeDeleted: true },
     );
-    if (existing && existing.id !== excludeId) {
+    const blocker = existing.find(
+      (employee) =>
+        employee.id !== excludeId &&
+        employee.status === ENTITY_STATUS.ACTIVE &&
+        !employee.isDeleted,
+    );
+    if (blocker) {
       throw new ConflictError('An employee with this PAN already exists', ERROR_CODES.CONFLICT);
     }
   },
 
-  async assertNoManagerLoop(companyId: string, employeeId: string, managerId: string | undefined): Promise<void> {
+  async assertNoManagerLoop(
+    companyId: string,
+    employeeId: string,
+    managerId: string | undefined,
+  ): Promise<void> {
     if (!managerId || managerId === employeeId) {
       if (managerId === employeeId) {
-        throw new ValidationError('Employee cannot be their own manager', [{ managerId }], { code: ERROR_CODES.VALIDATION_FAILED });
+        throw new ValidationError('Employee cannot be their own manager', [{ managerId }], {
+          code: ERROR_CODES.VALIDATION_FAILED,
+        });
       }
       return;
     }
@@ -67,7 +102,11 @@ export const EmployeeValidationService = {
 
     while (currentManagerId) {
       if (visited.has(currentManagerId)) {
-        throw new ValidationError('Invalid manager assignment: circular reporting loop detected', [{ managerId }], { code: ERROR_CODES.VALIDATION_FAILED });
+        throw new ValidationError(
+          'Invalid manager assignment: circular reporting loop detected',
+          [{ managerId }],
+          { code: ERROR_CODES.VALIDATION_FAILED },
+        );
       }
       visited.add(currentManagerId);
 
@@ -96,16 +135,21 @@ export const EmployeeValidationService = {
   },
 
   async assertEmployeeExists(companyId: string, employeeId: string): Promise<void> {
-    const employee = await EmployeeRepository.findById(employeeId, { companyId });
-    if (!employee) {
-      throw new ValidationError('Employee not found', [{ employeeId }], { code: ERROR_CODES.NOT_FOUND });
+    const employee = await EmployeeRepository.findById(employeeId, {
+      companyId,
+      includeDeleted: true,
+    });
+    if (!employee || employee.isDeleted) {
+      throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
     }
   },
 
   async assertManagerExists(companyId: string, managerId: string): Promise<void> {
     const manager = await EmployeeRepository.findById(managerId, { companyId });
     if (!manager) {
-      throw new ValidationError('Reporting manager not found', [{ managerId }], { code: ERROR_CODES.NOT_FOUND });
+      throw new ValidationError('Reporting manager not found', [{ managerId }], {
+        code: ERROR_CODES.NOT_FOUND,
+      });
     }
   },
 
@@ -160,7 +204,11 @@ export const EmployeeValidationService = {
   ): Promise<void> {
     await this.assertDepartmentExists(companyId, placement.departmentId);
     await this.assertDesignationExists(companyId, placement.designationId);
-    await this.assertDesignationMatchesDepartment(companyId, placement.departmentId, placement.designationId);
+    await this.assertDesignationMatchesDepartment(
+      companyId,
+      placement.departmentId,
+      placement.designationId,
+    );
     await this.assertBranchExists(companyId, placement.branchId);
   },
 

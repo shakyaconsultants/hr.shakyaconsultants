@@ -33,8 +33,8 @@ export const ENTERPRISE_QUICK_ACTIONS: EnterpriseQuickAction[] = [
   {
     id: 'holiday',
     label: 'Holiday',
-    description: 'Add a holiday to the calendar',
-    path: `${ROUTES.organizationEntity('holiday')}?action=create`,
+    description: 'Create a holiday module and schedule holidays',
+    path: `${ROUTES.organizationEntity('holiday-module')}?action=create`,
     icon: CalendarDays,
     permission: 'holiday.create',
   },

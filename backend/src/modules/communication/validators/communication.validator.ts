@@ -36,19 +36,25 @@ export const updatePoliciesSchema = z.object({
 
 export const updateSettingsSchema = z.object({
   policies: updatePoliciesSchema.optional(),
-  templates: z.array(z.object({
-    slug: z.string(),
-    name: z.string(),
-    subject: z.string(),
-    body: z.string(),
-  })).optional(),
-  preferences: z.object({
-    emailEnabled: z.boolean().optional(),
-    pushEnabled: z.boolean().optional(),
-    inAppEnabled: z.boolean().optional(),
-    digestFrequency: z.string().optional(),
-    mutedCategories: z.array(z.string()).optional(),
-  }).optional(),
+  templates: z
+    .array(
+      z.object({
+        slug: z.string(),
+        name: z.string(),
+        subject: z.string(),
+        body: z.string(),
+      }),
+    )
+    .optional(),
+  preferences: z
+    .object({
+      emailEnabled: z.boolean().optional(),
+      pushEnabled: z.boolean().optional(),
+      inAppEnabled: z.boolean().optional(),
+      digestFrequency: z.string().optional(),
+      mutedCategories: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 
 export const createAnnouncementSchema = z.object({
@@ -56,13 +62,14 @@ export const createAnnouncementSchema = z.object({
   content: z.string().min(1),
   targetAudience: z.enum(Object.values(ANNOUNCEMENT_AUDIENCE) as [string, ...string[]]),
   targetIds: z.array(z.uuid()).optional(),
+  secondaryTargetIds: z.array(z.uuid()).optional(),
   priority: z.enum(Object.values(ANNOUNCEMENT_PRIORITY) as [string, ...string[]]).optional(),
   scheduledAt: z.coerce.date().optional(),
   expiresAt: z.coerce.date().optional(),
   isPinned: z.boolean().optional(),
   isEmergency: z.boolean().optional(),
   requiresAcknowledgement: z.boolean().optional(),
-  attachmentUrls: z.array(z.string().url()).optional(),
+  attachmentUrls: z.array(z.url()).optional(),
   templateSlug: z.string().optional(),
 });
 
@@ -105,12 +112,16 @@ export const sendMessageSchema = z.object({
   content: z.string().min(1),
   replyToMessageId: z.uuid().optional(),
   mentionIds: z.array(z.uuid()).optional(),
-  attachments: z.array(z.object({
-    fileName: z.string(),
-    fileUrl: z.string().url(),
-    mimeType: z.string(),
-    fileSize: z.number().min(0),
-  })).optional(),
+  attachments: z
+    .array(
+      z.object({
+        fileName: z.string(),
+        fileUrl: z.url(),
+        mimeType: z.string(),
+        fileSize: z.number().min(0),
+      }),
+    )
+    .optional(),
 });
 
 export const updateMessageSchema = z.object({
@@ -129,7 +140,9 @@ export const notificationListQuerySchema = listQuerySchema.extend({
 
 export const searchQuerySchema = z.object({
   q: z.string().min(1),
-  types: z.array(z.enum(['messages', 'announcements', 'channels', 'attachments', 'mentions'])).optional(),
+  types: z
+    .array(z.enum(['messages', 'announcements', 'channels', 'attachments', 'mentions']))
+    .optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 

@@ -1,6 +1,10 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
-import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginatedResult,
+} from '@/shared/types/api.types';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 
 const RBAC_PREFIX = '/api/v1/rbac';
 
@@ -37,23 +41,28 @@ export interface SimulatorResult {
   isSuperAdmin: boolean;
 }
 
-export async function fetchRoles(params: Record<string, string | number | undefined> = {}): Promise<PaginatedResult<RoleRecord>> {
-  const { data } = await apiClient.get<any>(
+export async function fetchRoles(
+  params: Record<string, string | number | undefined> = {},
+): Promise<PaginatedResult<RoleRecord>> {
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<RoleRecord>>(
     `${RBAC_PREFIX}/roles`,
     { params },
   );
-  return normalizePaginatedItems<RoleRecord>(data.data);
+  return unwrapApiPaginated<RoleRecord>(data, 20);
 }
 
 export async function fetchRole(id: string): Promise<{ role: RoleRecord; permissions: string[] }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<{ role: RoleRecord; permissions: string[] }>>(
-    `${RBAC_PREFIX}/roles/${id}`,
-  );
+  const { data } = await apiClient.get<
+    ApiSuccessResponse<{ role: RoleRecord; permissions: string[] }>
+  >(`${RBAC_PREFIX}/roles/${id}`);
   return data.data;
 }
 
 export async function cloneRole(id: string, name: string): Promise<RoleRecord> {
-  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(`${RBAC_PREFIX}/roles/${id}/clone`, { name });
+  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(
+    `${RBAC_PREFIX}/roles/${id}/clone`,
+    { name },
+  );
   return data.data;
 }
 
@@ -62,12 +71,14 @@ export async function fetchPermissionMatrix(): Promise<MatrixData> {
   return data.data;
 }
 
-export async function fetchPermissions(params: Record<string, string | number | undefined> = {}): Promise<PaginatedResult<PermissionRecord>> {
-  const { data } = await apiClient.get<any>(
+export async function fetchPermissions(
+  params: Record<string, string | number | undefined> = {},
+): Promise<PaginatedResult<PermissionRecord>> {
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<PermissionRecord>>(
     `${RBAC_PREFIX}/permissions`,
     { params },
   );
-  return normalizePaginatedItems<PermissionRecord>(data.data, 100);
+  return unwrapApiPaginated<PermissionRecord>(data, 100);
 }
 
 export async function runSimulator(input: {
@@ -75,21 +86,28 @@ export async function runSimulator(input: {
   permissionCodes?: string[];
   employeeId?: string;
 }): Promise<SimulatorResult> {
-  const { data } = await apiClient.post<ApiSuccessResponse<SimulatorResult>>(`${RBAC_PREFIX}/simulator`, input);
+  const { data } = await apiClient.post<ApiSuccessResponse<SimulatorResult>>(
+    `${RBAC_PREFIX}/simulator`,
+    input,
+  );
   return data.data;
 }
 
 export async function compareRoles(roleIdA: string, roleIdB: string) {
-  const { data } = await apiClient.post<ApiSuccessResponse<{
-    onlyInA: string[];
-    onlyInB: string[];
-    shared: string[];
-  }>>(`${RBAC_PREFIX}/roles/compare`, { roleIdA, roleIdB });
+  const { data } = await apiClient.post<
+    ApiSuccessResponse<{
+      onlyInA: string[];
+      onlyInB: string[];
+      shared: string[];
+    }>
+  >(`${RBAC_PREFIX}/roles/compare`, { roleIdA, roleIdB });
   return data.data;
 }
 
 export async function assignPermissions(roleId: string, permissionCodes: string[]) {
-  const { data } = await apiClient.post(`${RBAC_PREFIX}/roles/${roleId}/permissions`, { permissionCodes });
+  const { data } = await apiClient.post(`${RBAC_PREFIX}/roles/${roleId}/permissions`, {
+    permissionCodes,
+  });
   return data.data;
 }
 
@@ -104,7 +122,9 @@ export interface RoleTemplateRecord {
 }
 
 export async function fetchRoleTemplates(): Promise<RoleTemplateRecord[]> {
-  const { data } = await apiClient.get<ApiSuccessResponse<RoleTemplateRecord[]>>(`${RBAC_PREFIX}/role-templates`);
+  const { data } = await apiClient.get<ApiSuccessResponse<RoleTemplateRecord[]>>(
+    `${RBAC_PREFIX}/role-templates`,
+  );
   return data.data;
 }
 
@@ -115,22 +135,35 @@ export async function createRole(payload: {
   priority?: number;
   permissionCodes?: string[];
 }): Promise<RoleRecord> {
-  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(`${RBAC_PREFIX}/roles`, payload);
+  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(
+    `${RBAC_PREFIX}/roles`,
+    payload,
+  );
   return data.data;
 }
 
-export async function updateRole(id: string, payload: Partial<{ name: string; description: string; priority: number; status: string }>): Promise<RoleRecord> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<RoleRecord>>(`${RBAC_PREFIX}/roles/${id}`, payload);
+export async function updateRole(
+  id: string,
+  payload: Partial<{ name: string; description: string; priority: number; status: string }>,
+): Promise<RoleRecord> {
+  const { data } = await apiClient.patch<ApiSuccessResponse<RoleRecord>>(
+    `${RBAC_PREFIX}/roles/${id}`,
+    payload,
+  );
   return data.data;
 }
 
 export async function archiveRole(id: string): Promise<RoleRecord> {
-  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(`${RBAC_PREFIX}/roles/${id}/archive`);
+  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(
+    `${RBAC_PREFIX}/roles/${id}/archive`,
+  );
   return data.data;
 }
 
 export async function restoreRole(id: string): Promise<RoleRecord> {
-  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(`${RBAC_PREFIX}/roles/${id}/restore`);
+  const { data } = await apiClient.post<ApiSuccessResponse<RoleRecord>>(
+    `${RBAC_PREFIX}/roles/${id}/restore`,
+  );
   return data.data;
 }
 
@@ -150,7 +183,11 @@ export async function fetchEmployeeRoles(employeeId: string): Promise<EmployeeRo
   return data.data;
 }
 
-export async function assignRoleToEmployee(employeeId: string, roleId: string, isPrimary = false): Promise<void> {
+export async function assignRoleToEmployee(
+  employeeId: string,
+  roleId: string,
+  isPrimary = false,
+): Promise<void> {
   await apiClient.post(`${RBAC_PREFIX}/assignments/roles`, { employeeId, roleId, isPrimary });
 }
 

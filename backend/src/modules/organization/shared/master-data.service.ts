@@ -433,7 +433,7 @@ export const MasterDataService = {
 
     await DependencyValidatorService.assertCanDelete(entityKey, id, context.companyId);
 
-    const deleted = await config.repository.softDelete(id, context.userId, {
+    const deleted = await config.repository.hardDelete(id, {
       companyId: context.companyId,
     });
 
@@ -456,7 +456,7 @@ export const MasterDataService = {
       await invalidateMasterDataCache(context.companyId, config.entityType, id);
     }
 
-    return serializeMasterDataRecord(deleted);
+    return serializeMasterDataRecord({ ...existing, id });
   },
 
   async restore(

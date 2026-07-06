@@ -81,11 +81,13 @@ export const HolidayValidationService = {
     const type = typeof payload.type === 'string' ? payload.type : HOLIDAY_TYPE.PUBLIC;
     const next: Record<string, unknown> = { ...payload, type };
 
-    if (typeof payload.holidayModuleId === 'string' && payload.holidayModuleId) {
-      const module = await HolidayModuleRepository.findById(payload.holidayModuleId, { companyId });
-      if (!module || module.status !== ENTITY_STATUS.ACTIVE) {
-        throw new ValidationError('Holiday module is invalid or inactive');
-      }
+    if (typeof payload.holidayModuleId !== 'string' || !payload.holidayModuleId) {
+      throw new ValidationError('Holiday module is required — schedule holidays inside a module');
+    }
+
+    const module = await HolidayModuleRepository.findById(payload.holidayModuleId, { companyId });
+    if (!module || module.status !== ENTITY_STATUS.ACTIVE) {
+      throw new ValidationError('Holiday module is invalid or inactive');
     }
 
     if (type === HOLIDAY_TYPE.WEEKLY) {

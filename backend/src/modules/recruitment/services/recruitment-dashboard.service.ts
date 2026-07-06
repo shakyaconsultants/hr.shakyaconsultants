@@ -3,7 +3,10 @@ import { OfferLetterRepository, OFFER_STATUS } from '@domain/recruitment/recruit
 import { ActivityLogRepository } from '@domain/audit/audit.schemas.js';
 import { PIPELINE_STAGE } from '@domain/recruitment/recruitment-extended.schemas.js';
 import { InterviewService } from '@modules/recruitment/services/interview.service.js';
-import { CandidatePipelineService } from '@modules/recruitment/services/candidate-pipeline.service.js';
+import {
+  CandidatePipelineService,
+  simplifyPipelineStage,
+} from '@modules/recruitment/services/candidate-pipeline.service.js';
 import type { RecruitmentDashboardData } from '@modules/recruitment/types/recruitment.types.js';
 
 export const RecruitmentDashboardService = {
@@ -23,7 +26,13 @@ export const RecruitmentDashboardService = {
 
     const pipelineOverview: Record<string, number> = {};
     for (const stage of stages) {
-      pipelineOverview[stage.slug] = candidates.filter((c) => c.pipelineStage === stage.slug).length;
+      pipelineOverview[stage.slug] = 0;
+    }
+    for (const candidate of candidates) {
+      const bucket = simplifyPipelineStage(candidate.pipelineStage);
+      if (bucket in pipelineOverview) {
+        pipelineOverview[bucket] += 1;
+      }
     }
 
     const todaysInterviews = allInterviews.filter(
@@ -38,7 +47,9 @@ export const RecruitmentDashboardService = {
       (c) => c.convertedAt && c.convertedAt >= startOfDay && c.convertedAt < weekEnd,
     );
 
-    const converted = candidates.filter((c) => c.pipelineStage === PIPELINE_STAGE.EMPLOYEE_CONVERTED).length;
+    const converted = candidates.filter(
+      (c) => simplifyPipelineStage(c.pipelineStage) === PIPELINE_STAGE.EMPLOYEE_CONVERTED,
+    ).length;
     const total = candidates.length || 1;
     const conversionRate = Math.round((converted / total) * 100);
 

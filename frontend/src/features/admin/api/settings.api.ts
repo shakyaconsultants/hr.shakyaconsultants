@@ -1,6 +1,10 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
-import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginatedResult,
+} from '@/shared/types/api.types';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 
 const SETTINGS_PREFIX = '/api/v1/settings';
 
@@ -22,21 +26,28 @@ export interface SettingListParams {
   search?: string;
 }
 
-export async function fetchSettings(params: SettingListParams = {}): Promise<PaginatedResult<AppSetting>> {
-  const { data } = await apiClient.get<any>(
+export async function fetchSettings(
+  params: SettingListParams = {},
+): Promise<PaginatedResult<AppSetting>> {
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<AppSetting>>(
     SETTINGS_PREFIX,
     { params },
   );
-  return normalizePaginatedItems<AppSetting>(data.data, 50);
+  return unwrapApiPaginated<AppSetting>(data, params.pageSize ?? 50);
 }
 
 export async function fetchSettingsByGroup(group: string): Promise<AppSetting[]> {
-  const { data } = await apiClient.get<ApiSuccessResponse<AppSetting[]>>(`${SETTINGS_PREFIX}/group/${group}`);
+  const { data } = await apiClient.get<ApiSuccessResponse<AppSetting[]>>(
+    `${SETTINGS_PREFIX}/group/${group}`,
+  );
   return data.data;
 }
 
 export async function updateSetting(key: string, value: unknown): Promise<AppSetting> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<AppSetting>>(`${SETTINGS_PREFIX}/${key}`, { value });
+  const { data } = await apiClient.patch<ApiSuccessResponse<AppSetting>>(
+    `${SETTINGS_PREFIX}/${key}`,
+    { value },
+  );
   return data.data;
 }
 

@@ -47,16 +47,16 @@ export const ENTITY_CATALOG: EntityMeta[] = [
   },
   {
     key: MASTER_ENTITIES.HOLIDAY,
-    label: 'Holiday Calendar',
-    pluralLabel: 'Holiday Calendar',
-    description: 'Holiday modules, department mapping, and company calendar',
+    label: 'Holiday',
+    pluralLabel: 'Holidays',
+    description: 'Individual holidays — managed inside holiday modules',
+    navHidden: true,
   },
   {
     key: MASTER_ENTITIES.HOLIDAY_MODULE,
-    label: 'Holiday Module',
+    label: 'Holiday Modules',
     pluralLabel: 'Holiday Modules',
-    description: 'Reusable holiday packs mapped to departments',
-    navHidden: true,
+    description: 'Schedule weekly offs, festivals, and public holidays per module',
   },
   {
     key: MASTER_ENTITIES.LEAVE_TYPE,

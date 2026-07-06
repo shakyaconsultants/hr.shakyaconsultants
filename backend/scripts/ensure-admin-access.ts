@@ -2,10 +2,9 @@ import '../src/bootstrap-env.js';
 import { connectMongoDB, disconnectMongoDB } from '../src/infrastructure/database/mongodb.connection.js';
 import { CompanyRepository } from '../src/domain/company/company.schema.js';
 import { UserModel, USER_STATUS } from '../src/domain/auth/user.schema.js';
-import { EmployeeRoleRepository, RoleRepository } from '../src/domain/permission/permission.schemas.js';
 import { PasswordService } from '../src/modules/auth/services/password.service.js';
 import { AuthUserRepository } from '../src/modules/auth/repositories/user.repository.js';
-import { SYSTEM_ROLE_SLUG } from '../src/modules/rbac/constants/rbac.constants.js';
+import { SystemAdminProfileService } from '../src/modules/auth/services/system-admin-profile.service.js';
 import { getEnv } from '../src/config/env.js';
 
 async function main(): Promise<void> {
@@ -25,45 +24,26 @@ async function main(): Promise<void> {
     .exec();
 
   if (!user) {
-    const superAdminRole = await RoleRepository.findOne(
-      { slug: SYSTEM_ROLE_SLUG.SUPER_ADMIN },
-      { companyId: company.id },
-    );
-    if (superAdminRole) {
-      const assignment = await EmployeeRoleRepository.findMany(
-        { roleId: superAdminRole.id, effectiveTo: null },
-        { companyId: company.id },
-      );
-      for (const entry of assignment) {
-        const candidate = await UserModel.findOne({
-          employeeId: entry.employeeId,
-          companyId: company.id,
-          isDeleted: false,
-        })
-          .select('+passwordHash')
-          .exec();
-        if (candidate?.status === USER_STATUS.ACTIVE) {
-          user = candidate;
-          break;
-        }
-      }
-    }
-  }
-
-  if (!user) {
-    console.error(`No active admin user found for ${email}. Bootstrap may be incomplete.`);
+    console.error(`No admin user found for ${email}. Bootstrap may be incomplete.`);
     process.exit(1);
   }
+
+  user = await SystemAdminProfileService.migrateLegacyEmployeeLinkedAdmin(company.id, user);
 
   const passwordHash = await PasswordService.hashPassword(password);
   await AuthUserRepository.updatePassword(user.id, company.id, passwordHash, user.id);
   await AuthUserRepository.resetFailedAttempts(user.id, company.id);
 
   console.log('Admin access restored.');
+  console.log('Admin profile is a system user account (not listed in Employees).');
   console.log(`Company code: ${company.code}`);
   console.log(`Email: ${user.email}`);
   console.log(`Password: value from SUPER_ADMIN_PASSWORD in backend/.env`);
   console.log(`Status: active (failed attempts reset)`);
+
+  if (user.status !== USER_STATUS.ACTIVE) {
+    console.warn(`Warning: admin user status is "${user.status}"`);
+  }
 
   await disconnectMongoDB();
 }

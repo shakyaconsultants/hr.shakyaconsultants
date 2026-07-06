@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, FileText, Megaphone, MessageSquare, Search, Settings } from 'lucide-react';
 import { AnnouncementForm } from '@/features/communication/components/announcement-form';
+import { AdminDirectMessagesPanel } from '@/features/communication/components/admin-direct-messages-panel';
 import { NotificationList } from '@/features/communication/components/notification-list';
+import { ANNOUNCEMENT_AUDIENCE_OPTIONS } from '@/features/communication/components/announcement-audience-fields';
 import {
   useAnnouncementHistory,
   useAnnouncements,
@@ -23,7 +25,14 @@ import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 
-const TABS = ['Overview', 'Announcements', 'Policies & Templates', 'Broadcast History', 'Notifications'] as const;
+const TABS = [
+  'Overview',
+  'Announcements',
+  'Direct Messages',
+  'Policies & Templates',
+  'Broadcast History',
+  'Notifications',
+] as const;
 
 export function CommunicationEnterprisePage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Overview');
@@ -31,7 +40,9 @@ export function CommunicationEnterprisePage() {
   const [statsId, setStatsId] = useState('');
 
   const { data: dashboard, isLoading } = useEnterpriseCommunicationDashboard();
-  const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({ pageSize: 50 });
+  const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({
+    pageSize: 50,
+  });
   const { data: history, isLoading: historyLoading } = useAnnouncementHistory({ pageSize: 50 });
   const { data: policies } = useCommunicationPolicies();
   const { data: settings } = useCommunicationSettings();
@@ -85,11 +96,19 @@ export function CommunicationEnterprisePage() {
 
       {activeTab === 'Overview' && dashboard ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard icon={Megaphone} label="Active Announcements" value={dashboard.totalAnnouncements} />
+          <StatCard
+            icon={Megaphone}
+            label="Active Announcements"
+            value={dashboard.totalAnnouncements}
+          />
           <StatCard icon={MessageSquare} label="Active Channels" value={dashboard.activeChannels} />
           <StatCard icon={Bell} label="Notifications" value={dashboard.totalNotifications} />
           <StatCard icon={FileText} label="Total Messages" value={dashboard.totalMessages} />
-          <StatCard icon={Megaphone} label="Announcement Reads" value={dashboard.announcementReads} />
+          <StatCard
+            icon={Megaphone}
+            label="Announcement Reads"
+            value={dashboard.announcementReads}
+          />
           <StatCard icon={Bell} label="Emergency Alerts" value={dashboard.emergencyAnnouncements} />
         </div>
       ) : null}
@@ -116,7 +135,17 @@ export function CommunicationEnterprisePage() {
             columns={[
               { key: 'title', header: 'Title' },
               { key: 'priority', header: 'Priority' },
-              { key: 'targetAudience', header: 'Audience' },
+              {
+                key: 'targetAudience',
+                header: 'Audience',
+                render: (row) => {
+                  const label =
+                    ANNOUNCEMENT_AUDIENCE_OPTIONS.find((o) => o.value === row.targetAudience)
+                      ?.label ?? row.targetAudience;
+                  const count = row.targetIds?.length ?? 0;
+                  return count > 0 ? `${label} (${count})` : label;
+                },
+              },
               { key: 'status', header: 'Status' },
               {
                 key: 'isEmergency',
@@ -128,13 +157,21 @@ export function CommunicationEnterprisePage() {
                 header: 'Actions',
                 render: (row) => (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => void publishAnnouncement.mutateAsync(row.id)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void publishAnnouncement.mutateAsync(row.id)}
+                    >
                       Publish
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setStatsId(row.id)}>
                       Stats
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => void deleteAnnouncement.mutateAsync(row.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void deleteAnnouncement.mutateAsync(row.id)}
+                    >
                       Delete
                     </Button>
                   </div>
@@ -153,6 +190,12 @@ export function CommunicationEnterprisePage() {
         </section>
       ) : null}
 
+      {activeTab === 'Direct Messages' ? (
+        <section className="rounded-lg border bg-card p-6">
+          <AdminDirectMessagesPanel />
+        </section>
+      ) : null}
+
       {activeTab === 'Policies & Templates' ? (
         <section className="space-y-6 rounded-lg border bg-card p-6">
           <div className="flex items-center gap-2">
@@ -166,12 +209,21 @@ export function CommunicationEnterprisePage() {
                 e.preventDefault();
                 const form = e.currentTarget;
                 void updatePolicies.mutateAsync({
-                  allowDirectMessages: (form.elements.namedItem('allowDirectMessages') as HTMLInputElement).checked,
-                  allowPrivateChannels: (form.elements.namedItem('allowPrivateChannels') as HTMLInputElement).checked,
-                  allowEmployeeChannels: (form.elements.namedItem('allowEmployeeChannels') as HTMLInputElement).checked,
-                  requireAcknowledgementDefault: (form.elements.namedItem('requireAcknowledgementDefault') as HTMLInputElement)
-                    .checked,
-                  emergencyBypassQuietHours: (form.elements.namedItem('emergencyBypassQuietHours') as HTMLInputElement).checked,
+                  allowDirectMessages: (
+                    form.elements.namedItem('allowDirectMessages') as HTMLInputElement
+                  ).checked,
+                  allowPrivateChannels: (
+                    form.elements.namedItem('allowPrivateChannels') as HTMLInputElement
+                  ).checked,
+                  allowEmployeeChannels: (
+                    form.elements.namedItem('allowEmployeeChannels') as HTMLInputElement
+                  ).checked,
+                  requireAcknowledgementDefault: (
+                    form.elements.namedItem('requireAcknowledgementDefault') as HTMLInputElement
+                  ).checked,
+                  emergencyBypassQuietHours: (
+                    form.elements.namedItem('emergencyBypassQuietHours') as HTMLInputElement
+                  ).checked,
                   maxAttachmentSizeMb: Number(
                     (form.elements.namedItem('maxAttachmentSizeMb') as HTMLInputElement).value,
                   ),
@@ -181,18 +233,48 @@ export function CommunicationEnterprisePage() {
                 });
               }}
             >
-              <PolicyCheckbox name="allowDirectMessages" label="Allow direct messages" defaultChecked={policies.allowDirectMessages} />
-              <PolicyCheckbox name="allowPrivateChannels" label="Allow private channels" defaultChecked={policies.allowPrivateChannels} />
-              <PolicyCheckbox name="allowEmployeeChannels" label="Allow employee channels" defaultChecked={policies.allowEmployeeChannels} />
-              <PolicyCheckbox name="requireAcknowledgementDefault" label="Require acknowledgement by default" defaultChecked={policies.requireAcknowledgementDefault} />
-              <PolicyCheckbox name="emergencyBypassQuietHours" label="Emergency bypass quiet hours" defaultChecked={policies.emergencyBypassQuietHours} />
+              <PolicyCheckbox
+                name="allowDirectMessages"
+                label="Allow direct messages"
+                defaultChecked={policies.allowDirectMessages}
+              />
+              <PolicyCheckbox
+                name="allowPrivateChannels"
+                label="Allow private channels"
+                defaultChecked={policies.allowPrivateChannels}
+              />
+              <PolicyCheckbox
+                name="allowEmployeeChannels"
+                label="Allow employee channels"
+                defaultChecked={policies.allowEmployeeChannels}
+              />
+              <PolicyCheckbox
+                name="requireAcknowledgementDefault"
+                label="Require acknowledgement by default"
+                defaultChecked={policies.requireAcknowledgementDefault}
+              />
+              <PolicyCheckbox
+                name="emergencyBypassQuietHours"
+                label="Emergency bypass quiet hours"
+                defaultChecked={policies.emergencyBypassQuietHours}
+              />
               <label>
                 <span className="mb-1 block text-sm font-medium">Max attachment size (MB)</span>
-                <input name="maxAttachmentSizeMb" type="number" className="w-full rounded-md border p-2 text-sm" defaultValue={policies.maxAttachmentSizeMb} />
+                <input
+                  name="maxAttachmentSizeMb"
+                  type="number"
+                  className="w-full rounded-md border p-2 text-sm"
+                  defaultValue={policies.maxAttachmentSizeMb}
+                />
               </label>
               <label>
                 <span className="mb-1 block text-sm font-medium">Message retention (days)</span>
-                <input name="messageRetentionDays" type="number" className="w-full rounded-md border p-2 text-sm" defaultValue={policies.messageRetentionDays} />
+                <input
+                  name="messageRetentionDays"
+                  type="number"
+                  className="w-full rounded-md border p-2 text-sm"
+                  defaultValue={policies.messageRetentionDays}
+                />
               </label>
               <div className="sm:col-span-2">
                 <Button type="submit" disabled={updatePolicies.isPending}>
@@ -214,7 +296,9 @@ export function CommunicationEnterprisePage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">Default templates: general, policy, emergency, holiday</p>
+              <p className="text-sm text-muted-foreground">
+                Default templates: general, policy, emergency, holiday
+              </p>
             )}
             <Button
               className="mt-4"
@@ -240,7 +324,12 @@ export function CommunicationEnterprisePage() {
             columns={[
               { key: 'title', header: 'Title' },
               { key: 'priority', header: 'Priority' },
-              { key: 'publishedAt', header: 'Published', render: (row) => row.publishedAt ? new Date(row.publishedAt).toLocaleString() : '—' },
+              {
+                key: 'publishedAt',
+                header: 'Published',
+                render: (row) =>
+                  row.publishedAt ? new Date(row.publishedAt).toLocaleString() : '—',
+              },
               { key: 'status', header: 'Status' },
               { key: 'targetAudience', header: 'Audience' },
             ]}
@@ -265,7 +354,15 @@ export function CommunicationEnterprisePage() {
   );
 }
 
-function PolicyCheckbox({ name, label, defaultChecked }: { name: string; label: string; defaultChecked: boolean }) {
+function PolicyCheckbox({
+  name,
+  label,
+  defaultChecked,
+}: {
+  name: string;
+  label: string;
+  defaultChecked: boolean;
+}) {
   return (
     <label className="flex items-center gap-2 text-sm">
       <input type="checkbox" name={name} defaultChecked={defaultChecked} />

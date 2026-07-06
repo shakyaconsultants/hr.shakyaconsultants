@@ -1,6 +1,10 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
-import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginatedResult,
+} from '@/shared/types/api.types';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 import { API_MAX_PAGE_SIZE } from '@/shared/constants/pagination.constants';
 
 const EMPLOYEE_PREFIX = '/api/v1/employees';
@@ -74,12 +78,17 @@ export interface ListEmployeesParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-export async function fetchEmployees(params: ListEmployeesParams = {}): Promise<PaginatedResult<EmployeeRecord>> {
+export async function fetchEmployees(
+  params: ListEmployeesParams = {},
+): Promise<PaginatedResult<EmployeeRecord>> {
   const pageSize = params.pageSize ? Math.min(params.pageSize, API_MAX_PAGE_SIZE) : undefined;
-  const { data } = await apiClient.get<any>(EMPLOYEE_PREFIX, {
-    params: { ...params, pageSize },
-  });
-  return normalizePaginatedItems<EmployeeRecord>(data.data);
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<EmployeeRecord>>(
+    EMPLOYEE_PREFIX,
+    {
+      params: { ...params, pageSize },
+    },
+  );
+  return unwrapApiPaginated(data, params.pageSize ?? 20);
 }
 
 export async function fetchAllEmployees(
@@ -100,29 +109,45 @@ export async function fetchAllEmployees(
 }
 
 export async function fetchEmployee(id: string): Promise<EmployeeRecord> {
-  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeRecord>>(`${EMPLOYEE_PREFIX}/${id}`);
+  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeRecord>>(
+    `${EMPLOYEE_PREFIX}/${id}`,
+  );
   return data.data;
 }
 
 export async function fetchEmployeeDashboard(id: string): Promise<EmployeeDashboard> {
-  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeDashboard>>(`${EMPLOYEE_PREFIX}/${id}/dashboard`);
+  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeDashboard>>(
+    `${EMPLOYEE_PREFIX}/${id}/dashboard`,
+  );
   return data.data;
 }
 
 export async function createEmployee(payload: Record<string, unknown>): Promise<EmployeeRecord> {
-  const { data } = await apiClient.post<ApiSuccessResponse<EmployeeRecord>>(EMPLOYEE_PREFIX, payload);
+  const { data } = await apiClient.post<ApiSuccessResponse<EmployeeRecord>>(
+    EMPLOYEE_PREFIX,
+    payload,
+  );
   return data.data;
 }
 
-export async function updateEmployee(id: string, payload: Record<string, unknown>): Promise<EmployeeRecord> {
-  const { data } = await apiClient.patch<ApiSuccessResponse<EmployeeRecord>>(`${EMPLOYEE_PREFIX}/${id}`, payload);
+export async function updateEmployee(
+  id: string,
+  payload: Record<string, unknown>,
+): Promise<EmployeeRecord> {
+  const { data } = await apiClient.patch<ApiSuccessResponse<EmployeeRecord>>(
+    `${EMPLOYEE_PREFIX}/${id}`,
+    payload,
+  );
   return data.data;
 }
 
 export async function searchEmployees(q: string, limit = 20): Promise<EmployeeRecord[]> {
-  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeRecord[]>>(`${EMPLOYEE_PREFIX}/search`, {
-    params: { q, limit },
-  });
+  const { data } = await apiClient.get<ApiSuccessResponse<EmployeeRecord[]>>(
+    `${EMPLOYEE_PREFIX}/search`,
+    {
+      params: { q, limit },
+    },
+  );
   return data.data;
 }
 
@@ -134,7 +159,11 @@ export async function exportEmployees(params: ListEmployeesParams = {}): Promise
   return response.data as Blob;
 }
 
-export async function uploadDocument(employeeId: string, file: File, documentType: string): Promise<unknown> {
+export async function uploadDocument(
+  employeeId: string,
+  file: File,
+  documentType: string,
+): Promise<unknown> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('documentType', documentType);
@@ -173,11 +202,13 @@ export async function sendEmployeeActivationEmail(employeeId: string): Promise<{
   expiresAt: string;
   lifecycle: EmployeeLifecycleProfile;
 }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{
-    message: string;
-    expiresAt: string;
-    lifecycle: EmployeeLifecycleProfile;
-  }>>(`${EMPLOYEE_PREFIX}/${employeeId}/activate-account`);
+  const { data } = await apiClient.post<
+    ApiSuccessResponse<{
+      message: string;
+      expiresAt: string;
+      lifecycle: EmployeeLifecycleProfile;
+    }>
+  >(`${EMPLOYEE_PREFIX}/${employeeId}/activate-account`);
   return data.data;
 }
 
@@ -186,11 +217,13 @@ export async function sendEmployeeOnboardingEmail(employeeId: string): Promise<{
   expiresAt: string;
   lifecycle: EmployeeLifecycleProfile;
 }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{
-    message: string;
-    expiresAt: string;
-    lifecycle: EmployeeLifecycleProfile;
-  }>>(`${EMPLOYEE_PREFIX}/${employeeId}/send-onboarding-email`);
+  const { data } = await apiClient.post<
+    ApiSuccessResponse<{
+      message: string;
+      expiresAt: string;
+      lifecycle: EmployeeLifecycleProfile;
+    }>
+  >(`${EMPLOYEE_PREFIX}/${employeeId}/send-onboarding-email`);
   return data.data;
 }
 
@@ -198,10 +231,12 @@ export async function sendEmployeePasswordResetEmail(employeeId: string): Promis
   message: string;
   lifecycle: EmployeeLifecycleProfile;
 }> {
-  const { data } = await apiClient.post<ApiSuccessResponse<{
-    message: string;
-    lifecycle: EmployeeLifecycleProfile;
-  }>>(`${EMPLOYEE_PREFIX}/${employeeId}/send-password-reset`);
+  const { data } = await apiClient.post<
+    ApiSuccessResponse<{
+      message: string;
+      lifecycle: EmployeeLifecycleProfile;
+    }>
+  >(`${EMPLOYEE_PREFIX}/${employeeId}/send-password-reset`);
   return data.data;
 }
 
@@ -248,7 +283,9 @@ export interface ReportingChartTree {
 }
 
 export async function fetchReportingTree(): Promise<ReportingChartTree> {
-  const { data } = await apiClient.get<ApiSuccessResponse<ReportingChartTree>>(`${EMPLOYEE_PREFIX}/reporting-tree`);
+  const { data } = await apiClient.get<ApiSuccessResponse<ReportingChartTree>>(
+    `${EMPLOYEE_PREFIX}/reporting-tree`,
+  );
   return data.data;
 }
 
@@ -278,6 +315,9 @@ export async function assignEmployeeManager(
   return data.data;
 }
 
-export async function endEmployeeManagerRelationship(employeeId: string, relationshipId: string): Promise<void> {
+export async function endEmployeeManagerRelationship(
+  employeeId: string,
+  relationshipId: string,
+): Promise<void> {
   await apiClient.delete(`${EMPLOYEE_PREFIX}/${employeeId}/managers/${relationshipId}`);
 }

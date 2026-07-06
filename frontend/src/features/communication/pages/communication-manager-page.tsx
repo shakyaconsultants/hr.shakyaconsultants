@@ -26,8 +26,13 @@ export function CommunicationManagerPage() {
   const [showChannelForm, setShowChannelForm] = useState(false);
 
   const { data: dashboard, isLoading } = useManagerCommunicationDashboard();
-  const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({ pageSize: 50 });
-  const { data: channels, isLoading: channelsLoading } = useChannels({ pageSize: 50, channelSubtype: 'team' });
+  const { data: announcements, isLoading: announcementsLoading } = useAnnouncements({
+    pageSize: 50,
+  });
+  const { data: channels, isLoading: channelsLoading } = useChannels({
+    pageSize: 50,
+    channelSubtype: 'team',
+  });
   const createAnnouncement = useCreateAnnouncement();
   const createChannel = useCreateChannel();
   const updateChannel = useUpdateChannel();
@@ -45,7 +50,9 @@ export function CommunicationManagerPage() {
             <Users className="h-5 w-5" />
             <h1 className="text-2xl font-bold">Team Communication</h1>
           </div>
-          <p className="text-sm text-muted-foreground">Manage team announcements, channels, and read status.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage team announcements, channels, and read status.
+          </p>
         </div>
         <Button variant="outline" asChild>
           <Link to={ROUTES.COMMUNICATION_INBOX}>Inbox</Link>
@@ -70,8 +77,16 @@ export function CommunicationManagerPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard icon={Users} label="Team Size" value={dashboard.teamSize ?? 0} />
           <StatCard icon={MessageSquare} label="Team Channels" value={dashboard.teamChannels} />
-          <StatCard icon={Megaphone} label="Team Announcements" value={dashboard.teamAnnouncements} />
-          <StatCard icon={Megaphone} label="Unread Notifications" value={dashboard.unreadNotifications} />
+          <StatCard
+            icon={Megaphone}
+            label="Team Announcements"
+            value={dashboard.teamAnnouncements}
+          />
+          <StatCard
+            icon={Megaphone}
+            label="Unread Notifications"
+            value={dashboard.unreadNotifications}
+          />
         </div>
       ) : null}
 
@@ -86,6 +101,7 @@ export function CommunicationManagerPage() {
           {showAnnouncementForm ? (
             <AnnouncementForm
               isPending={createAnnouncement.isPending}
+              lockAudience="team"
               onSubmit={async (payload) => {
                 await createAnnouncement.mutateAsync({ ...payload, targetAudience: 'team' });
                 setShowAnnouncementForm(false);
@@ -101,7 +117,8 @@ export function CommunicationManagerPage() {
               {
                 key: 'publishedAt',
                 header: 'Published',
-                render: (row) => (row.publishedAt ? new Date(row.publishedAt).toLocaleString() : 'Draft'),
+                render: (row) =>
+                  row.publishedAt ? new Date(row.publishedAt).toLocaleString() : 'Draft',
               },
             ]}
             data={announcements?.items ?? []}
@@ -123,7 +140,11 @@ export function CommunicationManagerPage() {
             <ChannelForm
               isPending={createChannel.isPending}
               onSubmit={async (payload) => {
-                await createChannel.mutateAsync({ ...payload, channelSubtype: 'team', participantIds: payload.participantIds ?? [] });
+                await createChannel.mutateAsync({
+                  ...payload,
+                  channelSubtype: 'team',
+                  participantIds: payload.participantIds ?? [],
+                });
                 setShowChannelForm(false);
               }}
               onCancel={() => setShowChannelForm(false)}
@@ -155,7 +176,11 @@ export function CommunicationManagerPage() {
                     >
                       {row.isReadOnly ? 'Unmoderate' : 'Moderate'}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => void deleteChannel.mutateAsync(row.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void deleteChannel.mutateAsync(row.id)}
+                    >
                       Delete
                     </Button>
                   </div>

@@ -12,13 +12,12 @@ import { registerDomainModels } from '@domain/index.js';
 import { getEnv } from '@config/env.js';
 import { assertProductionSafeSeedCredentials } from '@config/seed-env.validation.js';
 import { CompanyRepository } from '@domain/company/company.schema.js';
-import { EmployeeRepository, EMPLOYMENT_TYPE } from '@domain/employee/employee.schemas.js';
 import {
   BranchRepository,
   DepartmentRepository,
   DesignationRepository,
 } from '@domain/organization/organization.schemas.js';
-import { EmployeeRoleRepository, RoleRepository } from '@domain/permission/permission.schemas.js';
+import { RoleRepository } from '@domain/permission/permission.schemas.js';
 import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
 import { BOOTSTRAP_ORG_DEFAULTS } from '@modules/auth/constants/role-seed.constants.js';
 import { parseSuperAdminFromEnv } from '@modules/auth/utils/super-admin-env.util.js';
@@ -136,28 +135,6 @@ async function main(): Promise<void> {
     throw new Error('Super Admin role not found after RBAC seed');
   }
 
-  const adminEmployeeId = generateUuid();
-  await EmployeeRepository.create(
-    {
-      id: adminEmployeeId,
-      companyId,
-      employeeNumber: BOOTSTRAP_ORG_DEFAULTS.EMPLOYEE_NUMBER,
-      firstName: admin.firstName,
-      lastName: admin.lastName,
-      email: admin.email,
-      phone: admin.phone,
-      departmentId,
-      designationId,
-      branchId,
-      joinedAt: new Date(),
-      employmentType: EMPLOYMENT_TYPE.FULL_TIME,
-      status: ENTITY_STATUS.ACTIVE,
-      createdBy: SYSTEM_ACTOR,
-      updatedBy: SYSTEM_ACTOR,
-    },
-    { companyId },
-  );
-
   const passwordHash = await PasswordService.hashPassword(admin.password);
   const adminUserId = generateUuid();
   await UserRepository.create(
@@ -166,7 +143,7 @@ async function main(): Promise<void> {
       companyId,
       email: admin.email,
       passwordHash,
-      employeeId: adminEmployeeId,
+      roleIds: [superAdminRole.id],
       tokenVersion: 0,
       failedLoginAttempts: 0,
       lockedUntil: null,
@@ -174,26 +151,6 @@ async function main(): Promise<void> {
       passwordChangedAt: new Date(),
       mustChangePassword: false,
       status: USER_STATUS.ACTIVE,
-      createdBy: SYSTEM_ACTOR,
-      updatedBy: SYSTEM_ACTOR,
-    },
-    { companyId },
-  );
-
-  await EmployeeRepository.update(
-    adminEmployeeId,
-    { $set: { userId: adminUserId } },
-    { companyId },
-  );
-
-  await EmployeeRoleRepository.create(
-    {
-      id: generateUuid(),
-      companyId,
-      employeeId: adminEmployeeId,
-      roleId: superAdminRole.id,
-      assignedBy: SYSTEM_ACTOR,
-      assignedAt: new Date(),
       createdBy: SYSTEM_ACTOR,
       updatedBy: SYSTEM_ACTOR,
     },

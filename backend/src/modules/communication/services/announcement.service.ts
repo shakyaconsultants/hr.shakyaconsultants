@@ -7,7 +7,7 @@ import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ProjectMemberRepository } from '@domain/project/project.schemas.js';
 import { AnnouncementReadReceiptRepository } from '@domain/workspace/workspace-extended.schemas.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
-import { ForbiddenError, NotFoundError } from '@shared/errors/app.error.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { BROADCAST_PERMISSIONS } from '@modules/communication/constants/communication-permissions.constants.js';
@@ -29,6 +29,7 @@ interface CreateAnnouncementInput {
   content: string;
   targetAudience: string;
   targetIds?: string[];
+  secondaryTargetIds?: string[];
   priority?: string;
   scheduledAt?: Date;
   expiresAt?: Date;
@@ -47,11 +48,136 @@ const BROADCAST_AUDIENCES = new Set<string>([
   ANNOUNCEMENT_AUDIENCE.ALL,
   ANNOUNCEMENT_AUDIENCE.BRANCH,
   ANNOUNCEMENT_AUDIENCE.DEPARTMENT,
+  ANNOUNCEMENT_AUDIENCE.ROLE,
+  ANNOUNCEMENT_AUDIENCE.DEPARTMENT_ROLE,
 ]);
 
 async function getDirectReportIds(companyId: string, managerEmployeeId: string): Promise<string[]> {
-  const reports = await EmployeeRepository.findMany({ reportingManagerId: managerEmployeeId }, { companyId });
+  const reports = await EmployeeRepository.findMany(
+    { reportingManagerId: managerEmployeeId },
+    { companyId },
+  );
   return reports.map((r) => r.id);
+}
+
+function assertTargetIds(
+  audience: string,
+  targetIds: string[],
+  secondaryTargetIds: string[] = [],
+): void {
+  if (audience === ANNOUNCEMENT_AUDIENCE.ALL) {
+    return;
+  }
+  if (audience === ANNOUNCEMENT_AUDIENCE.DEPARTMENT_ROLE) {
+    if (targetIds.length === 0) {
+      throw new ValidationError('Select at least one department');
+    }
+    if (secondaryTargetIds.length === 0) {
+      throw new ValidationError('Select at least one designation');
+    }
+    return;
+  }
+  if (targetIds.length === 0) {
+    throw new ValidationError('Select at least one target for the chosen audience');
+  }
+}
+
+function announcementMatchesEmployee(
+  announcement: {
+    targetAudience: string;
+    targetIds: string[];
+    secondaryTargetIds?: string[];
+    expiresAt?: Date;
+    scheduledAt?: Date;
+    publishedAt?: Date | null;
+  },
+  employee: {
+    id: string;
+    departmentId?: string;
+    branchId?: string;
+    designationId?: string;
+    reportingManagerId?: string;
+  },
+  projectIds: string[],
+  now = new Date(),
+): boolean {
+  if (announcement.expiresAt && new Date(announcement.expiresAt) < now) {
+    return false;
+  }
+  if (announcement.scheduledAt && new Date(announcement.scheduledAt) > now) {
+    return false;
+  }
+  if (!announcement.publishedAt) {
+    return false;
+  }
+
+  switch (announcement.targetAudience) {
+    case ANNOUNCEMENT_AUDIENCE.ALL:
+      return true;
+    case ANNOUNCEMENT_AUDIENCE.DEPARTMENT:
+      return Boolean(
+        employee.departmentId && announcement.targetIds.includes(employee.departmentId),
+      );
+    case ANNOUNCEMENT_AUDIENCE.BRANCH:
+      return Boolean(employee.branchId && announcement.targetIds.includes(employee.branchId));
+    case ANNOUNCEMENT_AUDIENCE.ROLE:
+      return Boolean(
+        employee.designationId && announcement.targetIds.includes(employee.designationId),
+      );
+    case ANNOUNCEMENT_AUDIENCE.DEPARTMENT_ROLE: {
+      const secondary = announcement.secondaryTargetIds ?? [];
+      const departmentMatch = Boolean(
+        employee.departmentId && announcement.targetIds.includes(employee.departmentId),
+      );
+      const designationMatch = Boolean(
+        employee.designationId && secondary.includes(employee.designationId),
+      );
+      return departmentMatch && designationMatch;
+    }
+    case ANNOUNCEMENT_AUDIENCE.TEAM:
+      return announcement.targetIds.some(
+        (id) => id === employee.id || id === employee.reportingManagerId,
+      );
+    case ANNOUNCEMENT_AUDIENCE.PROJECT:
+      return announcement.targetIds.some((id) => projectIds.includes(id));
+    default:
+      return false;
+  }
+}
+
+async function resolveAnnouncementRecipientUserIds(
+  companyId: string,
+  announcement: {
+    targetAudience: string;
+    targetIds: string[];
+    secondaryTargetIds?: string[];
+  },
+): Promise<string[]> {
+  const employees = await EmployeeRepository.findMany(
+    { status: { $ne: ENTITY_STATUS.ARCHIVED }, userId: { $exists: true, $ne: null } },
+    { companyId },
+  );
+
+  const userIds = new Set<string>();
+  for (const employee of employees) {
+    const memberships = await ProjectMemberRepository.findMany(
+      { employeeId: employee.id },
+      { companyId },
+    );
+    const projectIds = memberships.map((m) => m.projectId);
+    if (
+      announcementMatchesEmployee(
+        { ...announcement, publishedAt: new Date() },
+        employee,
+        projectIds,
+      )
+    ) {
+      if (employee.userId) {
+        userIds.add(employee.userId);
+      }
+    }
+  }
+  return [...userIds];
 }
 
 async function filterAnnouncementsForEmployee(companyId: string, employeeId: string) {
@@ -68,36 +194,20 @@ async function filterAnnouncementsForEmployee(companyId: string, employeeId: str
   const projectMemberships = await ProjectMemberRepository.findMany({ employeeId }, { companyId });
   const projectIds = projectMemberships.map((m) => m.projectId);
 
-  return all.filter((a) => {
-    if (a.expiresAt && new Date(a.expiresAt) < now) {
-      return false;
-    }
-    if (a.scheduledAt && new Date(a.scheduledAt) > now) {
-      return false;
-    }
-    switch (a.targetAudience) {
-      case ANNOUNCEMENT_AUDIENCE.ALL:
-        return true;
-      case ANNOUNCEMENT_AUDIENCE.DEPARTMENT:
-        return a.targetIds.includes(employee.departmentId);
-      case ANNOUNCEMENT_AUDIENCE.BRANCH:
-        return employee.branchId ? a.targetIds.includes(employee.branchId) : false;
-      case ANNOUNCEMENT_AUDIENCE.ROLE:
-        return employee.designationId ? a.targetIds.includes(employee.designationId) : false;
-      case ANNOUNCEMENT_AUDIENCE.TEAM:
-        return a.targetIds.some((id) => id === employeeId || id === employee.reportingManagerId);
-      case ANNOUNCEMENT_AUDIENCE.PROJECT:
-        return a.targetIds.some((id) => projectIds.includes(id));
-      default:
-        return false;
-    }
-  });
+  return all.filter((a) => announcementMatchesEmployee(a, employee, projectIds, now));
 }
 
-function assertBroadcastPermission(permissions: string[], audience: string, isEmergency?: boolean): void {
+function assertBroadcastPermission(
+  permissions: string[],
+  audience: string,
+  isEmergency?: boolean,
+): void {
   if (BROADCAST_AUDIENCES.has(audience) || isEmergency) {
     if (!permissions.includes(BROADCAST_PERMISSIONS.BROADCAST)) {
-      throw new ForbiddenError('Broadcast permission required for company-wide announcements', ERROR_CODES.AUTH_FORBIDDEN);
+      throw new ForbiddenError(
+        'Broadcast permission required for company-wide announcements',
+        ERROR_CODES.AUTH_FORBIDDEN,
+      );
     }
   }
 }
@@ -119,26 +229,42 @@ async function assertManagerAudienceScope(
     const allowed = new Set([context.employeeId, ...directReports]);
     const invalid = targetIds.filter((id) => !allowed.has(id));
     if (invalid.length > 0) {
-      throw new ForbiddenError('Team announcements may only target your direct reports', ERROR_CODES.AUTH_FORBIDDEN);
+      throw new ForbiddenError(
+        'Team announcements may only target your direct reports',
+        ERROR_CODES.AUTH_FORBIDDEN,
+      );
     }
     return;
   }
 
   if (audience === ANNOUNCEMENT_AUDIENCE.PROJECT) {
-    const memberships = await ProjectMemberRepository.findMany({ employeeId: context.employeeId }, { companyId: context.companyId });
+    const memberships = await ProjectMemberRepository.findMany(
+      { employeeId: context.employeeId },
+      { companyId: context.companyId },
+    );
     const allowedProjects = new Set(memberships.map((m) => m.projectId));
     const invalid = targetIds.filter((id) => !allowedProjects.has(id));
     if (invalid.length > 0) {
-      throw new ForbiddenError('Project announcements may only target your projects', ERROR_CODES.AUTH_FORBIDDEN);
+      throw new ForbiddenError(
+        'Project announcements may only target your projects',
+        ERROR_CODES.AUTH_FORBIDDEN,
+      );
     }
     return;
   }
 
-  throw new ForbiddenError('Managers may only create team or project announcements', ERROR_CODES.AUTH_FORBIDDEN);
+  throw new ForbiddenError(
+    'Managers may only create team or project announcements',
+    ERROR_CODES.AUTH_FORBIDDEN,
+  );
 }
 
 export const AnnouncementService = {
-  async listAdmin(context: CommunicationActorContext, permissions: string[], query: AnnouncementListQuery) {
+  async listAdmin(
+    context: CommunicationActorContext,
+    permissions: string[],
+    query: AnnouncementListQuery,
+  ) {
     const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
     const filter: Record<string, unknown> = {};
 
@@ -150,12 +276,16 @@ export const AnnouncementService = {
       filter.authorUserId = context.userId;
     }
 
-    return AnnouncementRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-    }, { companyId: context.companyId });
+    return AnnouncementRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      },
+      { companyId: context.companyId },
+    );
   },
 
   async listForEmployee(context: CommunicationActorContext, query: AnnouncementListQuery) {
@@ -163,7 +293,10 @@ export const AnnouncementService = {
       return { items: [], total: 0, page: query.page ?? 1, pageSize: query.pageSize ?? 20 };
     }
 
-    const announcements = await filterAnnouncementsForEmployee(context.companyId, context.employeeId);
+    const announcements = await filterAnnouncementsForEmployee(
+      context.companyId,
+      context.employeeId,
+    );
     const receipts = await AnnouncementReadReceiptRepository.findMany(
       { employeeId: context.employeeId },
       { companyId: context.companyId },
@@ -180,7 +313,10 @@ export const AnnouncementService = {
 
     const sorted = filtered.sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-      return (b.publishedAt?.getTime() ?? b.createdAt.getTime()) - (a.publishedAt?.getTime() ?? a.createdAt.getTime());
+      return (
+        (b.publishedAt?.getTime() ?? b.createdAt.getTime()) -
+        (a.publishedAt?.getTime() ?? a.createdAt.getTime())
+      );
     });
 
     const enriched = sorted.map((a) => {
@@ -197,7 +333,12 @@ export const AnnouncementService = {
     const pageSize = query.pageSize ?? 20;
     const start = (page - 1) * pageSize;
 
-    return { items: enriched.slice(start, start + pageSize), total: enriched.length, page, pageSize };
+    return {
+      items: enriched.slice(start, start + pageSize),
+      total: enriched.length,
+      page,
+      pageSize,
+    };
   },
 
   async getById(context: CommunicationActorContext, announcementId: string) {
@@ -205,7 +346,10 @@ export const AnnouncementService = {
       throw new NotFoundError('Announcement not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const announcements = await filterAnnouncementsForEmployee(context.companyId, context.employeeId);
+    const announcements = await filterAnnouncementsForEmployee(
+      context.companyId,
+      context.employeeId,
+    );
     const announcement = announcements.find((a) => a.id === announcementId);
     if (!announcement) {
       throw new NotFoundError('Announcement not found', ERROR_CODES.NOT_FOUND);
@@ -245,9 +389,25 @@ export const AnnouncementService = {
     return CommunicationAuditService.toRecord(announcement);
   },
 
-  async create(context: CommunicationActorContext, permissions: string[], input: CreateAnnouncementInput) {
+  async create(
+    context: CommunicationActorContext,
+    permissions: string[],
+    input: CreateAnnouncementInput,
+  ) {
     const canBroadcast = permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
-    const targetIds = input.targetIds ?? [];
+    let targetIds = input.targetIds ?? [];
+    const secondaryTargetIds = input.secondaryTargetIds ?? [];
+
+    if (
+      input.targetAudience === ANNOUNCEMENT_AUDIENCE.TEAM &&
+      targetIds.length === 0 &&
+      context.employeeId
+    ) {
+      const directReports = await getDirectReportIds(context.companyId, context.employeeId);
+      targetIds = [...new Set([context.employeeId, ...directReports])];
+    }
+
+    assertTargetIds(input.targetAudience, targetIds, secondaryTargetIds);
 
     if (canBroadcast) {
       assertBroadcastPermission(permissions, input.targetAudience, input.isEmergency);
@@ -263,6 +423,7 @@ export const AnnouncementService = {
         content: input.content,
         targetAudience: input.targetAudience,
         targetIds,
+        secondaryTargetIds,
         priority: input.priority ?? ANNOUNCEMENT_PRIORITY.NORMAL,
         status: ENTITY_STATUS.PENDING,
         scheduledAt: input.scheduledAt,
@@ -294,7 +455,12 @@ export const AnnouncementService = {
     return CommunicationAuditService.toRecord(announcement);
   },
 
-  async update(context: CommunicationActorContext, permissions: string[], id: string, input: UpdateAnnouncementInput) {
+  async update(
+    context: CommunicationActorContext,
+    permissions: string[],
+    id: string,
+    input: UpdateAnnouncementInput,
+  ) {
     const existing = await AnnouncementRepository.findById(id, { companyId: context.companyId });
     if (!existing) {
       throw new NotFoundError('Announcement not found', ERROR_CODES.NOT_FOUND);
@@ -307,13 +473,19 @@ export const AnnouncementService = {
 
     const audience = input.targetAudience ?? existing.targetAudience;
     const targetIds = input.targetIds ?? existing.targetIds;
+    const secondaryTargetIds = input.secondaryTargetIds ?? existing.secondaryTargetIds;
+    assertTargetIds(audience, targetIds, secondaryTargetIds);
     if (canBroadcast) {
       assertBroadcastPermission(permissions, audience, input.isEmergency ?? existing.isEmergency);
     } else if (input.targetAudience || input.targetIds) {
       await assertManagerAudienceScope(context, audience, targetIds);
     }
 
-    const updated = await AnnouncementRepository.update(id, { ...input, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await AnnouncementRepository.update(
+      id,
+      { ...input, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
 
     await CommunicationAuditService.log({
       companyId: context.companyId,
@@ -341,7 +513,11 @@ export const AnnouncementService = {
       throw new ForbiddenError('Cannot delete this announcement', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
-    await AnnouncementRepository.update(id, { status: ENTITY_STATUS.ARCHIVED, updatedBy: context.userId }, { companyId: context.companyId });
+    await AnnouncementRepository.update(
+      id,
+      { status: ENTITY_STATUS.ARCHIVED, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
 
     await CommunicationAuditService.log({
       companyId: context.companyId,
@@ -392,6 +568,23 @@ export const AnnouncementService = {
       ? COMMUNICATION_NOTIFICATION_JOB.ANNOUNCEMENT_EMERGENCY
       : COMMUNICATION_NOTIFICATION_JOB.ANNOUNCEMENT_PUBLISHED;
 
+    const recipientUserIds = await resolveAnnouncementRecipientUserIds(context.companyId, existing);
+    for (const recipientUserId of recipientUserIds) {
+      if (recipientUserId === context.userId) {
+        continue;
+      }
+      await CommunicationEventService.notify(context, {
+        recipientUserId,
+        title: existing.isEmergency ? 'Emergency announcement' : 'New company announcement',
+        body: existing.title,
+        entityType: 'announcement',
+        entityId: id,
+        deepLink: '/workspace/announcements',
+        priority: existing.priority,
+        jobName,
+      });
+    }
+
     await CommunicationAuditService.log({
       companyId: context.companyId,
       userId: context.userId,
@@ -412,7 +605,10 @@ export const AnnouncementService = {
       throw new NotFoundError('Announcement not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const receipts = await AnnouncementReadReceiptRepository.findMany({ announcementId: id }, { companyId });
+    const receipts = await AnnouncementReadReceiptRepository.findMany(
+      { announcementId: id },
+      { companyId },
+    );
     const readCount = receipts.length;
     const acknowledgedCount = receipts.filter((r) => r.acknowledgedAt).length;
 
@@ -432,12 +628,16 @@ export const AnnouncementService = {
     };
     if (query.search) filter.$text = { $search: query.search };
 
-    return AnnouncementRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: 'publishedAt',
-      sortOrder: 'desc',
-    }, { companyId });
+    return AnnouncementRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: 'publishedAt',
+        sortOrder: 'desc',
+      },
+      { companyId },
+    );
   },
 
   async acknowledge(context: CommunicationActorContext, announcementId: string) {
@@ -445,7 +645,10 @@ export const AnnouncementService = {
       throw new NotFoundError('Announcement not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const announcements = await filterAnnouncementsForEmployee(context.companyId, context.employeeId);
+    const announcements = await filterAnnouncementsForEmployee(
+      context.companyId,
+      context.employeeId,
+    );
     const announcement = announcements.find((a) => a.id === announcementId);
     if (!announcement) {
       throw new NotFoundError('Announcement not found', ERROR_CODES.NOT_FOUND);

@@ -1,8 +1,12 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginationMeta } from '@/shared/types/api.types';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginationMeta,
+} from '@/shared/types/api.types';
 import type { MasterEntityKey } from '@/features/organization/constants/entity-catalog';
 import { clampMasterDataListParams } from '@/features/organization/constants/master-data.constants';
-import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 import { assertValidEntityId } from '@/shared/utils/entity-id.util';
 
 const ORG_PREFIX = '/api/v1/organization';
@@ -36,18 +40,12 @@ export async function listEntities(
   params: ListQueryParams = {},
 ): Promise<{ items: MasterDataRecord[]; pagination: PaginationMeta }> {
   const safeParams = clampMasterDataListParams(params);
-  const { data } = await apiClient.get<
-    ApiSuccessResponse<MasterDataRecord[] | { items?: MasterDataRecord[] }> & {
-      pagination?: PaginationMeta;
-    }
-  >(`${ORG_PREFIX}/entities/${entityKey}`, { params: safeParams });
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<MasterDataRecord>>(
+    `${ORG_PREFIX}/entities/${entityKey}`,
+    { params: safeParams },
+  );
 
-  const normalized = normalizePaginatedItems(data.data, safeParams.pageSize ?? 20);
-
-  return {
-    items: normalized.items,
-    pagination: data.pagination ?? normalized.pagination,
-  };
+  return unwrapApiPaginated<MasterDataRecord>(data, safeParams.pageSize ?? 20);
 }
 
 /** Load all pages of a master-data entity (respects backend max page size of 100). */

@@ -93,7 +93,8 @@ export interface BootstrapResultResponse {
   companyCode: string;
   branchId: string;
   adminUserId: string;
-  adminEmployeeId: string;
+  /** @deprecated Legacy bootstrap linked admin to an employee; new installs use adminUserId only. */
+  adminEmployeeId?: string;
   superAdminRoleId: string;
   message: string;
 }

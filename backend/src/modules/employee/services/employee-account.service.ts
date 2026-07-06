@@ -1,7 +1,9 @@
 import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
-import { NotFoundError } from '@shared/errors/app.error.js';
+import { RoleRepository } from '@domain/permission/permission.schemas.js';
+import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { PasswordService } from '@modules/auth/services/password.service.js';
 import { RecruitmentEmailService } from '@modules/recruitment/services/recruitment-email.service.js';
@@ -41,6 +43,21 @@ export const EmployeeAccountService = {
     let userId: string;
 
     if (existingUser) {
+      const superAdminRole = await RoleRepository.findOne(
+        { slug: SYSTEM_ROLE_SLUG.SUPER_ADMIN },
+        { companyId: input.companyId },
+      );
+      const isSystemAdmin =
+        Boolean(superAdminRole && existingUser.roleIds.includes(superAdminRole.id)) &&
+        !existingUser.employeeId;
+
+      if (isSystemAdmin) {
+        throw new ConflictError(
+          'This email belongs to the system administrator account and cannot be used for an employee',
+          ERROR_CODES.EMAIL_ALREADY_EXISTS,
+        );
+      }
+
       await UserRepository.update(
         existingUser.id,
         {

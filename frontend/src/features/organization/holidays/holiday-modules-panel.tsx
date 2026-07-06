@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Layers, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, CalendarDays } from 'lucide-react';
 import {
   useCreateEntity,
   useDeleteEntity,
@@ -29,14 +29,14 @@ interface HolidayModulesPanelProps {
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  onSelectModule?: (moduleId: string) => void;
+  onOpenModule?: (moduleId: string) => void;
 }
 
 export function HolidayModulesPanel({
   canCreate,
   canUpdate,
   canDelete,
-  onSelectModule,
+  onOpenModule,
 }: HolidayModulesPanelProps) {
   const [editorMode, setEditorMode] = useState<'create' | 'edit' | null>(null);
   const [editingRecord, setEditingRecord] = useState<HolidayModuleRecord | null>(null);
@@ -135,9 +135,10 @@ export function HolidayModulesPanel({
       header: '',
       render: (row: HolidayModuleRecord) => (
         <div className="flex gap-1">
-          {onSelectModule ? (
-            <Button variant="ghost" size="sm" onClick={() => onSelectModule(row.id)}>
-              <Layers className="h-4 w-4" />
+          {onOpenModule ? (
+            <Button variant="default" size="sm" onClick={() => onOpenModule(row.id)}>
+              <CalendarDays className="mr-1 h-4 w-4" />
+              Open calendar
             </Button>
           ) : null}
           {canUpdate ? (
@@ -168,7 +169,8 @@ export function HolidayModulesPanel({
         <div>
           <h3 className="text-lg font-semibold">Holiday Modules</h3>
           <p className="text-sm text-muted-foreground">
-            Group national holidays, festivals, and weekly offs into reusable modules.
+            Group weekly offs, festivals, and public holidays. Open a module to schedule on its
+            calendar.
           </p>
         </div>
         {canCreate ? (

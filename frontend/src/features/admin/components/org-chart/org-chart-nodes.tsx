@@ -176,11 +176,13 @@ export function OrgChartEmployeeCard({
 }: {
   employee: OrgChartEmployee;
   compact?: boolean;
-  variant?: 'default' | 'admin';
+  variant?: 'default' | 'leader';
 }) {
   const fullName = `${employee.firstName} ${employee.lastName}`.trim();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canOpenProfile = hasPermission('employee.read');
+
+  const roleLabel = variant === 'leader' ? 'Branch manager · ' : '';
 
   const cardBody = (
     <>
@@ -210,7 +212,7 @@ export function OrgChartEmployeeCard({
           {fullName}
         </p>
         <p className="truncate text-xs text-muted-foreground">
-          {variant === 'admin' ? 'Admin · ' : ''}
+          {roleLabel}
           {employee.designationName}
         </p>
         {!compact ? (
@@ -225,7 +227,7 @@ export function OrgChartEmployeeCard({
 
   const className = cn(
     'group flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2 shadow-sm transition-all',
-    variant === 'admin' && 'min-w-[220px] border-primary/40 bg-primary/5 ring-1 ring-primary/20',
+    variant === 'leader' && 'min-w-[220px] border-primary/40 bg-primary/5 ring-1 ring-primary/20',
     canOpenProfile && 'hover:border-primary/40 hover:bg-primary/5 hover:shadow-md',
     compact ? 'min-w-[160px]' : 'min-w-[190px]',
   );

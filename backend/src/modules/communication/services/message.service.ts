@@ -10,6 +10,7 @@ import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ForbiddenError, NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
+import { BROADCAST_PERMISSIONS } from '@modules/communication/constants/communication-permissions.constants.js';
 import { COMMUNICATION_NOTIFICATION_JOB } from '@modules/communication/constants/communication.constants.js';
 import { CommunicationAuditService } from '@modules/communication/services/communication-audit.service.js';
 import { CommunicationEventService } from '@modules/communication/services/communication-event.service.js';
@@ -32,14 +33,43 @@ interface UpdateMessageInput {
   content: string;
 }
 
+function canAccessConversation(
+  context: CommunicationActorContext,
+  participantIds: string[],
+): boolean {
+  if (context.isSuperAdmin) {
+    return true;
+  }
+
+  const permissions = context.permissions ?? [];
+  if (
+    permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) ||
+    permissions.includes('employee.read')
+  ) {
+    return true;
+  }
+
+  const actorId = context.employeeId ?? context.userId;
+  return participantIds.includes(actorId);
+}
+
+function actorParticipantId(context: CommunicationActorContext): string | undefined {
+  const permissions = context.permissions ?? [];
+  const canUseUserId =
+    context.isSuperAdmin || permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
+  return context.employeeId ?? (canUseUserId ? context.userId : undefined);
+}
+
 export const MessageService = {
   async list(context: CommunicationActorContext, conversationId: string, query: MessageListQuery) {
-    const conversation = await ConversationRepository.findById(conversationId, { companyId: context.companyId });
+    const conversation = await ConversationRepository.findById(conversationId, {
+      companyId: context.companyId,
+    });
     if (!conversation) {
       throw new NotFoundError('Conversation not found', ERROR_CODES.NOT_FOUND);
     }
 
-    if (!context.isSuperAdmin && context.employeeId && !conversation.participantIds.includes(context.employeeId)) {
+    if (!canAccessConversation(context, conversation.participantIds)) {
       throw new ForbiddenError('Not a conversation participant', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -56,18 +86,19 @@ export const MessageService = {
   },
 
   async send(context: CommunicationActorContext, conversationId: string, input: SendMessageInput) {
-    if (!context.employeeId && !context.isSuperAdmin) {
+    const senderId = actorParticipantId(context);
+    if (!senderId) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
-    const conversation = await ConversationRepository.findById(conversationId, { companyId: context.companyId });
+    const conversation = await ConversationRepository.findById(conversationId, {
+      companyId: context.companyId,
+    });
     if (!conversation) {
       throw new NotFoundError('Conversation not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const senderId = context.employeeId ?? context.userId;
-
-    if (!context.isSuperAdmin && !conversation.participantIds.includes(senderId)) {
+    if (!conversation.participantIds.includes(senderId)) {
       throw new ForbiddenError('Not a conversation participant', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -133,7 +164,9 @@ export const MessageService = {
 
     if (input.mentionIds?.length) {
       for (const mentionId of input.mentionIds) {
-        const employee = await EmployeeRepository.findById(mentionId, { companyId: context.companyId });
+        const employee = await EmployeeRepository.findById(mentionId, {
+          companyId: context.companyId,
+        });
         if (employee?.userId) {
           await CommunicationEventService.notify(context, {
             recipientUserId: employee.userId,
@@ -199,7 +232,10 @@ export const MessageService = {
     const senderId = context.employeeId ?? context.userId;
 
     if (!context.isSuperAdmin && message.senderId !== senderId) {
-      throw new ForbiddenError('Only the sender can delete this message', ERROR_CODES.AUTH_FORBIDDEN);
+      throw new ForbiddenError(
+        'Only the sender can delete this message',
+        ERROR_CODES.AUTH_FORBIDDEN,
+      );
     }
 
     const updated = await MessageRepository.update(
@@ -211,7 +247,11 @@ export const MessageService = {
     return CommunicationAuditService.toRecord(updated);
   },
 
-  async forward(context: CommunicationActorContext, messageId: string, targetConversationId: string) {
+  async forward(
+    context: CommunicationActorContext,
+    messageId: string,
+    targetConversationId: string,
+  ) {
     const message = await MessageRepository.findById(messageId, { companyId: context.companyId });
     if (!message || message.isDeleted) {
       throw new NotFoundError('Message not found', ERROR_CODES.NOT_FOUND);

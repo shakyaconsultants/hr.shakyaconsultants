@@ -3,7 +3,10 @@ import { defineDomainModel } from '@infrastructure/database/model.factory.js';
 import { COLLECTIONS } from '@infrastructure/database/constants/collections.js';
 import type { BaseDocument } from '@infrastructure/database/types/base-document.types.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
-import { NOTIFICATION_CHANNELS, NOTIFICATION_STATUS } from '@shared/constants/notification.constants.js';
+import {
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_STATUS,
+} from '@shared/constants/notification.constants.js';
 
 export const CONVERSATION_TYPE = {
   DIRECT: 'direct',
@@ -32,6 +35,7 @@ export const ANNOUNCEMENT_AUDIENCE = {
   DEPARTMENT: 'department',
   BRANCH: 'branch',
   ROLE: 'role',
+  DEPARTMENT_ROLE: 'department_role',
   TEAM: 'team',
   PROJECT: 'project',
 } as const;
@@ -129,6 +133,7 @@ export interface AnnouncementDocument extends BaseDocument {
   expiresAt?: Date;
   targetAudience: string;
   targetIds: string[];
+  secondaryTargetIds: string[];
   priority: string;
   status: string;
   isPinned: boolean;
@@ -144,8 +149,16 @@ const notificationFields: SchemaDefinition = {
   recipientId: { type: String, required: true, index: true },
   title: { type: String, required: true, trim: true },
   body: { type: String, required: true, trim: true },
-  channel: { type: String, enum: Object.values(NOTIFICATION_CHANNELS), default: NOTIFICATION_CHANNELS.DATABASE },
-  status: { type: String, enum: Object.values(NOTIFICATION_STATUS), default: NOTIFICATION_STATUS.PENDING },
+  channel: {
+    type: String,
+    enum: Object.values(NOTIFICATION_CHANNELS),
+    default: NOTIFICATION_CHANNELS.DATABASE,
+  },
+  status: {
+    type: String,
+    enum: Object.values(NOTIFICATION_STATUS),
+    default: NOTIFICATION_STATUS.PENDING,
+  },
   readAt: { type: Date },
   entityType: { type: String, trim: true },
   entityId: { type: String, index: true },
@@ -195,7 +208,11 @@ const messageReceiptFields: SchemaDefinition = {
   recipientId: { type: String, required: true, index: true },
   deliveredAt: { type: Date },
   readAt: { type: Date },
-  status: { type: String, enum: Object.values(MESSAGE_DELIVERY_STATUS), default: MESSAGE_DELIVERY_STATUS.SENT },
+  status: {
+    type: String,
+    enum: Object.values(MESSAGE_DELIVERY_STATUS),
+    default: MESSAGE_DELIVERY_STATUS.SENT,
+  },
 };
 
 const messageUserStateFields: SchemaDefinition = {
@@ -211,9 +228,18 @@ const announcementFields: SchemaDefinition = {
   publishedAt: { type: Date, index: true },
   scheduledAt: { type: Date, index: true },
   expiresAt: { type: Date, index: true },
-  targetAudience: { type: String, enum: Object.values(ANNOUNCEMENT_AUDIENCE), default: ANNOUNCEMENT_AUDIENCE.ALL },
+  targetAudience: {
+    type: String,
+    enum: Object.values(ANNOUNCEMENT_AUDIENCE),
+    default: ANNOUNCEMENT_AUDIENCE.ALL,
+  },
   targetIds: { type: [String], default: [] },
-  priority: { type: String, enum: Object.values(ANNOUNCEMENT_PRIORITY), default: ANNOUNCEMENT_PRIORITY.NORMAL },
+  secondaryTargetIds: { type: [String], default: [] },
+  priority: {
+    type: String,
+    enum: Object.values(ANNOUNCEMENT_PRIORITY),
+    default: ANNOUNCEMENT_PRIORITY.NORMAL,
+  },
   status: { type: String, enum: Object.values(ENTITY_STATUS), default: ENTITY_STATUS.ACTIVE },
   isPinned: { type: Boolean, default: false, index: true },
   isEmergency: { type: Boolean, default: false, index: true },
@@ -230,9 +256,18 @@ export const notificationModel = defineDomainModel<NotificationDocument>(
   notificationFields,
   {
     indexes: [
-      { fields: { companyId: 1, recipientId: 1, status: 1, createdAt: -1 }, options: { name: 'idx_notifications_company_recipient_status_date' } },
-      { fields: { companyId: 1, recipientId: 1, readAt: 1 }, options: { name: 'idx_notifications_company_recipient_read' } },
-      { fields: { companyId: 1, recipientId: 1, category: 1 }, options: { name: 'idx_notifications_company_recipient_category' } },
+      {
+        fields: { companyId: 1, recipientId: 1, status: 1, createdAt: -1 },
+        options: { name: 'idx_notifications_company_recipient_status_date' },
+      },
+      {
+        fields: { companyId: 1, recipientId: 1, readAt: 1 },
+        options: { name: 'idx_notifications_company_recipient_read' },
+      },
+      {
+        fields: { companyId: 1, recipientId: 1, category: 1 },
+        options: { name: 'idx_notifications_company_recipient_category' },
+      },
     ],
   },
 );
@@ -243,9 +278,18 @@ export const conversationModel = defineDomainModel<ConversationDocument>(
   conversationFields,
   {
     indexes: [
-      { fields: { companyId: 1, participantIds: 1, lastMessageAt: -1 }, options: { name: 'idx_conversations_company_participants_date' } },
-      { fields: { companyId: 1, type: 1, channelSubtype: 1 }, options: { name: 'idx_conversations_company_type_subtype' } },
-      { fields: { companyId: 1, relatedEntityId: 1 }, options: { name: 'idx_conversations_company_related_entity', sparse: true } },
+      {
+        fields: { companyId: 1, participantIds: 1, lastMessageAt: -1 },
+        options: { name: 'idx_conversations_company_participants_date' },
+      },
+      {
+        fields: { companyId: 1, type: 1, channelSubtype: 1 },
+        options: { name: 'idx_conversations_company_type_subtype' },
+      },
+      {
+        fields: { companyId: 1, relatedEntityId: 1 },
+        options: { name: 'idx_conversations_company_related_entity', sparse: true },
+      },
     ],
   },
 );
@@ -257,7 +301,10 @@ export const messageModel = defineDomainModel<MessageDocument>(
   {
     searchFields: ['content'],
     indexes: [
-      { fields: { companyId: 1, conversationId: 1, createdAt: -1 }, options: { name: 'idx_messages_company_conversation_date' } },
+      {
+        fields: { companyId: 1, conversationId: 1, createdAt: -1 },
+        options: { name: 'idx_messages_company_conversation_date' },
+      },
     ],
   },
 );
@@ -268,7 +315,10 @@ export const messageAttachmentModel = defineDomainModel<MessageAttachmentDocumen
   messageAttachmentFields,
   {
     indexes: [
-      { fields: { companyId: 1, messageId: 1 }, options: { name: 'idx_message_attachments_company_message' } },
+      {
+        fields: { companyId: 1, messageId: 1 },
+        options: { name: 'idx_message_attachments_company_message' },
+      },
     ],
   },
 );
@@ -279,8 +329,14 @@ export const messageReceiptModel = defineDomainModel<MessageReceiptDocument>(
   messageReceiptFields,
   {
     indexes: [
-      { fields: { companyId: 1, messageId: 1, recipientId: 1 }, options: { unique: true, name: 'uq_message_receipts' } },
-      { fields: { companyId: 1, recipientId: 1, readAt: 1 }, options: { name: 'idx_message_receipts_recipient_read' } },
+      {
+        fields: { companyId: 1, messageId: 1, recipientId: 1 },
+        options: { unique: true, name: 'uq_message_receipts' },
+      },
+      {
+        fields: { companyId: 1, recipientId: 1, readAt: 1 },
+        options: { name: 'idx_message_receipts_recipient_read' },
+      },
     ],
   },
 );
@@ -291,8 +347,14 @@ export const messageUserStateModel = defineDomainModel<MessageUserStateDocument>
   messageUserStateFields,
   {
     indexes: [
-      { fields: { companyId: 1, messageId: 1, userId: 1 }, options: { unique: true, name: 'uq_message_user_states' } },
-      { fields: { companyId: 1, userId: 1, isStarred: 1 }, options: { name: 'idx_message_user_states_starred' } },
+      {
+        fields: { companyId: 1, messageId: 1, userId: 1 },
+        options: { unique: true, name: 'uq_message_user_states' },
+      },
+      {
+        fields: { companyId: 1, userId: 1, isStarred: 1 },
+        options: { name: 'idx_message_user_states_starred' },
+      },
     ],
   },
 );
@@ -304,10 +366,22 @@ export const announcementModel = defineDomainModel<AnnouncementDocument>(
   {
     searchFields: ['title', 'content'],
     indexes: [
-      { fields: { companyId: 1, status: 1, publishedAt: -1 }, options: { name: 'idx_announcements_company_status_published' } },
-      { fields: { companyId: 1, expiresAt: 1 }, options: { name: 'idx_announcements_company_expires', sparse: true } },
-      { fields: { companyId: 1, scheduledAt: 1 }, options: { name: 'idx_announcements_company_scheduled', sparse: true } },
-      { fields: { companyId: 1, isEmergency: 1 }, options: { name: 'idx_announcements_company_emergency' } },
+      {
+        fields: { companyId: 1, status: 1, publishedAt: -1 },
+        options: { name: 'idx_announcements_company_status_published' },
+      },
+      {
+        fields: { companyId: 1, expiresAt: 1 },
+        options: { name: 'idx_announcements_company_expires', sparse: true },
+      },
+      {
+        fields: { companyId: 1, scheduledAt: 1 },
+        options: { name: 'idx_announcements_company_scheduled', sparse: true },
+      },
+      {
+        fields: { companyId: 1, isEmergency: 1 },
+        options: { name: 'idx_announcements_company_emergency' },
+      },
     ],
   },
 );

@@ -1,13 +1,11 @@
 import type { ClientSession } from 'mongoose';
 import { CompanyRepository } from '@domain/company/company.schema.js';
-import { EmployeeRepository, EMPLOYMENT_TYPE } from '@domain/employee/employee.schemas.js';
 import {
   BranchRepository,
   DepartmentRepository,
   DesignationRepository,
 } from '@domain/organization/organization.schemas.js';
 import {
-  EmployeeRoleRepository,
   PermissionGroupRepository,
   PermissionRepository,
   RolePermissionRepository,
@@ -17,13 +15,8 @@ import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
 import { runInTransaction } from '@infrastructure/database/transaction.helper.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
 import { AuditAction } from '@shared/enums/index.js';
-import {
-  AUTH_AUDIT_WHERE,
-  AUTH_ENTITY_TYPES,
-} from '@modules/auth/constants/auth.constants.js';
-import {
-  DIRECTOR_PERMISSION_CODES,
-} from '@modules/auth/constants/permission-catalog.constants.js';
+import { AUTH_AUDIT_WHERE, AUTH_ENTITY_TYPES } from '@modules/auth/constants/auth.constants.js';
+import { DIRECTOR_PERMISSION_CODES } from '@modules/auth/constants/permission-catalog.constants.js';
 import {
   BOOTSTRAP_ORG_DEFAULTS,
   DIRECTOR_ROLE,
@@ -127,11 +120,15 @@ export const BootstrapService = {
       );
 
       const permissionGroupMap = new Map<string, string>();
-      const uniqueGroups = [...new Set(ENTERPRISE_PERMISSION_CATALOG.map((entry) => entry.groupSlug))];
+      const uniqueGroups = [
+        ...new Set(ENTERPRISE_PERMISSION_CATALOG.map((entry) => entry.groupSlug)),
+      ];
 
       const permissionGroupDocs = uniqueGroups.map((groupSlug) => {
         const groupId = generateUuid();
-        const catalogEntry = ENTERPRISE_PERMISSION_CATALOG.find((entry) => entry.groupSlug === groupSlug);
+        const catalogEntry = ENTERPRISE_PERMISSION_CATALOG.find(
+          (entry) => entry.groupSlug === groupSlug,
+        );
         permissionGroupMap.set(groupSlug, groupId);
 
         return {
@@ -239,28 +236,6 @@ export const BootstrapService = {
 
       await RolePermissionRepository.bulkInsert(directorRolePermissions, { companyId, session });
 
-      const adminEmployeeId = generateUuid();
-      await EmployeeRepository.create(
-        {
-          id: adminEmployeeId,
-          companyId,
-          employeeNumber: BOOTSTRAP_ORG_DEFAULTS.EMPLOYEE_NUMBER,
-          firstName: input.admin.firstName,
-          lastName: input.admin.lastName,
-          email: input.admin.email,
-          phone: input.admin.phone,
-          departmentId,
-          designationId,
-          branchId,
-          joinedAt: new Date(),
-          employmentType: EMPLOYMENT_TYPE.FULL_TIME,
-          status: ENTITY_STATUS.ACTIVE,
-          createdBy: SYSTEM_ACTOR,
-          updatedBy: SYSTEM_ACTOR,
-        },
-        { companyId, session },
-      );
-
       const passwordHash = await PasswordService.hashPassword(input.admin.password);
       const adminUserId = generateUuid();
       await UserRepository.create(
@@ -269,7 +244,7 @@ export const BootstrapService = {
           companyId,
           email: input.admin.email,
           passwordHash,
-          employeeId: adminEmployeeId,
+          roleIds: [superAdminRoleId],
           tokenVersion: 0,
           failedLoginAttempts: 0,
           lockedUntil: null,
@@ -277,26 +252,6 @@ export const BootstrapService = {
           passwordChangedAt: new Date(),
           mustChangePassword: false,
           status: USER_STATUS.ACTIVE,
-          createdBy: SYSTEM_ACTOR,
-          updatedBy: SYSTEM_ACTOR,
-        },
-        { companyId, session },
-      );
-
-      await EmployeeRepository.update(
-        adminEmployeeId,
-        { $set: { userId: adminUserId } },
-        { companyId, session },
-      );
-
-      await EmployeeRoleRepository.create(
-        {
-          id: generateUuid(),
-          companyId,
-          employeeId: adminEmployeeId,
-          roleId: superAdminRoleId,
-          assignedBy: SYSTEM_ACTOR,
-          assignedAt: new Date(),
           createdBy: SYSTEM_ACTOR,
           updatedBy: SYSTEM_ACTOR,
         },
@@ -322,7 +277,6 @@ export const BootstrapService = {
         companyCode: company.code,
         branchId,
         adminUserId,
-        adminEmployeeId,
         superAdminRoleId,
         message: 'System initialized successfully',
       };

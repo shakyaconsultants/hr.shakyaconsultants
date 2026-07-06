@@ -1,7 +1,14 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginationMeta } from '@/shared/types/api.types';
-import type { ListQueryParams, MasterDataRecord } from '@/features/organization/api/organization.api';
-import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginationMeta,
+} from '@/shared/types/api.types';
+import type {
+  ListQueryParams,
+  MasterDataRecord,
+} from '@/features/organization/api/organization.api';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 
 export interface DesignationRecord extends MasterDataRecord {
   description?: string;
@@ -38,17 +45,12 @@ export interface DesignationListParams extends ListQueryParams {
 export async function listDesignations(
   params: DesignationListParams = {},
 ): Promise<{ items: DesignationRecord[]; pagination: PaginationMeta }> {
-  const { data } = await apiClient.get<ApiSuccessResponse<DesignationRecord[]> & { pagination?: PaginationMeta }>(
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<DesignationRecord>>(
     '/api/v1/organization/entities/designation',
     { params },
   );
 
-  const normalized = normalizePaginatedItems(data.data, params.pageSize ?? 20);
-
-  return {
-    items: normalized.items,
-    pagination: data.pagination ?? normalized.pagination,
-  };
+  return unwrapApiPaginated<DesignationRecord>(data, params.pageSize ?? 20);
 }
 
 export async function fetchDesignationDetail(id: string): Promise<DesignationDetail> {

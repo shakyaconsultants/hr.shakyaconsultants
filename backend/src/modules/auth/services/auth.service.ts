@@ -53,6 +53,7 @@ import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import type { UserDocument } from '@domain/auth/user.schema.js';
 import { AuthPerfTimer } from '@modules/auth/utils/auth-perf.util.js';
+import { SystemAdminProfileService } from '@modules/auth/services/system-admin-profile.service.js';
 import { logger } from '@logging/winston.logger.js';
 
 export interface AuthRequestMeta {
@@ -124,7 +125,15 @@ export const AuthService = {
       );
     }
 
-    const roleIds = await this.getRoleIdsForUser(company.id, user.employeeId);
+    let activeUser = user;
+    if (await SystemAdminProfileService.isLegacyEmployeeLinkedAdmin(company.id, user)) {
+      activeUser = await SystemAdminProfileService.migrateLegacyEmployeeLinkedAdmin(
+        company.id,
+        user,
+      );
+    }
+
+    const roleIds = await this.resolveRoleIdsForUser(company.id, activeUser);
     perf.mark('role_lookup');
     const sessionId = generateUuid();
     const accessJti = generateUuid();
@@ -141,7 +150,7 @@ export const AuthService = {
 
     const session = await SessionService.createSession({
       sessionId,
-      userId: user.id,
+      userId: activeUser.id,
       companyId: company.id,
       deviceId,
       deviceName: input.deviceName,
@@ -154,20 +163,20 @@ export const AuthService = {
     perf.mark('session_create');
 
     const accessToken = TokenService.signAccessToken({
-      userId: user.id,
+      userId: activeUser.id,
       companyId: company.id,
       sessionId: session.sessionId,
-      tokenVersion: user.tokenVersion,
+      tokenVersion: activeUser.tokenVersion,
       roleIds,
       jti: accessJti,
     });
     perf.mark('token_generation');
 
     await Promise.all([
-      AuthUserRepository.resetFailedAttempts(user.id, company.id),
-      AuthUserRepository.updateLastLogin(user.id, company.id),
+      AuthUserRepository.resetFailedAttempts(activeUser.id, company.id),
+      AuthUserRepository.updateLastLogin(activeUser.id, company.id),
       LoginHistoryService.recordLoginAttempt({
-        userId: user.id,
+        userId: activeUser.id,
         companyId: company.id,
         ipAddress: meta.ipAddress,
         userAgent: meta.userAgent,
@@ -193,7 +202,7 @@ export const AuthService = {
     perf.mark('audit_log');
 
     const response = toLoginResponse({
-      user: toAuthUserResponse(user),
+      user: toAuthUserResponse(activeUser),
       accessToken,
       refreshToken,
       expiresIn: getJwtConfig().accessExpiresIn,
@@ -254,7 +263,7 @@ export const AuthService = {
       throw new AuthenticationError('Invalid refresh token', ERROR_CODES.AUTH_TOKEN_INVALID);
     }
 
-    const roleIds = await this.getRoleIdsForUser(payload.companyId, user.employeeId);
+    const roleIds = await this.resolveRoleIdsForUser(payload.companyId, user);
     const newAccessJti = generateUuid();
     const newRefreshJti = generateUuid();
 
@@ -492,7 +501,9 @@ export const AuthService = {
         CompanyRepository.findById(user.companyId, { companyId: user.companyId }),
         user.employeeId
           ? PermissionEngineService.getPermissionsForUser(user.companyId, user.employeeId)
-          : Promise.resolve([] as string[]),
+          : dbUser.roleIds.length
+            ? EffectivePermissionService.calculateForRoleIds(user.companyId, dbUser.roleIds)
+            : Promise.resolve([] as string[]),
         user.employeeId
           ? EmployeeRepository.findById(user.employeeId, { companyId: user.companyId })
           : Promise.resolve(null),
@@ -511,14 +522,16 @@ export const AuthService = {
     const roleIdsForLookup =
       user.roleIds.length > 0
         ? user.roleIds
-        : user.employeeId
-          ? (
-              await EmployeeRoleRepository.findMany(
-                { employeeId: user.employeeId, effectiveTo: null },
-                { companyId: user.companyId },
-              )
-            ).map((entry) => entry.roleId)
-          : [];
+        : dbUser.roleIds.length
+          ? dbUser.roleIds
+          : user.employeeId
+            ? (
+                await EmployeeRoleRepository.findMany(
+                  { employeeId: user.employeeId, effectiveTo: null },
+                  { companyId: user.companyId },
+                )
+              ).map((entry) => entry.roleId)
+            : [];
 
     let resolvedRoleIds = roleIdsForLookup;
     if (user.employeeId && resolvedRoleIds.length === 0) {
@@ -631,6 +644,22 @@ export const AuthService = {
     };
   },
 
+  async resolveRoleIdsForUser(
+    companyId: string,
+    user: Pick<UserDocument, 'employeeId' | 'roleIds'>,
+  ): Promise<string[]> {
+    if (user.employeeId) {
+      const employeeRoles = await EmployeeRoleRepository.findMany(
+        { employeeId: user.employeeId, effectiveTo: null },
+        { companyId },
+      );
+      return employeeRoles.map((entry) => entry.roleId);
+    }
+
+    return user.roleIds;
+  },
+
+  /** @deprecated Use resolveRoleIdsForUser */
   async getRoleIdsForUser(companyId: string, employeeId?: string): Promise<string[]> {
     if (!employeeId) {
       return [];

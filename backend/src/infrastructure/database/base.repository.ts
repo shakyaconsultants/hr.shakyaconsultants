@@ -1,8 +1,4 @@
-import type {
-  ClientSession,
-  Model,
-  PipelineStage,
-} from 'mongoose';
+import type { ClientSession, Model, PipelineStage } from 'mongoose';
 import type { BaseDocument } from '@infrastructure/database/types/base-document.types.js';
 import type {
   DomainQueryFilter,
@@ -131,6 +127,22 @@ export class BaseRepository<T extends BaseDocument> {
       .exec();
   }
 
+  async hardDelete(id: string, options?: RepositoryQueryOptions): Promise<boolean> {
+    const result = await this.model
+      .deleteOne({ id })
+      .setOptions(this.buildQueryOptions({ ...options, includeDeleted: true }))
+      .exec();
+    return result.deletedCount > 0;
+  }
+
+  async deleteMany(filter: DomainQueryFilter, options?: RepositoryQueryOptions): Promise<number> {
+    const result = await this.model
+      .deleteMany(filter)
+      .setOptions(this.buildQueryOptions({ ...options, includeDeleted: true }))
+      .exec();
+    return result.deletedCount;
+  }
+
   async exists(filter: DomainQueryFilter, options?: RepositoryQueryOptions): Promise<boolean> {
     const count = await this.model
       .countDocuments(filter)
@@ -140,10 +152,7 @@ export class BaseRepository<T extends BaseDocument> {
   }
 
   async count(filter: DomainQueryFilter, options?: RepositoryQueryOptions): Promise<number> {
-    return this.model
-      .countDocuments(filter)
-      .setOptions(this.buildQueryOptions(options))
-      .exec();
+    return this.model.countDocuments(filter).setOptions(this.buildQueryOptions(options)).exec();
   }
 
   async aggregate<R = unknown>(

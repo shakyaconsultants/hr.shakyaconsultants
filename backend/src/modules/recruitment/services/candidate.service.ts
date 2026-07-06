@@ -13,8 +13,14 @@ import type { PaginatedResult } from '@shared/types/api.types.js';
 import { RecruitmentAuditService } from '@modules/recruitment/services/recruitment-audit.service.js';
 import { RecruitmentTimelineService } from '@modules/recruitment/services/recruitment-timeline.service.js';
 import { RecruitmentActivityService } from '@modules/recruitment/services/recruitment-activity.service.js';
-import { CandidatePipelineService } from '@modules/recruitment/services/candidate-pipeline.service.js';
-import type { CandidateListQuery, RecruitmentActorContext } from '@modules/recruitment/types/recruitment.types.js';
+import {
+  CandidatePipelineService,
+  LEGACY_STAGE_TO_SIMPLIFIED,
+} from '@modules/recruitment/services/candidate-pipeline.service.js';
+import type {
+  CandidateListQuery,
+  RecruitmentActorContext,
+} from '@modules/recruitment/types/recruitment.types.js';
 
 const SEARCH_FIELDS = ['firstName', 'lastName', 'email', 'phone'];
 
@@ -24,7 +30,25 @@ function buildFilter(query: CandidateListQuery): DomainQueryFilter {
     filters.push(buildExactFilter({ isArchived: false }));
   }
   if (query.pipelineStage) {
-    filters.push(buildExactFilter({ pipelineStage: query.pipelineStage }));
+    const matchingSlugs = [
+      query.pipelineStage,
+      ...Object.entries(LEGACY_STAGE_TO_SIMPLIFIED)
+        .filter(([, simplified]) => simplified === query.pipelineStage)
+        .map(([slug]) => slug),
+    ];
+    const uniqueSlugs = [...new Set(matchingSlugs)];
+
+    if (query.pipelineStage === PIPELINE_STAGE.LEAD) {
+      filters.push({
+        $or: [
+          { pipelineStage: { $in: uniqueSlugs } },
+          { pipelineStage: { $exists: false } },
+          { pipelineStage: null },
+        ],
+      });
+    } else {
+      filters.push({ pipelineStage: { $in: uniqueSlugs } });
+    }
   }
   if (query.designationId) {
     filters.push(buildExactFilter({ designationId: query.designationId }));
@@ -42,7 +66,10 @@ function buildFilter(query: CandidateListQuery): DomainQueryFilter {
 }
 
 export const CandidateService = {
-  async list(companyId: string, query: CandidateListQuery): Promise<PaginatedResult<CandidateLeadDocument>> {
+  async list(
+    companyId: string,
+    query: CandidateListQuery,
+  ): Promise<PaginatedResult<CandidateLeadDocument>> {
     return CandidateLeadRepository.paginate(buildFilter(query), {
       page: query.page,
       pageSize: query.pageSize,
@@ -60,13 +87,21 @@ export const CandidateService = {
     return candidate;
   },
 
-  async assertNoDuplicate(companyId: string, email: string, phone?: string, excludeId?: string): Promise<void> {
+  async assertNoDuplicate(
+    companyId: string,
+    email: string,
+    phone?: string,
+    excludeId?: string,
+  ): Promise<void> {
     const byEmail = await CandidateLeadRepository.findOne(
       { email: email.toLowerCase(), isArchived: false, mergedIntoId: null },
       { companyId },
     );
     if (byEmail && byEmail.id !== excludeId && !byEmail.employeeId) {
-      throw new ConflictError('Active candidate with this email already exists', ERROR_CODES.CONFLICT);
+      throw new ConflictError(
+        'Active candidate with this email already exists',
+        ERROR_CODES.CONFLICT,
+      );
     }
     if (phone?.trim()) {
       const byPhone = await CandidateLeadRepository.findOne(
@@ -74,12 +109,18 @@ export const CandidateService = {
         { companyId },
       );
       if (byPhone && byPhone.id !== excludeId && !byPhone.employeeId) {
-        throw new ConflictError('Active candidate with this phone already exists', ERROR_CODES.CONFLICT);
+        throw new ConflictError(
+          'Active candidate with this phone already exists',
+          ERROR_CODES.CONFLICT,
+        );
       }
     }
   },
 
-  async create(context: RecruitmentActorContext, payload: Record<string, unknown>): Promise<CandidateLeadDocument> {
+  async create(
+    context: RecruitmentActorContext,
+    payload: Record<string, unknown>,
+  ): Promise<CandidateLeadDocument> {
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : '';
     const phone = typeof payload.phone === 'string' ? payload.phone : undefined;
     await this.assertNoDuplicate(context.companyId, email, phone);
@@ -90,10 +131,10 @@ export const CandidateService = {
         id,
         companyId: context.companyId,
         email,
-        pipelineStage: PIPELINE_STAGE.LEAD,
         isArchived: false,
         tags: [],
         ...payload,
+        pipelineStage: PIPELINE_STAGE.LEAD,
         createdBy: context.userId,
         updatedBy: context.userId,
       },
@@ -127,13 +168,26 @@ export const CandidateService = {
     return candidate;
   },
 
-  async update(context: RecruitmentActorContext, id: string, payload: Record<string, unknown>): Promise<CandidateLeadDocument> {
+  async update(
+    context: RecruitmentActorContext,
+    id: string,
+    payload: Record<string, unknown>,
+  ): Promise<CandidateLeadDocument> {
     const before = await this.getById(context.companyId, id);
     if (typeof payload.email === 'string') {
-      await this.assertNoDuplicate(context.companyId, payload.email, typeof payload.phone === 'string' ? payload.phone : undefined, id);
+      await this.assertNoDuplicate(
+        context.companyId,
+        payload.email,
+        typeof payload.phone === 'string' ? payload.phone : undefined,
+        id,
+      );
     }
 
-    const updated = await CandidateLeadRepository.update(id, { ...payload, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await CandidateLeadRepository.update(
+      id,
+      { ...payload, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
     if (!updated) {
       throw new NotFoundError('Candidate not found', ERROR_CODES.NOT_FOUND);
     }
@@ -164,23 +218,59 @@ export const CandidateService = {
 
   async archive(context: RecruitmentActorContext, id: string) {
     const before = await this.getById(context.companyId, id);
-    const updated = await CandidateLeadRepository.update(id, { isArchived: true, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await CandidateLeadRepository.update(
+      id,
+      { isArchived: true, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
     if (!updated) {
       throw new NotFoundError('Candidate not found', ERROR_CODES.NOT_FOUND);
     }
-    await RecruitmentTimelineService.record(context, { candidateLeadId: id, eventType: RecruitmentTimelineService.EVENT.ARCHIVED, title: 'Candidate archived' });
-    await RecruitmentAuditService.log({ companyId: context.companyId, userId: context.userId, entityType: 'candidate', entityId: id, action: 'archive', before: RecruitmentAuditService.toRecord(before), after: RecruitmentAuditService.toRecord(updated), ip: context.ip, userAgent: context.userAgent });
+    await RecruitmentTimelineService.record(context, {
+      candidateLeadId: id,
+      eventType: RecruitmentTimelineService.EVENT.ARCHIVED,
+      title: 'Candidate archived',
+    });
+    await RecruitmentAuditService.log({
+      companyId: context.companyId,
+      userId: context.userId,
+      entityType: 'candidate',
+      entityId: id,
+      action: 'archive',
+      before: RecruitmentAuditService.toRecord(before),
+      after: RecruitmentAuditService.toRecord(updated),
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
     return updated;
   },
 
   async restore(context: RecruitmentActorContext, id: string) {
     const before = await this.getById(context.companyId, id);
-    const updated = await CandidateLeadRepository.update(id, { isArchived: false, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await CandidateLeadRepository.update(
+      id,
+      { isArchived: false, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
     if (!updated) {
       throw new NotFoundError('Candidate not found', ERROR_CODES.NOT_FOUND);
     }
-    await RecruitmentTimelineService.record(context, { candidateLeadId: id, eventType: RecruitmentTimelineService.EVENT.RESTORED, title: 'Candidate restored' });
-    await RecruitmentAuditService.log({ companyId: context.companyId, userId: context.userId, entityType: 'candidate', entityId: id, action: 'restore', before: RecruitmentAuditService.toRecord(before), after: RecruitmentAuditService.toRecord(updated), ip: context.ip, userAgent: context.userAgent });
+    await RecruitmentTimelineService.record(context, {
+      candidateLeadId: id,
+      eventType: RecruitmentTimelineService.EVENT.RESTORED,
+      title: 'Candidate restored',
+    });
+    await RecruitmentAuditService.log({
+      companyId: context.companyId,
+      userId: context.userId,
+      entityType: 'candidate',
+      entityId: id,
+      action: 'restore',
+      before: RecruitmentAuditService.toRecord(before),
+      after: RecruitmentAuditService.toRecord(updated),
+      ip: context.ip,
+      userAgent: context.userAgent,
+    });
     return updated;
   },
 
@@ -218,17 +308,33 @@ export const CandidateService = {
     return primary;
   },
 
-  async uploadResume(context: RecruitmentActorContext, candidateLeadId: string, file: { buffer: Buffer; filename: string; mimeType: string }) {
+  async uploadResume(
+    context: RecruitmentActorContext,
+    candidateLeadId: string,
+    file: { buffer: Buffer; filename: string; mimeType: string },
+  ) {
     await this.getById(context.companyId, candidateLeadId);
 
-    const existing = await ResumeMetadataRepository.findMany({ candidateLeadId, isLatest: true }, { companyId: context.companyId });
+    const existing = await ResumeMetadataRepository.findMany(
+      { candidateLeadId, isLatest: true },
+      { companyId: context.companyId },
+    );
     for (const resume of existing) {
-      await ResumeMetadataRepository.update(resume.id, { isLatest: false, updatedBy: context.userId }, { companyId: context.companyId });
+      await ResumeMetadataRepository.update(
+        resume.id,
+        { isLatest: false, updatedBy: context.userId },
+        { companyId: context.companyId },
+      );
     }
 
     const nextVersion = existing.length > 0 ? Math.max(...existing.map((r) => r.version)) + 1 : 1;
     const folder = `recruitment/candidates/${candidateLeadId}/resumes`;
-    const upload = await UploadService.uploadDocument({ buffer: file.buffer, folder, filename: file.filename, mimeType: file.mimeType });
+    const upload = await UploadService.uploadDocument({
+      buffer: file.buffer,
+      folder,
+      filename: file.filename,
+      mimeType: file.mimeType,
+    });
 
     const id = generateUuid();
     const resume = await ResumeMetadataRepository.create(
@@ -282,16 +388,28 @@ export const CandidateService = {
     return ResumeMetadataRepository.findMany({ candidateLeadId }, { companyId });
   },
 
-  async movePipelineStage(context: RecruitmentActorContext, id: string, toStage: string, reason?: string) {
+  async movePipelineStage(
+    context: RecruitmentActorContext,
+    id: string,
+    toStage: string,
+    reason?: string,
+  ) {
     return CandidatePipelineService.transition(context, id, toStage, reason);
   },
 
   exportToCsv(candidates: CandidateLeadDocument[]): string {
-    const cols = ['id', 'firstName', 'lastName', 'email', 'phone', 'pipelineStage', 'designationId', 'departmentId'] as const;
+    const cols = [
+      'id',
+      'firstName',
+      'lastName',
+      'email',
+      'phone',
+      'pipelineStage',
+      'designationId',
+      'departmentId',
+    ] as const;
     const header = cols.join(',');
-    const rows = candidates.map((c) =>
-      cols.map((col) => csvCell(c[col])).join(','),
-    );
+    const rows = candidates.map((c) => cols.map((col) => csvCell(c[col])).join(','));
     return [header, ...rows].join('\n');
   },
 };

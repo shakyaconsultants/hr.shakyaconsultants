@@ -3,6 +3,7 @@ import {
   CONVERSATION_TYPE,
 } from '@domain/communication/communication.schemas.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
+import { BROADCAST_PERMISSIONS } from '@modules/communication/constants/communication-permissions.constants.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
@@ -16,7 +17,10 @@ interface DirectConversationQuery {
 
 export const DirectMessageService = {
   async list(context: CommunicationActorContext, query: DirectConversationQuery) {
-    const actorEmployeeId = context.employeeId ?? (context.isSuperAdmin ? context.userId : undefined);
+    const permissions = context.permissions ?? [];
+    const canUseUserId =
+      context.isSuperAdmin || permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
+    const actorEmployeeId = context.employeeId ?? (canUseUserId ? context.userId : undefined);
     if (!actorEmployeeId) {
       return { items: [], total: 0, page: query.page ?? 1, pageSize: query.pageSize ?? 20 };
     }
@@ -47,7 +51,10 @@ export const DirectMessageService = {
   },
 
   async findOrCreate(context: CommunicationActorContext, targetEmployeeId: string) {
-    const actorEmployeeId = context.employeeId ?? (context.isSuperAdmin ? context.userId : undefined);
+    const permissions = context.permissions ?? [];
+    const canUseUserId =
+      context.isSuperAdmin || permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
+    const actorEmployeeId = context.employeeId ?? (canUseUserId ? context.userId : undefined);
     if (!actorEmployeeId) {
       throw new NotFoundError('Employee profile required', ERROR_CODES.NOT_FOUND);
     }
@@ -56,7 +63,9 @@ export const DirectMessageService = {
       throw new NotFoundError('Cannot start conversation with yourself', ERROR_CODES.NOT_FOUND);
     }
 
-    const target = await EmployeeRepository.findById(targetEmployeeId, { companyId: context.companyId });
+    const target = await EmployeeRepository.findById(targetEmployeeId, {
+      companyId: context.companyId,
+    });
     if (!target) {
       throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
     }

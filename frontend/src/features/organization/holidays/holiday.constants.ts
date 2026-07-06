@@ -30,6 +30,22 @@ export const RECURRENCE_OPTIONS = [
   { value: 'monthly', label: 'Monthly (same day)' },
 ] as const;
 
+export const HOLIDAY_SCHEDULE_MODES = [
+  { value: 'once', label: 'One-time only', description: 'Single date — does not repeat' },
+  {
+    value: 'every_week',
+    label: 'Every week',
+    description: 'Weekly off (e.g. every Saturday)',
+  },
+  {
+    value: 'every_year',
+    label: 'Every year',
+    description: 'Same calendar date each year (festivals, national days)',
+  },
+] as const;
+
+export type HolidayScheduleMode = (typeof HOLIDAY_SCHEDULE_MODES)[number]['value'];
+
 export function holidayTypeLabel(type?: string): string {
   return (
     HOLIDAY_TYPES.find((item) => item.value === type)?.label ??

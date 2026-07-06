@@ -1,7 +1,14 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginationMeta } from '@/shared/types/api.types';
-import type { ListQueryParams, MasterDataRecord } from '@/features/organization/api/organization.api';
-import { normalizePaginatedItems } from '@/shared/utils/api-normalize.util';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginationMeta,
+} from '@/shared/types/api.types';
+import type {
+  ListQueryParams,
+  MasterDataRecord,
+} from '@/features/organization/api/organization.api';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 import { assertValidEntityId } from '@/shared/utils/entity-id.util';
 
 export interface DepartmentRecord extends MasterDataRecord {
@@ -50,7 +57,9 @@ export interface DepartmentListParams extends ListQueryParams {
 }
 
 export async function fetchDepartmentStats(): Promise<DepartmentStats> {
-  const { data } = await apiClient.get<ApiSuccessResponse<DepartmentStats>>('/api/v1/organization/departments/stats');
+  const { data } = await apiClient.get<ApiSuccessResponse<DepartmentStats>>(
+    '/api/v1/organization/departments/stats',
+  );
   return data.data;
 }
 
@@ -65,14 +74,10 @@ export async function fetchDepartmentDetail(id: string): Promise<DepartmentDetai
 export async function listDepartments(
   params: DepartmentListParams = {},
 ): Promise<{ items: DepartmentRecord[]; pagination: PaginationMeta }> {
-  const { data } = await apiClient.get<
-    ApiSuccessResponse<DepartmentRecord[] | { items?: DepartmentRecord[] }> & { pagination?: PaginationMeta }
-  >('/api/v1/organization/entities/department', { params });
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<DepartmentRecord>>(
+    '/api/v1/organization/entities/department',
+    { params },
+  );
 
-  const normalized = normalizePaginatedItems(data.data, params.pageSize ?? 20);
-
-  return {
-    items: normalized.items,
-    pagination: data.pagination ?? normalized.pagination,
-  };
+  return unwrapApiPaginated<DepartmentRecord>(data, params.pageSize ?? 20);
 }

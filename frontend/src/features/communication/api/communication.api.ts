@@ -3,10 +3,28 @@ import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shar
 
 const COMMUNICATION_PREFIX = '/api/v1/communication';
 
-export type AnnouncementAudience = 'all' | 'department' | 'branch' | 'role' | 'team' | 'project';
+export type AnnouncementAudience =
+  | 'all'
+  | 'department'
+  | 'branch'
+  | 'role'
+  | 'department_role'
+  | 'team'
+  | 'project';
 export type AnnouncementPriority = 'low' | 'normal' | 'high' | 'urgent';
-export type ChannelSubtype = 'project' | 'department' | 'team' | 'announcement' | 'read_only' | 'private';
-export type CommunicationReportType = 'reach' | 'read_stats' | 'channel_activity' | 'user_activity' | 'unread_summary';
+export type ChannelSubtype =
+  | 'project'
+  | 'department'
+  | 'team'
+  | 'announcement'
+  | 'read_only'
+  | 'private';
+export type CommunicationReportType =
+  | 'reach'
+  | 'read_stats'
+  | 'channel_activity'
+  | 'user_activity'
+  | 'unread_summary';
 export type SearchType = 'messages' | 'announcements' | 'channels' | 'attachments' | 'mentions';
 
 export interface ListParams {
@@ -60,6 +78,7 @@ export interface Announcement {
   expiresAt?: string;
   targetAudience: AnnouncementAudience;
   targetIds?: string[];
+  secondaryTargetIds?: string[];
   priority: AnnouncementPriority;
   status: string;
   isPinned?: boolean;
@@ -223,6 +242,7 @@ export interface CreateAnnouncementPayload {
   content: string;
   targetAudience: AnnouncementAudience;
   targetIds?: string[];
+  secondaryTargetIds?: string[];
   priority?: AnnouncementPriority;
   scheduledAt?: string;
   expiresAt?: string;
@@ -274,7 +294,9 @@ interface ListResponse<T> {
   pageSize: number;
 }
 
-async function unwrapList<T>(response: { data: ApiSuccessResponse<T[] | ListResponse<T>> }): Promise<ListResponse<T>> {
+async function unwrapList<T>(response: {
+  data: ApiSuccessResponse<T[] | ListResponse<T>>;
+}): Promise<ListResponse<T>> {
   const { data } = response.data;
   if (Array.isArray(data)) {
     return { items: data, total: data.length, page: 1, pageSize: data.length };
@@ -293,17 +315,20 @@ async function unwrapPaginated<T>(response: {
     };
   }
   const items = Array.isArray(data) ? data : (data?.items ?? []);
-  const pagination = (response.data as any)?.pagination ?? data?.pagination ?? {
-    page: 1,
-    pageSize: 20,
-    total: items.length,
-    totalPages: 1,
-  };
+  const pagination = (response.data as any)?.pagination ??
+    data?.pagination ?? {
+      page: 1,
+      pageSize: 20,
+      total: items.length,
+      totalPages: 1,
+    };
   const grouped = (response.data as any)?.grouped ?? data?.grouped;
   return { items, pagination, grouped };
 }
 
-export async function fetchEnterpriseDashboard(params: DashboardQuery = {}): Promise<EnterpriseDashboard> {
+export async function fetchEnterpriseDashboard(
+  params: DashboardQuery = {},
+): Promise<EnterpriseDashboard> {
   const response = await apiClient.get<ApiSuccessResponse<EnterpriseDashboard>>(
     `${COMMUNICATION_PREFIX}/dashboard/enterprise`,
     { params },
@@ -311,7 +336,9 @@ export async function fetchEnterpriseDashboard(params: DashboardQuery = {}): Pro
   return unwrap(response);
 }
 
-export async function fetchManagerDashboard(params: DashboardQuery = {}): Promise<ManagerDashboard> {
+export async function fetchManagerDashboard(
+  params: DashboardQuery = {},
+): Promise<ManagerDashboard> {
   const response = await apiClient.get<ApiSuccessResponse<ManagerDashboard>>(
     `${COMMUNICATION_PREFIX}/dashboard/manager`,
     { params },
@@ -319,7 +346,9 @@ export async function fetchManagerDashboard(params: DashboardQuery = {}): Promis
   return unwrap(response);
 }
 
-export async function fetchWorkspaceDashboard(params: DashboardQuery = {}): Promise<WorkspaceDashboard> {
+export async function fetchWorkspaceDashboard(
+  params: DashboardQuery = {},
+): Promise<WorkspaceDashboard> {
   const response = await apiClient.get<ApiSuccessResponse<WorkspaceDashboard>>(
     `${COMMUNICATION_PREFIX}/dashboard/workspace`,
     { params },
@@ -328,11 +357,15 @@ export async function fetchWorkspaceDashboard(params: DashboardQuery = {}): Prom
 }
 
 export async function fetchCommunicationPolicies(): Promise<CommunicationPolicies> {
-  const response = await apiClient.get<ApiSuccessResponse<CommunicationPolicies>>(`${COMMUNICATION_PREFIX}/policies`);
+  const response = await apiClient.get<ApiSuccessResponse<CommunicationPolicies>>(
+    `${COMMUNICATION_PREFIX}/policies`,
+  );
   return unwrap(response);
 }
 
-export async function updateCommunicationPolicies(payload: Partial<CommunicationPolicies>): Promise<CommunicationPolicies> {
+export async function updateCommunicationPolicies(
+  payload: Partial<CommunicationPolicies>,
+): Promise<CommunicationPolicies> {
   const response = await apiClient.patch<ApiSuccessResponse<CommunicationPolicies>>(
     `${COMMUNICATION_PREFIX}/policies`,
     payload,
@@ -341,11 +374,15 @@ export async function updateCommunicationPolicies(payload: Partial<Communication
 }
 
 export async function fetchCommunicationSettings(): Promise<CommunicationSettings> {
-  const response = await apiClient.get<ApiSuccessResponse<CommunicationSettings>>(`${COMMUNICATION_PREFIX}/settings`);
+  const response = await apiClient.get<ApiSuccessResponse<CommunicationSettings>>(
+    `${COMMUNICATION_PREFIX}/settings`,
+  );
   return unwrap(response);
 }
 
-export async function updateCommunicationSettings(payload: Partial<CommunicationSettings>): Promise<CommunicationSettings> {
+export async function updateCommunicationSettings(
+  payload: Partial<CommunicationSettings>,
+): Promise<CommunicationSettings> {
   const response = await apiClient.patch<ApiSuccessResponse<CommunicationSettings>>(
     `${COMMUNICATION_PREFIX}/settings`,
     payload,
@@ -353,11 +390,12 @@ export async function updateCommunicationSettings(payload: Partial<Communication
   return unwrap(response);
 }
 
-export async function fetchAnnouncements(params: AnnouncementListParams = {}): Promise<ListResponse<Announcement>> {
-  const response = await apiClient.get<ApiSuccessResponse<Announcement[] | ListResponse<Announcement>>>(
-    `${COMMUNICATION_PREFIX}/announcements`,
-    { params },
-  );
+export async function fetchAnnouncements(
+  params: AnnouncementListParams = {},
+): Promise<ListResponse<Announcement>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<Announcement[] | ListResponse<Announcement>>
+  >(`${COMMUNICATION_PREFIX}/announcements`, { params });
   return unwrapList(response);
 }
 
@@ -368,7 +406,9 @@ export async function fetchAnnouncement(id: string): Promise<Announcement> {
   return unwrap(response);
 }
 
-export async function createAnnouncement(payload: CreateAnnouncementPayload): Promise<Announcement> {
+export async function createAnnouncement(
+  payload: CreateAnnouncementPayload,
+): Promise<Announcement> {
   const response = await apiClient.post<ApiSuccessResponse<Announcement>>(
     `${COMMUNICATION_PREFIX}/announcements`,
     payload,
@@ -376,7 +416,10 @@ export async function createAnnouncement(payload: CreateAnnouncementPayload): Pr
   return unwrap(response);
 }
 
-export async function updateAnnouncement(id: string, payload: UpdateAnnouncementPayload): Promise<Announcement> {
+export async function updateAnnouncement(
+  id: string,
+  payload: UpdateAnnouncementPayload,
+): Promise<Announcement> {
   const response = await apiClient.patch<ApiSuccessResponse<Announcement>>(
     `${COMMUNICATION_PREFIX}/announcements/${id}`,
     payload,
@@ -405,11 +448,12 @@ export async function fetchAnnouncementStats(id: string): Promise<AnnouncementSt
   return unwrap(response);
 }
 
-export async function fetchAnnouncementHistory(params: AnnouncementListParams = {}): Promise<ListResponse<Announcement>> {
-  const response = await apiClient.get<ApiSuccessResponse<Announcement[] | ListResponse<Announcement>>>(
-    `${COMMUNICATION_PREFIX}/announcements/history`,
-    { params },
-  );
+export async function fetchAnnouncementHistory(
+  params: AnnouncementListParams = {},
+): Promise<ListResponse<Announcement>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<Announcement[] | ListResponse<Announcement>>
+  >(`${COMMUNICATION_PREFIX}/announcements/history`, { params });
   return unwrapList(response);
 }
 
@@ -420,25 +464,34 @@ export async function acknowledgeAnnouncement(id: string): Promise<Record<string
   return unwrap(response);
 }
 
-export async function fetchChannels(params: ChannelListParams = {}): Promise<ListResponse<Conversation>> {
-  const response = await apiClient.get<ApiSuccessResponse<Conversation[] | ListResponse<Conversation>>>(
-    `${COMMUNICATION_PREFIX}/channels`,
-    { params },
-  );
+export async function fetchChannels(
+  params: ChannelListParams = {},
+): Promise<ListResponse<Conversation>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<Conversation[] | ListResponse<Conversation>>
+  >(`${COMMUNICATION_PREFIX}/channels`, { params });
   return unwrapList(response);
 }
 
 export async function fetchChannel(id: string): Promise<Conversation> {
-  const response = await apiClient.get<ApiSuccessResponse<Conversation>>(`${COMMUNICATION_PREFIX}/channels/${id}`);
+  const response = await apiClient.get<ApiSuccessResponse<Conversation>>(
+    `${COMMUNICATION_PREFIX}/channels/${id}`,
+  );
   return unwrap(response);
 }
 
 export async function createChannel(payload: CreateChannelPayload): Promise<Conversation> {
-  const response = await apiClient.post<ApiSuccessResponse<Conversation>>(`${COMMUNICATION_PREFIX}/channels`, payload);
+  const response = await apiClient.post<ApiSuccessResponse<Conversation>>(
+    `${COMMUNICATION_PREFIX}/channels`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updateChannel(id: string, payload: UpdateChannelPayload): Promise<Conversation> {
+export async function updateChannel(
+  id: string,
+  payload: UpdateChannelPayload,
+): Promise<Conversation> {
   const response = await apiClient.patch<ApiSuccessResponse<Conversation>>(
     `${COMMUNICATION_PREFIX}/channels/${id}`,
     payload,
@@ -453,18 +506,21 @@ export async function deleteChannel(id: string): Promise<{ id: string; deleted: 
   return unwrap(response);
 }
 
-export async function fetchChannelMembers(id: string): Promise<Array<{ id: string; name?: string }>> {
+export async function fetchChannelMembers(
+  id: string,
+): Promise<Array<{ id: string; name?: string }>> {
   const response = await apiClient.get<ApiSuccessResponse<Array<{ id: string; name?: string }>>>(
     `${COMMUNICATION_PREFIX}/channels/${id}/members`,
   );
   return unwrap(response);
 }
 
-export async function fetchDirectConversations(params: ListParams = {}): Promise<ListResponse<Conversation>> {
-  const response = await apiClient.get<ApiSuccessResponse<Conversation[] | ListResponse<Conversation>>>(
-    `${COMMUNICATION_PREFIX}/conversations/direct`,
-    { params },
-  );
+export async function fetchDirectConversations(
+  params: ListParams = {},
+): Promise<ListResponse<Conversation>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<Conversation[] | ListResponse<Conversation>>
+  >(`${COMMUNICATION_PREFIX}/conversations/direct`, { params });
   return unwrapList(response);
 }
 
@@ -472,10 +528,9 @@ export async function fetchEmployeeDirectConversations(
   employeeId: string,
   params: ListParams = {},
 ): Promise<ListResponse<Conversation>> {
-  const response = await apiClient.get<ApiSuccessResponse<Conversation[] | ListResponse<Conversation>>>(
-    `${COMMUNICATION_PREFIX}/employees/${employeeId}/conversations/direct`,
-    { params },
-  );
+  const response = await apiClient.get<
+    ApiSuccessResponse<Conversation[] | ListResponse<Conversation>>
+  >(`${COMMUNICATION_PREFIX}/employees/${employeeId}/conversations/direct`, { params });
   return unwrapList(response);
 }
 
@@ -487,7 +542,10 @@ export async function createDirectConversation(targetEmployeeId: string): Promis
   return unwrap(response);
 }
 
-export async function fetchMessages(conversationId: string, params: ListParams = {}): Promise<ListResponse<Message>> {
+export async function fetchMessages(
+  conversationId: string,
+  params: ListParams = {},
+): Promise<ListResponse<Message>> {
   const response = await apiClient.get<ApiSuccessResponse<Message[] | ListResponse<Message>>>(
     `${COMMUNICATION_PREFIX}/conversations/${conversationId}/messages`,
     { params },
@@ -495,7 +553,10 @@ export async function fetchMessages(conversationId: string, params: ListParams =
   return unwrapList(response);
 }
 
-export async function sendMessage(conversationId: string, payload: SendMessagePayload): Promise<Message> {
+export async function sendMessage(
+  conversationId: string,
+  payload: SendMessagePayload,
+): Promise<Message> {
   const response = await apiClient.post<ApiSuccessResponse<Message>>(
     `${COMMUNICATION_PREFIX}/conversations/${conversationId}/messages`,
     payload,
@@ -504,21 +565,29 @@ export async function sendMessage(conversationId: string, payload: SendMessagePa
 }
 
 export async function updateMessage(id: string, content: string): Promise<Message> {
-  const response = await apiClient.patch<ApiSuccessResponse<Message>>(`${COMMUNICATION_PREFIX}/messages/${id}`, {
-    content,
-  });
+  const response = await apiClient.patch<ApiSuccessResponse<Message>>(
+    `${COMMUNICATION_PREFIX}/messages/${id}`,
+    {
+      content,
+    },
+  );
   return unwrap(response);
 }
 
 export async function deleteMessage(id: string): Promise<Message> {
-  const response = await apiClient.delete<ApiSuccessResponse<Message>>(`${COMMUNICATION_PREFIX}/messages/${id}`);
+  const response = await apiClient.delete<ApiSuccessResponse<Message>>(
+    `${COMMUNICATION_PREFIX}/messages/${id}`,
+  );
   return unwrap(response);
 }
 
 export async function forwardMessage(id: string, targetConversationId: string): Promise<Message> {
-  const response = await apiClient.post<ApiSuccessResponse<Message>>(`${COMMUNICATION_PREFIX}/messages/${id}/forward`, {
-    targetConversationId,
-  });
+  const response = await apiClient.post<ApiSuccessResponse<Message>>(
+    `${COMMUNICATION_PREFIX}/messages/${id}/forward`,
+    {
+      targetConversationId,
+    },
+  );
   return unwrap(response);
 }
 
@@ -538,9 +607,14 @@ export async function markMessageRead(id: string): Promise<Record<string, unknow
 
 export async function fetchCommunicationNotifications(
   params: NotificationListParams = {},
-): Promise<PaginatedResult<NotificationRecord> & { grouped?: Record<string, NotificationRecord[]> }> {
+): Promise<
+  PaginatedResult<NotificationRecord> & { grouped?: Record<string, NotificationRecord[]> }
+> {
   const response = await apiClient.get<
-    ApiSuccessResponse<NotificationRecord[]> & { pagination?: PaginationMeta; grouped?: Record<string, NotificationRecord[]> }
+    ApiSuccessResponse<NotificationRecord[]> & {
+      pagination?: PaginationMeta;
+      grouped?: Record<string, NotificationRecord[]>;
+    }
   >(`${COMMUNICATION_PREFIX}/notifications`, { params });
   return unwrapPaginated(response);
 }
@@ -567,22 +641,30 @@ export async function archiveCommunicationNotification(id: string): Promise<Noti
 }
 
 export async function fetchInbox(params: ListParams = {}): Promise<InboxData> {
-  const response = await apiClient.get<ApiSuccessResponse<InboxData>>(`${COMMUNICATION_PREFIX}/inbox`, { params });
+  const response = await apiClient.get<ApiSuccessResponse<InboxData>>(
+    `${COMMUNICATION_PREFIX}/inbox`,
+    { params },
+  );
   return unwrap(response);
 }
 
 export async function searchCommunication(params: SearchParams): Promise<SearchResults> {
-  const response = await apiClient.get<ApiSuccessResponse<SearchResults>>(`${COMMUNICATION_PREFIX}/search`, {
-    params: {
-      q: params.q,
-      types: params.types,
-      limit: params.limit,
+  const response = await apiClient.get<ApiSuccessResponse<SearchResults>>(
+    `${COMMUNICATION_PREFIX}/search`,
+    {
+      params: {
+        q: params.q,
+        types: params.types,
+        limit: params.limit,
+      },
     },
-  });
+  );
   return unwrap(response);
 }
 
-export async function fetchCommunicationReport(params: ReportParams): Promise<Record<string, unknown>> {
+export async function fetchCommunicationReport(
+  params: ReportParams,
+): Promise<Record<string, unknown>> {
   const response = await apiClient.get<ApiSuccessResponse<Record<string, unknown>>>(
     `${COMMUNICATION_PREFIX}/reports`,
     { params },

@@ -1,3 +1,5 @@
+import type { PaginationMeta, PaginatedResult } from '@/shared/types/api.types';
+
 /** Safely coerce unknown API values to arrays. */
 export function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
@@ -24,37 +26,50 @@ export function normalizeKanbanPayload<TStage, TItem>(payload: {
   };
 }
 
-/** Normalize paginated API payloads that return `{ items, total, page, pageSize }` directly. */
-export function normalizePaginatedItems<T>(
-  payload:
-    | T[]
-    | {
-        items?: T[];
-        pagination?: { page: number; pageSize: number; total: number; totalPages: number };
-      }
-    | null
-    | undefined,
+/**
+ * Unwrap standard API success bodies where items live in `data` and totals in root `pagination`.
+ * Backend ResponseService.paginated uses: { success, data: T[], pagination: {...} }
+ */
+export function unwrapApiPaginated<T>(
+  body: { data?: T[] | PaginatedResult<T>; pagination?: PaginationMeta } | null | undefined,
   fallbackPageSize = 20,
-): {
-  items: T[];
-  pagination: { page: number; pageSize: number; total: number; totalPages: number };
-} {
-  if (Array.isArray(payload)) {
-    return {
-      items: payload,
-      pagination: { page: 1, pageSize: fallbackPageSize, total: payload.length, totalPages: 1 },
-    };
+): PaginatedResult<T> {
+  const raw = body?.data;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'items' in raw) {
+    return raw as PaginatedResult<T>;
   }
 
-  const items = asArray(payload?.items);
-  const total =
-    payload && 'pagination' in payload && payload.pagination?.total != null
-      ? payload.pagination.total
-      : items.length;
+  const items = asArray(raw as T[] | undefined);
+  const pagination = body?.pagination ?? {
+    page: 1,
+    pageSize: fallbackPageSize,
+    total: items.length,
+    totalPages: Math.max(1, Math.ceil(items.length / fallbackPageSize)),
+  };
+
+  return { items, pagination };
+}
+
+/** Normalize paginated API payloads that return `{ items, total, page, pageSize }` directly. */
+export function normalizePaginatedItems<T>(
+  payload: T[] | PaginatedResult<T> | null | undefined,
+  fallbackPageSize = 20,
+  rootPagination?: PaginationMeta,
+): PaginatedResult<T> {
+  if (rootPagination && Array.isArray(payload)) {
+    return { items: payload, pagination: rootPagination };
+  }
+
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && 'items' in payload) {
+    return payload as PaginatedResult<T>;
+  }
+
+  const items = asArray(payload as T[] | undefined);
+  const total = items.length;
 
   return {
     items,
-    pagination: payload?.pagination ?? {
+    pagination: {
       page: 1,
       pageSize: fallbackPageSize,
       total,

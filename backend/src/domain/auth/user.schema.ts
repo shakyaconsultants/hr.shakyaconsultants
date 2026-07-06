@@ -14,6 +14,7 @@ export interface UserDocument extends BaseDocument {
   email: string;
   passwordHash: string;
   employeeId?: string;
+  roleIds: string[];
   tokenVersion: number;
   failedLoginAttempts: number;
   lockedUntil: Date | null;
@@ -42,6 +43,7 @@ const userFields: SchemaDefinition = {
   email: { type: String, required: true, trim: true, lowercase: true },
   passwordHash: { type: String, required: true, select: false },
   employeeId: { type: String, index: true },
+  roleIds: { type: [String], default: [] },
   tokenVersion: { type: Number, default: 0 },
   failedLoginAttempts: { type: Number, default: 0 },
   lockedUntil: { type: Date, default: null },
@@ -70,18 +72,16 @@ const passwordHistoryFields: SchemaDefinition = {
   changedAt: { type: Date, required: true, default: Date.now },
 };
 
-export const userModel = defineDomainModel<UserDocument>(
-  'User',
-  COLLECTIONS.USERS,
-  userFields,
-  {
-    indexes: [
-      { fields: { companyId: 1, email: 1 }, options: { unique: true, name: 'uq_users_company_email' } },
-      { fields: { companyId: 1, id: 1 }, options: { unique: true, name: 'uq_users_company_id' } },
-      { fields: { companyId: 1, status: 1 }, options: { name: 'idx_users_company_status' } },
-    ],
-  },
-);
+export const userModel = defineDomainModel<UserDocument>('User', COLLECTIONS.USERS, userFields, {
+  indexes: [
+    {
+      fields: { companyId: 1, email: 1 },
+      options: { unique: true, name: 'uq_users_company_email' },
+    },
+    { fields: { companyId: 1, id: 1 }, options: { unique: true, name: 'uq_users_company_id' } },
+    { fields: { companyId: 1, status: 1 }, options: { name: 'idx_users_company_status' } },
+  ],
+});
 
 export const passwordResetTokenModel = defineDomainModel<PasswordResetTokenDocument>(
   'PasswordResetToken',
@@ -89,9 +89,18 @@ export const passwordResetTokenModel = defineDomainModel<PasswordResetTokenDocum
   passwordResetTokenFields,
   {
     indexes: [
-      { fields: { userId: 1, usedAt: 1 }, options: { name: 'idx_password_reset_tokens_user_used' } },
-      { fields: { tokenHash: 1 }, options: { unique: true, name: 'uq_password_reset_tokens_hash' } },
-      { fields: { expiresAt: 1 }, options: { name: 'idx_password_reset_tokens_expires', expireAfterSeconds: 0 } },
+      {
+        fields: { userId: 1, usedAt: 1 },
+        options: { name: 'idx_password_reset_tokens_user_used' },
+      },
+      {
+        fields: { tokenHash: 1 },
+        options: { unique: true, name: 'uq_password_reset_tokens_hash' },
+      },
+      {
+        fields: { expiresAt: 1 },
+        options: { name: 'idx_password_reset_tokens_expires', expireAfterSeconds: 0 },
+      },
     ],
   },
 );
@@ -102,7 +111,10 @@ export const passwordHistoryModel = defineDomainModel<PasswordHistoryDocument>(
   passwordHistoryFields,
   {
     indexes: [
-      { fields: { companyId: 1, userId: 1, changedAt: -1 }, options: { name: 'idx_password_history_user_date' } },
+      {
+        fields: { companyId: 1, userId: 1, changedAt: -1 },
+        options: { name: 'idx_password_history_user_date' },
+      },
     ],
   },
 );

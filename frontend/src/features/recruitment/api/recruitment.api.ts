@@ -1,8 +1,12 @@
 import apiClient from '@/shared/api/axios.client';
-import type { ApiSuccessResponse, PaginatedResult } from '@/shared/types/api.types';
+import type {
+  ApiSuccessResponse,
+  ApiSuccessResponseWithPagination,
+  PaginatedResult,
+} from '@/shared/types/api.types';
 import {
   normalizeKanbanPayload,
-  normalizePaginatedItems,
+  unwrapApiPaginated,
   unwrapEntityPayload,
 } from '@/shared/utils/api-normalize.util';
 import { normalizeCandidate } from '@/features/recruitment/utils/recruitment-display.util';
@@ -129,8 +133,11 @@ export async function fetchRecruitmentDashboard(): Promise<RecruitmentDashboard>
 export async function fetchCandidates(
   params: ListCandidatesParams = {},
 ): Promise<PaginatedResult<CandidateRecord>> {
-  const { data } = await apiClient.get<any>(`${RECRUITMENT_PREFIX}/candidates`, { params });
-  const normalized = normalizePaginatedItems<CandidateRecord>(data.data);
+  const { data } = await apiClient.get<ApiSuccessResponseWithPagination<CandidateRecord>>(
+    `${RECRUITMENT_PREFIX}/candidates`,
+    { params },
+  );
+  const normalized = unwrapApiPaginated<CandidateRecord>(data, params.pageSize ?? 20);
   return {
     ...normalized,
     items: normalized.items.map((item) => normalizeCandidate(item)),

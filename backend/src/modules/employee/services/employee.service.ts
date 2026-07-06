@@ -23,6 +23,7 @@ import {
 } from '@modules/employee/services/employee-lifecycle.service.js';
 import { EmployeeAccountService } from '@modules/employee/services/employee-account.service.js';
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
+import { EmployeePurgeService } from '@modules/employee/services/employee-purge.service.js';
 import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
 import { logger } from '@logging/winston.logger.js';
 
@@ -437,10 +438,10 @@ export const EmployeeService = {
   },
 
   async delete(context: EmployeeActorContext, id: string): Promise<void> {
-    const before = await this.getById(context.companyId, id);
+    const before = await this.getById(context.companyId, id, true);
     await EmployeeValidationService.assertManagerHasNoActiveSubordinates(context.companyId, id);
 
-    await EmployeeRepository.softDelete(id, context.userId, { companyId: context.companyId });
+    await EmployeePurgeService.hardDelete(context, id);
 
     await EmployeeAuditService.log({
       companyId: context.companyId,
