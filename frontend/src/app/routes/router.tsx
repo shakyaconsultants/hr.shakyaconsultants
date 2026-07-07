@@ -32,6 +32,11 @@ function OnboardingRoute() {
 export const router = createBrowserRouter([
   {
     errorElement: <RouteErrorFallback />,
+    hydrateFallbackElement: (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <PageSkeleton />
+      </div>
+    ),
     children: [
       {
         element: <PublicRoute />,
@@ -40,8 +45,20 @@ export const router = createBrowserRouter([
             element: <AuthLayout />,
             children: [
               { path: ROUTES.LOGIN, element: <LoginPage /> },
-              { path: ROUTES.FORGOT_PASSWORD, ...lazyRoute(() => import('@/features/auth/pages/forgot-password-page'), 'ForgotPasswordPage') },
-              { path: `${ROUTES.RESET_PASSWORD}/:token`, ...lazyRoute(() => import('@/features/auth/pages/reset-password-page'), 'ResetPasswordPage') },
+              {
+                path: ROUTES.FORGOT_PASSWORD,
+                ...lazyRoute(
+                  () => import('@/features/auth/pages/forgot-password-page'),
+                  'ForgotPasswordPage',
+                ),
+              },
+              {
+                path: `${ROUTES.RESET_PASSWORD}/:token`,
+                ...lazyRoute(
+                  () => import('@/features/auth/pages/reset-password-page'),
+                  'ResetPasswordPage',
+                ),
+              },
             ],
           },
         ],
@@ -50,7 +67,13 @@ export const router = createBrowserRouter([
         element: <PortalLayout />,
         children: [
           { path: `${ROUTES.ONBOARDING}/:secureToken`, element: <OnboardingRoute /> },
-          { path: `${ROUTES.ACCOUNT_ACTIVATION}/:secureToken`, ...lazyRoute(() => import('@/features/auth/pages/account-activation-page'), 'AccountActivationPage') },
+          {
+            path: `${ROUTES.ACCOUNT_ACTIVATION}/:secureToken`,
+            ...lazyRoute(
+              () => import('@/features/auth/pages/account-activation-page'),
+              'AccountActivationPage',
+            ),
+          },
         ],
       },
       {

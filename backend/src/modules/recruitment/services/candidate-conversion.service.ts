@@ -63,7 +63,7 @@ export const CandidateConversionService = {
       userAgent: context.userAgent,
     };
 
-    const employee = await EmployeeService.create(employeeContext, {
+    const { employee } = await EmployeeService.create(employeeContext, {
       firstName: candidate.firstName,
       lastName: candidate.lastName,
       email: candidate.email,

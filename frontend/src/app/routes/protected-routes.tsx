@@ -148,6 +148,38 @@ export const protectedAppRoutes: RouteObject[] = [
     ),
   },
   {
+    path: ROUTES.ORGANIZATION_SETUP.slice(1),
+    element: <Navigate to={ROUTES.ORGANIZATION} replace />,
+  },
+  {
+    path: ROUTES.REPORTS.slice(1),
+    element: <Navigate to={ROUTES.SALES_REPORTS} replace />,
+  },
+  {
+    path: ROUTES.REPORTS_EXECUTIVE.slice(1),
+    element: <Navigate to={ROUTES.ENTERPRISE} replace />,
+  },
+  {
+    path: ROUTES.REPORTS_DASHBOARD.slice(1),
+    element: <Navigate to={ROUTES.ENTERPRISE} replace />,
+  },
+  {
+    path: `${ROUTES.REPORTS_DASHBOARD.slice(1)}/:role`,
+    element: <Navigate to={ROUTES.ENTERPRISE} replace />,
+  },
+  {
+    path: ROUTES.REPORTS_RUN.slice(1),
+    element: <Navigate to={ROUTES.SALES_REPORTS} replace />,
+  },
+  {
+    path: `${ROUTES.REPORTS_RUN.slice(1)}/:domain/:type`,
+    element: <Navigate to={ROUTES.SALES_REPORTS} replace />,
+  },
+  {
+    path: ROUTES.ANALYTICS.slice(1),
+    element: <Navigate to={ROUTES.ENTERPRISE} replace />,
+  },
+  {
     path: `${ROUTES.ORGANIZATION.slice(1)}/settings`,
     ...lazyRoute(() => import('@/features/organization/pages/settings-page'), 'SettingsPage'),
   },
@@ -389,10 +421,16 @@ export const protectedAppRoutes: RouteObject[] = [
       'AttendanceWorkspacePage',
     ),
   },
-  { path: ROUTES.PAYROLL.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
-  { path: ROUTES.PAYROLL_ADMIN.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
-  { path: ROUTES.PAYROLL_FINANCE.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
-  { path: ROUTES.PAYROLL_HR.slice(1), element: <Navigate to={ROUTES.EMPLOYEES} replace /> },
+  { path: ROUTES.PAYROLL.slice(1), element: <Navigate to={ROUTES.PAYROLL_REPORTS} replace /> },
+  {
+    path: ROUTES.PAYROLL_ADMIN.slice(1),
+    element: <Navigate to={ROUTES.PAYROLL_REPORTS} replace />,
+  },
+  {
+    path: ROUTES.PAYROLL_FINANCE.slice(1),
+    element: <Navigate to={ROUTES.PAYROLL_REPORTS} replace />,
+  },
+  { path: ROUTES.PAYROLL_HR.slice(1), element: <Navigate to={ROUTES.PAYROLL_REPORTS} replace /> },
   {
     path: ROUTES.WORKSPACE_PAYROLL.slice(1),
     element: <Navigate to={`${ROUTES.WORKSPACE_PROFILE}?tab=payroll`} replace />,

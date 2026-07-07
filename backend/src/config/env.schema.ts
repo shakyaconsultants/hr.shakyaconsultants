@@ -148,7 +148,7 @@ export function validateEnv(raw: NodeJS.ProcessEnv): EnvConfig {
       .map((issue) => issue.path.join('.'));
     const deployHint =
       missingKeys.length > 0
-        ? `\n\nMissing variables (set in Render → Environment): ${missingKeys.join(', ')}\nSee backend/.env.production.example for the full list.`
+        ? `\n\nMissing variables (set in Render → Environment): ${missingKeys.join(', ')}\nSee backend/.env.example for the full list.`
         : '';
     throw new Error(`Environment validation failed:\n${formatted}${deployHint}`);
   }
@@ -161,20 +161,32 @@ export function validateEnv(raw: NodeJS.ProcessEnv): EnvConfig {
       'change-me-refresh-secret-min-32-chars-long',
       'replace-with-strong-production-secret-min-32-chars',
     ];
-    if (weakJwtSecrets.includes(data.JWT_ACCESS_SECRET) || weakJwtSecrets.includes(data.JWT_REFRESH_SECRET)) {
+    if (
+      weakJwtSecrets.includes(data.JWT_ACCESS_SECRET) ||
+      weakJwtSecrets.includes(data.JWT_REFRESH_SECRET)
+    ) {
       throw new Error('Environment validation failed: production must not use default JWT secrets');
     }
-    if (data.FIELD_ENCRYPTION_KEY.includes('change-me') || data.FIELD_ENCRYPTION_KEY.includes('replace-with-strong')) {
-      throw new Error('Environment validation failed: production must not use default FIELD_ENCRYPTION_KEY');
+    if (
+      data.FIELD_ENCRYPTION_KEY.includes('change-me') ||
+      data.FIELD_ENCRYPTION_KEY.includes('replace-with-strong')
+    ) {
+      throw new Error(
+        'Environment validation failed: production must not use default FIELD_ENCRYPTION_KEY',
+      );
     }
-    if (!data.REDIS_URL?.trim()) {
+    if (!data.REDIS_URL.trim()) {
       throw new Error('Environment validation failed: REDIS_URL is required in production');
     }
     if (!data.AUTH_USE_HTTP_ONLY_COOKIES) {
-      throw new Error('Environment validation failed: AUTH_USE_HTTP_ONLY_COOKIES must be true in production');
+      throw new Error(
+        'Environment validation failed: AUTH_USE_HTTP_ONLY_COOKIES must be true in production',
+      );
     }
     if (!data.AUTH_COOKIE_SECURE) {
-      throw new Error('Environment validation failed: AUTH_COOKIE_SECURE must be true in production');
+      throw new Error(
+        'Environment validation failed: AUTH_COOKIE_SECURE must be true in production',
+      );
     }
   }
 

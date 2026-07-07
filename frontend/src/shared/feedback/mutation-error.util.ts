@@ -22,6 +22,8 @@ export interface ParsedMutationError {
   isNotFound: boolean;
   isServerError: boolean;
   preferInline: boolean;
+  conflictEmployeeId?: string;
+  conflictReason?: string;
   raw: unknown;
 }
 
@@ -47,7 +49,12 @@ function extractValidationMessages(details: unknown[]): string[] {
       }
       if (detail && typeof detail === 'object') {
         const record = detail as Record<string, unknown>;
-        const path = typeof record.path === 'string' ? record.path : Array.isArray(record.path) ? record.path.join('.') : '';
+        const path =
+          typeof record.path === 'string'
+            ? record.path
+            : Array.isArray(record.path)
+              ? record.path.join('.')
+              : '';
         const message = typeof record.message === 'string' ? record.message : '';
         if (path && message) {
           return `${path}: ${message}`;
@@ -135,6 +142,9 @@ export function parseMutationError(error: unknown): ParsedMutationError {
   const validationMessages = extractValidationMessages(apiError?.error?.details ?? []);
   const metadata = apiError?.error?.metadata;
   const dependencies = extractDependencies(metadata);
+  const conflictEmployeeId =
+    typeof metadata?.employeeId === 'string' ? metadata.employeeId : undefined;
+  const conflictReason = typeof metadata?.reason === 'string' ? metadata.reason : undefined;
 
   const isValidation = statusCode === 400 || statusCode === 422;
   const isForbidden = statusCode === 403;
@@ -148,11 +158,13 @@ export function parseMutationError(error: unknown): ParsedMutationError {
 
   if (isForbidden) {
     title = FORBIDDEN_MESSAGE;
-    description = backendMessage && backendMessage !== FORBIDDEN_MESSAGE ? backendMessage : undefined;
+    description =
+      backendMessage && backendMessage !== FORBIDDEN_MESSAGE ? backendMessage : undefined;
     preferInline = false;
   } else if (isNotFound) {
     title = NOT_FOUND_MESSAGE;
-    description = backendMessage && backendMessage !== NOT_FOUND_MESSAGE ? backendMessage : undefined;
+    description =
+      backendMessage && backendMessage !== NOT_FOUND_MESSAGE ? backendMessage : undefined;
     preferInline = false;
   } else if (statusCode === 401) {
     title = backendMessage || 'Invalid email, password, or company code.';
@@ -169,16 +181,20 @@ export function parseMutationError(error: unknown): ParsedMutationError {
         'The server took too long to respond. On hosted environments the first request after idle can be slow — please try again.';
     } else if (!error.response) {
       title = 'Unable to reach the server';
-      description = 'Check your connection. The API may be restarting — wait a few seconds and try again.';
+      description =
+        'Check your connection. The API may be restarting — wait a few seconds and try again.';
     } else {
       title = SERVER_ERROR_MESSAGE;
     }
   } else if (isServerError) {
     title = SERVER_ERROR_MESSAGE;
     const detailFromDetails =
-      apiError?.error?.details?.find(
-        (entry): entry is { message?: string } =>
-          Boolean(entry && typeof entry === 'object' && typeof (entry as { message?: string }).message === 'string'),
+      apiError?.error?.details?.find((entry): entry is { message?: string } =>
+        Boolean(
+          entry &&
+          typeof entry === 'object' &&
+          typeof (entry as { message?: string }).message === 'string',
+        ),
       )?.message ?? '';
     description =
       import.meta.env.DEV && (backendMessageRaw || detailFromDetails)
@@ -187,10 +203,10 @@ export function parseMutationError(error: unknown): ParsedMutationError {
     preferInline = false;
   } else if (isValidation) {
     title = validationMessages[0] ?? backendMessage ?? 'Validation failed';
-    description = validationMessages.length > 1 ? validationMessages.slice(1).join('\n') : undefined;
+    description =
+      validationMessages.length > 1 ? validationMessages.slice(1).join('\n') : undefined;
   } else if (isConflict) {
-    const conflictField =
-      typeof metadata?.field === 'string' ? metadata.field : undefined;
+    const conflictField = typeof metadata?.field === 'string' ? metadata.field : undefined;
     const conflictValue = metadata?.value;
     title = backendMessage || 'This action conflicts with existing data';
     if (!backendMessage && conflictField) {
@@ -201,7 +217,7 @@ export function parseMutationError(error: unknown): ParsedMutationError {
           : `${label} is already in use`;
     }
     description = formatDependencyDescription(dependencies);
-    preferInline = false;
+    preferInline = isValidation || isConflict;
   } else if (!title) {
     title = toUserFacingErrorMessage(error);
   }
@@ -220,11 +236,16 @@ export function parseMutationError(error: unknown): ParsedMutationError {
     isNotFound,
     isServerError,
     preferInline,
+    conflictEmployeeId,
+    conflictReason,
     raw: error,
   };
 }
 
-export function formatConflictDialogBody(parsed: ParsedMutationError, entityLabel?: string): string {
+export function formatConflictDialogBody(
+  parsed: ParsedMutationError,
+  entityLabel?: string,
+): string {
   const header = entityLabel ? `Cannot delete ${entityLabel}.` : parsed.title;
 
   if (parsed.dependencies.length === 0) {

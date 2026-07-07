@@ -23,7 +23,7 @@
   },
   "lint-staged": {
     "backend/src/**/*.ts": [
-      "eslint --fix --config backend/eslint.config.js",
+      "eslint --fix --max-warnings 0 --config backend/eslint.config.js",
       "prettier --write"
     ],
     "frontend/src/**/*.{ts,tsx}": [

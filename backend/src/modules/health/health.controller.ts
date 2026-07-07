@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { getEnv } from '@config/env.js';
 import { HTTP_MESSAGES } from '@shared/constants/http.constants.js';
 import { MONGODB_HEALTH } from '@shared/constants/health.constants.js';
 import { getMongoConnectionState } from '@infrastructure/database/mongodb.connection.js';
@@ -27,11 +28,13 @@ export const getHealth = asyncHandler(async (req: Request, res: Response) => {
   ResponseService.success(res, req, data, HTTP_MESSAGES.OK, statusCode);
 });
 
-/** Readiness probe — MongoDB and Redis must be healthy. */
+/** Readiness probe — MongoDB required; Redis required in production only. */
 export const getReadiness = asyncHandler(async (req: Request, res: Response) => {
+  const env = getEnv();
   const redis = await checkRedisHealth();
   const mongodb = getMongoHealthStatus();
-  const ready = mongodb === MONGODB_HEALTH.HEALTHY && redis === 'healthy';
+  const redisRequired = env.NODE_ENV === 'production';
+  const ready = mongodb === MONGODB_HEALTH.HEALTHY && (!redisRequired || redis === 'healthy');
 
   const data: HealthCheckData = {
     mongodb,

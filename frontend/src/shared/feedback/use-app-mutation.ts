@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { parseMutationError } from '@/shared/feedback/mutation-error.util';
+import { invalidateAndRefetch } from '@/shared/api/query-config';
 import { toastError, toastSuccess } from '@/shared/feedback/toast.store';
 
 export interface AppMutationOptions<TData, TVariables> {
@@ -37,7 +38,7 @@ export function useAppMutation<TData = unknown, TVariables = void, TContext = un
     onSuccess: (data, variables, context, mutation) => {
       if (invalidateKeys?.length) {
         for (const key of invalidateKeys) {
-          void queryClient.invalidateQueries({ queryKey: key });
+          void invalidateAndRefetch(queryClient, key);
         }
       }
 

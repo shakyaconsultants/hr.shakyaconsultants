@@ -36,7 +36,7 @@ export const projectListQuerySchema = z.object({
 
 export const createProjectSchema = z.object({
   name: z.string().min(1).max(200),
-  code: z.string().min(2).max(20),
+  code: z.string().min(2).max(20).optional(),
   description: z.string().optional(),
   status: z.enum(Object.values(PROJECT_STATUS) as [string, ...string[]]).optional(),
   priority: z.enum(Object.values(PROJECT_PRIORITY) as [string, ...string[]]).optional(),
@@ -65,7 +65,7 @@ export const createProjectSchema = z.object({
   visibility: z.enum(Object.values(PROJECT_VISIBILITY) as [string, ...string[]]).optional(),
 });
 
-export const updateProjectSchema = createProjectSchema.partial();
+export const updateProjectSchema = createProjectSchema.partial().omit({ code: true });
 
 export const taskListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
@@ -200,11 +200,15 @@ export const updateMemberSchema = z.object({
 
 export const bulkAssignMembersSchema = z.object({
   projectId: z.uuid(),
-  members: z.array(z.object({
-    employeeId: z.uuid(),
-    role: z.enum(Object.values(PROJECT_MEMBER_ROLE) as [string, ...string[]]),
-    allocationPercent: z.coerce.number().min(0).max(100).optional(),
-  })).min(1),
+  members: z
+    .array(
+      z.object({
+        employeeId: z.uuid(),
+        role: z.enum(Object.values(PROJECT_MEMBER_ROLE) as [string, ...string[]]),
+        allocationPercent: z.coerce.number().min(0).max(100).optional(),
+      }),
+    )
+    .min(1),
 });
 
 export const projectWizardDraftSchema = z.object({
@@ -214,25 +218,31 @@ export const projectWizardDraftSchema = z.object({
 
 export const projectWizardFinalizeSchema = z.object({
   basicInfo: createProjectSchema,
-  repository: knowledgeBaseSchema.extend({
-    productionUrl: z.string().optional(),
-    stagingUrl: z.string().optional(),
-    apiUrl: z.string().optional(),
-    documentationUrl: z.string().optional(),
-    deploymentUrl: z.string().optional(),
-    defaultBranch: z.string().optional(),
-  }).optional(),
+  repository: knowledgeBaseSchema
+    .extend({
+      productionUrl: z.string().optional(),
+      stagingUrl: z.string().optional(),
+      apiUrl: z.string().optional(),
+      documentationUrl: z.string().optional(),
+      deploymentUrl: z.string().optional(),
+      defaultBranch: z.string().optional(),
+    })
+    .optional(),
   technologyIds: z.array(z.uuid()).optional(),
   documentUrls: z.array(z.string()).optional(),
   modules: z.array(createModuleSchema.omit({ projectId: true })).optional(),
   milestones: z.array(createMilestoneSchema.omit({ projectId: true })).optional(),
   sprint: createSprintSchema.omit({ projectId: true }).optional(),
   assistantManagerIds: z.array(z.uuid()).optional(),
-  teamMembers: z.array(z.object({
-    employeeId: z.uuid(),
-    role: z.enum(Object.values(PROJECT_MEMBER_ROLE) as [string, ...string[]]),
-    allocationPercent: z.coerce.number().min(0).max(100).optional(),
-  })).optional(),
+  teamMembers: z
+    .array(
+      z.object({
+        employeeId: z.uuid(),
+        role: z.enum(Object.values(PROJECT_MEMBER_ROLE) as [string, ...string[]]),
+        allocationPercent: z.coerce.number().min(0).max(100).optional(),
+      }),
+    )
+    .optional(),
   labels: z.array(z.string()).optional(),
   taskCategories: z.array(z.string()).optional(),
 });

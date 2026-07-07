@@ -1,6 +1,7 @@
 import type { JobsOptions } from 'bullmq';
 import { getQueue, isQueuesEnabled } from '@infrastructure/queue/bullmq.connection.js';
 import { deliverEmailPayload } from '@infrastructure/queue/processors/email-queue.processor.js';
+import { runSchedulerPayload } from '@infrastructure/queue/processors/scheduler-queue.processor.js';
 import { isRedisAvailable } from '@infrastructure/redis/redis.client.js';
 import { QUEUE_NAMES, type QueueName } from '@shared/constants/queue.constants.js';
 import { getCorrelationId } from '@shared/context/request.context.js';
@@ -138,6 +139,12 @@ export const QueueProducer = {
     payload: Record<string, unknown>,
     options?: JobsOptions,
   ): Promise<string | undefined> {
-    return this.addJob(QUEUE_NAMES.WEBHOOK, jobName, payload, options);
+    const correlationId = getCorrelationId() ?? 'system';
+
+    if (isQueuesEnabled() && isRedisAvailable()) {
+      return this.addJob(QUEUE_NAMES.WEBHOOK, jobName, payload, options);
+    }
+
+    return runSchedulerPayload(payload, correlationId).then(() => 'delivered');
   },
 };

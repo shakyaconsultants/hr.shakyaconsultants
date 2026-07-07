@@ -9,6 +9,7 @@ import { EmployeeRoleRepository, RoleRepository } from '@domain/permission/permi
 import { BOOTSTRAP_ORG_DEFAULTS } from '@modules/auth/constants/role-seed.constants.js';
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
+import { SystemGarbageService } from '@modules/system/services/system-garbage.service.js';
 
 /**
  * System operators (seeded super admin) are user accounts — not workforce rows for org charts.
@@ -79,5 +80,9 @@ export const WorkforceScopeService = {
       return employees;
     }
     return employees.filter((employee) => !excluded.has(employee.id));
+  },
+
+  async purgeLegacySystemEmployees(companyId: string, actorUserId: string): Promise<number> {
+    return SystemGarbageService.purgeLegacySystemEmployees(companyId, actorUserId);
   },
 };

@@ -7,30 +7,143 @@ import {
   DepartmentRepository,
   DesignationRepository,
 } from '@domain/organization/organization.schemas.js';
+import { UserRepository } from '@domain/auth/user.schema.js';
+import { RoleRepository } from '@domain/permission/permission.schemas.js';
 import { ConflictError, NotFoundError, ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
+import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
+
+export type EmailAvailabilityReason =
+  | 'AVAILABLE'
+  | 'DUPLICATE_EMAIL'
+  | 'SYSTEM_ADMIN_EMAIL'
+  | 'PORTAL_USER_LINKED';
+
+export interface EmailAvailabilityResult {
+  available: boolean;
+  reason: EmailAvailabilityReason;
+  message: string;
+  employeeId?: string;
+  employeeName?: string;
+}
+
+async function findSuperAdminRole(companyId: string) {
+  return RoleRepository.findOne({ slug: SYSTEM_ROLE_SLUG.SUPER_ADMIN }, { companyId });
+}
+
+function isSuperAdminPortalUser(
+  user: { roleIds: string[]; employeeId?: string | null },
+  superAdminRoleId: string | undefined,
+): boolean {
+  return Boolean(superAdminRoleId && user.roleIds.includes(superAdminRoleId) && !user.employeeId);
+}
 
 export const EmployeeValidationService = {
-  async assertUniqueEmail(companyId: string, email: string, excludeId?: string): Promise<void> {
-    const normalizedEmail = email.toLowerCase();
+  async checkEmailAvailability(
+    companyId: string,
+    email: string,
+    excludeEmployeeId?: string,
+  ): Promise<EmailAvailabilityResult> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return {
+        available: false,
+        reason: 'DUPLICATE_EMAIL',
+        message: 'Email is required',
+      };
+    }
+
     const matches = await EmployeeRepository.findMany(
       { email: normalizedEmail },
-      { companyId, includeDeleted: true },
+      {
+        companyId,
+        includeDeleted: true,
+      },
     );
-    const existing = matches.find(
+    const activeEmployee = matches.find(
       (employee) =>
-        employee.id !== excludeId &&
+        employee.id !== excludeEmployeeId &&
         employee.status === ENTITY_STATUS.ACTIVE &&
         !employee.isDeleted,
     );
-    if (existing) {
-      throw new ConflictError(
-        `Email "${normalizedEmail}" is already assigned to another employee`,
-        ERROR_CODES.EMAIL_ALREADY_EXISTS,
-        { field: 'email', value: normalizedEmail, reason: 'DUPLICATE_EMAIL' },
-      );
+    if (activeEmployee) {
+      const employeeName =
+        `${activeEmployee.firstName} ${activeEmployee.lastName}`.trim() ||
+        activeEmployee.employeeNumber;
+      return {
+        available: false,
+        reason: 'DUPLICATE_EMAIL',
+        message: `Email "${normalizedEmail}" is already assigned to ${employeeName}`,
+        employeeId: activeEmployee.id,
+        employeeName,
+      };
     }
+
+    const portalUser = await UserRepository.findOne({ email: normalizedEmail }, { companyId });
+    if (portalUser) {
+      const superAdminRole = await findSuperAdminRole(companyId);
+      if (isSuperAdminPortalUser(portalUser, superAdminRole?.id)) {
+        return {
+          available: false,
+          reason: 'SYSTEM_ADMIN_EMAIL',
+          message:
+            'This email is reserved for the company administrator login. Use a different work email for the employee.',
+        };
+      }
+
+      if (portalUser.employeeId && portalUser.employeeId !== excludeEmployeeId) {
+        const linkedEmployee = await EmployeeRepository.findById(portalUser.employeeId, {
+          companyId,
+          includeDeleted: true,
+        });
+        if (
+          linkedEmployee &&
+          linkedEmployee.status === ENTITY_STATUS.ACTIVE &&
+          !linkedEmployee.isDeleted &&
+          linkedEmployee.email.toLowerCase() === normalizedEmail
+        ) {
+          const employeeName =
+            `${linkedEmployee.firstName} ${linkedEmployee.lastName}`.trim() ||
+            linkedEmployee.employeeNumber;
+          return {
+            available: false,
+            reason: 'PORTAL_USER_LINKED',
+            message: `Email "${normalizedEmail}" is already assigned to ${employeeName}`,
+            employeeId: linkedEmployee.id,
+            employeeName,
+          };
+        }
+      }
+    }
+
+    return {
+      available: true,
+      reason: 'AVAILABLE',
+      message: 'Email is available for a new employee.',
+    };
+  },
+
+  async assertEmailAvailableForCreate(
+    companyId: string,
+    email: string,
+    excludeEmployeeId?: string,
+  ): Promise<void> {
+    const result = await this.checkEmailAvailability(companyId, email, excludeEmployeeId);
+    if (result.available) {
+      return;
+    }
+
+    throw new ConflictError(result.message, ERROR_CODES.EMAIL_ALREADY_EXISTS, {
+      field: 'email',
+      value: email.trim().toLowerCase(),
+      reason: result.reason,
+      employeeId: result.employeeId,
+    });
+  },
+
+  async assertUniqueEmail(companyId: string, email: string, excludeId?: string): Promise<void> {
+    await this.assertEmailAvailableForCreate(companyId, email, excludeId);
   },
 
   async assertUniqueAadhaar(

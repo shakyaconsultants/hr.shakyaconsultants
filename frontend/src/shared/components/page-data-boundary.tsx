@@ -4,7 +4,7 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { PageSkeleton } from '@/shared/components/page-skeleton';
 import { Button } from '@/shared/components/ui/button';
 import { logClientError } from '@/shared/utils/error-logger';
-import { toUserFacingErrorMessage } from '@/shared/utils/user-facing-error.util';
+import { parseQueryError } from '@/shared/utils/parse-query-error.util';
 import { useEffect } from 'react';
 
 export interface PageDataBoundaryProps {
@@ -24,13 +24,7 @@ export interface PageDataBoundaryProps {
 }
 
 function getErrorMessage(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'error' in error) {
-    const apiError = error as { error?: { message?: string } };
-    if (apiError.error?.message) {
-      return toUserFacingErrorMessage(apiError.error.message);
-    }
-  }
-  return toUserFacingErrorMessage(error, 'Something went wrong while loading data.');
+  return parseQueryError(error).message;
 }
 
 export function PageDataBoundary({
@@ -74,7 +68,13 @@ export function PageDataBoundary({
       <EmptyState
         title={offline ? 'You are offline' : 'Unable to load data'}
         description={offline ? 'Check your connection and try again.' : getErrorMessage(error)}
-        icon={offline ? <WifiOff className="h-10 w-10" aria-hidden /> : <AlertTriangle className="h-10 w-10" aria-hidden />}
+        icon={
+          offline ? (
+            <WifiOff className="h-10 w-10" aria-hidden />
+          ) : (
+            <AlertTriangle className="h-10 w-10" aria-hidden />
+          )
+        }
         action={
           onRetry ? (
             <Button variant="outline" onClick={onRetry}>
@@ -88,13 +88,7 @@ export function PageDataBoundary({
   }
 
   if (isEmpty) {
-    return (
-      <EmptyState
-        title={emptyTitle}
-        description={emptyDescription}
-        action={emptyAction}
-      />
-    );
+    return <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />;
   }
 
   return <>{children}</>;

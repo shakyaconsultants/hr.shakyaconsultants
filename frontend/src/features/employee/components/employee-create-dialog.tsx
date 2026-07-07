@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCreateEmployee } from '@/features/employee/hooks/use-employees';
+import { checkEmployeeEmailAvailability } from '@/features/employee/api/employee.api';
+import { refreshEmployeeQueries } from '@/features/employee/employee-query-keys';
 import { FormDialog } from '@/shared/components/form-dialog';
 import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
 import { SelectField } from '@/shared/components/select-field';
 import { MasterDataSelect } from '@/shared/components/master-data-select';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Input } from '@/shared/components/ui/input';
-import { runFormMutation } from '@/shared/feedback/run-form-mutation';
+import { parseMutationError } from '@/shared/feedback/mutation-error.util';
+import { toastError, toastInfo, toastSuccess } from '@/shared/feedback/toast.store';
 import { ROUTES } from '@/config/app.config';
 
 const DEFAULT_TEMP_PASSWORD = 'welcome1';
@@ -17,8 +21,22 @@ export interface EmployeeCreateDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function buildSuccessMessage(result: {
+  welcomeEmailSent?: boolean;
+  welcomeEmailError?: string;
+}): string {
+  if (result.welcomeEmailSent) {
+    return 'Employee created. Portal account is active and welcome email was sent.';
+  }
+  if (result.welcomeEmailError) {
+    return `Employee created, but welcome email could not be sent: ${result.welcomeEmailError}`;
+  }
+  return 'Employee created with active portal account and onboarding form.';
+}
+
 export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialogProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createMutation = useCreateEmployee();
   const [form, setForm] = useState({
     firstName: '',
@@ -32,44 +50,138 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
     temporaryPassword: DEFAULT_TEMP_PASSWORD,
   });
   const [error, setError] = useState<string | null>(null);
+  const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const emailCheckVersion = useRef(0);
+  const submitLock = useRef(false);
 
   function updateField(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === 'email') {
+      setEmailHint(null);
+      setEmailAvailable(null);
+    }
   }
 
-  async function handleSubmit() {
-    if (createMutation.isPending) {
+  useEffect(() => {
+    const email = form.email.trim();
+    if (!email || !email.includes('@')) {
+      setEmailHint(null);
+      setEmailAvailable(null);
       return;
     }
 
-    await runFormMutation({
-      setError,
-      successMessage: 'Employee created with active portal account and onboarding form.',
-      onNonInlineError: () => onOpenChange(false),
-      mutation: () => {
-        const payload: Record<string, unknown> = {
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          email: form.email.trim(),
-          departmentId: form.departmentId,
-          designationId: form.designationId,
-          joinedAt: new Date(form.joinedAt),
-          temporaryPassword: form.temporaryPassword.trim() || DEFAULT_TEMP_PASSWORD,
-        };
-        if (form.phone.trim()) {
-          payload.phone = form.phone.trim();
+    const version = ++emailCheckVersion.current;
+    const timer = window.setTimeout(() => {
+      setIsCheckingEmail(true);
+      void checkEmployeeEmailAvailability(email)
+        .then((result) => {
+          if (emailCheckVersion.current !== version) {
+            return;
+          }
+          setEmailAvailable(result.available);
+          setEmailHint(result.available ? 'Email is available.' : result.message);
+          if (!result.available) {
+            setError(result.message);
+          } else if (error?.toLowerCase().includes('email')) {
+            setError(null);
+          }
+        })
+        .catch(() => {
+          if (emailCheckVersion.current !== version) {
+            return;
+          }
+          setEmailAvailable(null);
+          setEmailHint(null);
+        })
+        .finally(() => {
+          if (emailCheckVersion.current === version) {
+            setIsCheckingEmail(false);
+          }
+        });
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [form.email]);
+
+  async function handleSubmit() {
+    if (submitLock.current || isSubmitting || createMutation.isPending) {
+      return;
+    }
+
+    if (emailAvailable === false) {
+      setError(emailHint ?? 'This email cannot be used for a new employee.');
+      return;
+    }
+
+    submitLock.current = true;
+    setIsSubmitting(true);
+    setError(null);
+
+    const payload: Record<string, unknown> = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      email: form.email.trim(),
+      departmentId: form.departmentId,
+      designationId: form.designationId,
+      joinedAt: new Date(form.joinedAt),
+      temporaryPassword: form.temporaryPassword.trim() || DEFAULT_TEMP_PASSWORD,
+    };
+    if (form.phone.trim()) {
+      payload.phone = form.phone.trim();
+    }
+    if (form.branchId.trim()) {
+      payload.branchId = form.branchId;
+    }
+
+    try {
+      const employee = await createMutation.mutateAsync(payload);
+      await refreshEmployeeQueries(queryClient, employee.id);
+
+      if (employee.alreadyExists) {
+        toastInfo('Employee already exists', employee.message ?? 'Opening their profile.');
+      } else {
+        const message = buildSuccessMessage(employee);
+        if (employee.welcomeEmailSent) {
+          toastSuccess(message);
+        } else if (employee.welcomeEmailError) {
+          toastInfo('Employee created', message);
+        } else {
+          toastSuccess(message);
         }
-        if (form.branchId.trim()) {
-          payload.branchId = form.branchId;
-        }
-        return createMutation.mutateAsync(payload);
-      },
-      onSuccess: (employee) => {
+      }
+
+      onOpenChange(false);
+      navigate(ROUTES.employeeDetail(employee.id));
+    } catch (mutationError) {
+      const parsed = parseMutationError(mutationError);
+      if (
+        parsed.isConflict &&
+        parsed.conflictEmployeeId &&
+        (parsed.conflictReason === 'DUPLICATE_EMAIL' ||
+          parsed.conflictReason === 'PORTAL_USER_LINKED')
+      ) {
+        toastInfo('Employee already exists', 'Opening their profile.');
         onOpenChange(false);
-        navigate(ROUTES.employeeDetail(employee.id));
-      },
-    });
+        navigate(ROUTES.employeeDetail(parsed.conflictEmployeeId));
+        return;
+      }
+
+      if (parsed.preferInline) {
+        setError(parsed.message);
+        return;
+      }
+
+      toastError(parsed.title, parsed.description);
+    } finally {
+      submitLock.current = false;
+      setIsSubmitting(false);
+    }
   }
+
+  const isBusy = isSubmitting || createMutation.isPending;
 
   return (
     <FormDialog
@@ -78,7 +190,9 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
       title="Add Employee"
       description="Creates an active portal account, sends login credentials, and opens the onboarding form."
       submitLabel="Create Employee"
-      isSubmitting={createMutation.isPending}
+      pendingLabel="Creating employee…"
+      isSubmitting={isBusy}
+      submitDisabled={emailAvailable === false || isCheckingEmail}
       onSubmit={handleSubmit}
       size="lg"
     >
@@ -110,9 +224,33 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
               id="employee-email"
               type="email"
               value={form.email}
-              onChange={(event) => updateField('email', event.target.value)}
+              onChange={(event) => {
+                updateField('email', event.target.value);
+                if (error) {
+                  setError(null);
+                }
+              }}
+              aria-invalid={Boolean(
+                error?.toLowerCase().includes('email') || emailAvailable === false,
+              )}
+              className={
+                error?.toLowerCase().includes('email') || emailAvailable === false
+                  ? 'border-destructive'
+                  : emailAvailable
+                    ? 'border-emerald-500'
+                    : undefined
+              }
               required
             />
+            {isCheckingEmail ? (
+              <p className="text-sm text-muted-foreground">Checking email availability…</p>
+            ) : emailHint ? (
+              <p
+                className={emailAvailable ? 'text-sm text-emerald-600' : 'text-sm text-destructive'}
+              >
+                {emailHint}
+              </p>
+            ) : null}
           </SelectField>
           <SelectField label="Phone" htmlFor="employee-phone">
             <Input
@@ -182,7 +320,18 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
           </SelectField>
         </FormSection>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <p className="font-medium">Could not create employee</p>
+            <p className="mt-1">{error}</p>
+            {error.toLowerCase().includes('email') ? (
+              <p className="mt-2 text-muted-foreground">
+                Use a unique work email that is not your administrator login. Each employee needs
+                their own email.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </FormDialog>
   );

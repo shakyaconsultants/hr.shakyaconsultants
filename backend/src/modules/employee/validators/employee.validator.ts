@@ -79,6 +79,7 @@ export const adminCreateEmployeeSchema = z.object({
   employmentStatus: z
     .enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]])
     .optional(),
+  temporaryPassword: z.string().min(6).optional(),
 });
 
 export const createEmployeeSchema = z.object({

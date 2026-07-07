@@ -8,7 +8,7 @@ import {
 import { WorkspacePageHeader } from '@/features/workspace/components/workspace-nav';
 import { EmployeePayrollPanel } from '@/features/payroll/components/employee-payroll-panel';
 import { useAuthStore } from '@/shared/stores/app.store';
-import { Loading } from '@/shared/components/loading';
+import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
@@ -58,7 +58,7 @@ export function WorkspaceProfilePage() {
     }
     return 'overview';
   });
-  const { data: profile, isLoading } = useWorkspaceProfile();
+  const { data: profile, isLoading, isError, error, refetch } = useWorkspaceProfile();
   const { data: hierarchy } = useOrgChart();
   const updateProfile = useUpdateProfile();
   const [bio, setBio] = useState('');
@@ -81,8 +81,19 @@ export function WorkspaceProfilePage() {
     }
   }
 
-  if (isLoading || !profile) {
-    return <Loading message="Loading profile..." />;
+  if (isLoading || isError || !profile) {
+    return (
+      <PageDataBoundary
+        isLoading={isLoading}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+        source="workspace-profile"
+        loadingFallback={<div className="p-8 text-muted-foreground">Loading profile...</div>}
+      >
+        {null}
+      </PageDataBoundary>
+    );
   }
 
   const employee = profile.employee;

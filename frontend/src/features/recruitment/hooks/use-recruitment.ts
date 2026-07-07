@@ -173,7 +173,8 @@ export function useCreateInterview() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: createInterview,
-    successMessage: 'Interview scheduled — invite email sent',
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -184,7 +185,8 @@ export function useCreateOffer() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: createOffer,
-    successMessage: 'Offer draft created',
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },
@@ -195,7 +197,8 @@ export function useSendOffer() {
   const queryClient = useQueryClient();
   return useAppMutation({
     mutationFn: sendOffer,
-    successMessage: 'Offer sent — email queued',
+    errorToast: false,
+    successMessage: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['recruitment'] });
     },

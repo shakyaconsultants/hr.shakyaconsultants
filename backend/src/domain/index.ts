@@ -33,13 +33,31 @@ export function registerDomainModels(): void {
 
 export async function syncDomainIndexes(): Promise<void> {
   await repairEmployeeUniqueIndexes();
+  await syncCollectionIndexes('ProjectDraft', 'project_drafts');
+}
+
+async function syncCollectionIndexes(modelName: string, label: string): Promise<void> {
+  if (!mongoose.modelNames().includes(modelName)) {
+    return;
+  }
+
+  const Model = mongoose.models[modelName];
+
+  try {
+    await Model.syncIndexes();
+    logger.info('Index sync completed', { collection: label });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn('Index sync warning', { collection: label, message });
+  }
 }
 
 async function repairEmployeeUniqueIndexes(): Promise<void> {
-  const Employee = mongoose.models.Employee;
-  if (!Employee) {
+  if (!mongoose.modelNames().includes('Employee')) {
     return;
   }
+
+  const Employee = mongoose.models.Employee;
 
   await Employee.updateMany(
     { $or: [{ aadhaarNumber: null }, { aadhaarNumber: '' }] },

@@ -23,7 +23,6 @@ export function ProjectsListPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
-    code: '',
     description: '',
     status: 'planning',
     priority: 'medium',
@@ -51,7 +50,9 @@ export function ProjectsListPage() {
       key: 'code',
       header: 'Code',
       render: (row: ProjectRecord) => (
-        <Link to={ROUTES.projectDetail(row.id)} className="font-mono text-primary hover:underline">{row.code}</Link>
+        <Link to={ROUTES.projectDetail(row.id)} className="font-mono text-primary hover:underline">
+          {row.code}
+        </Link>
       ),
     },
     { key: 'name', header: 'Name' },
@@ -70,16 +71,8 @@ export function ProjectsListPage() {
   ];
 
   async function handleCreateProject() {
-    const code =
-      createForm.name
-        .trim()
-        .replace(/[^a-zA-Z0-9]/g, '')
-        .toUpperCase()
-        .slice(0, 12) || `PRJ${Date.now()}`;
-
     const created = await createMutation.mutateAsync({
       ...createForm,
-      code,
       description: createForm.description || undefined,
       clientName: createForm.clientName || undefined,
     });
@@ -111,26 +104,35 @@ export function ProjectsListPage() {
 
       {showCreate && hasPermission('project.create') ? (
         <section className="rounded-lg border bg-card p-4">
-          <FormSection title="New Project" description="Create a project with essential business fields only.">
+          <FormSection
+            title="New Project"
+            description="Create a project with essential business fields only."
+          >
             <div className="grid gap-3 md:grid-cols-2">
               <SelectField label="Project Name" required>
                 <Input
                   placeholder="Project name"
                   value={createForm.name}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
                 />
               </SelectField>
               <SelectField label="Client">
                 <Input
                   placeholder="Client name"
                   value={createForm.clientName}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, clientName: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, clientName: event.target.value }))
+                  }
                 />
               </SelectField>
               <SelectField label="Project Manager" required>
                 <ProjectManagerSearchSelect
                   value={createForm.projectManagerId}
-                  onChange={(value) => setCreateForm((prev) => ({ ...prev, projectManagerId: value }))}
+                  onChange={(value) =>
+                    setCreateForm((prev) => ({ ...prev, projectManagerId: value }))
+                  }
                   required
                 />
               </SelectField>
@@ -147,13 +149,17 @@ export function ProjectsListPage() {
                 className="min-h-20 w-full rounded-md border px-3 py-2 text-sm"
                 placeholder="Description"
                 value={createForm.description}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, description: event.target.value }))
+                }
               />
             </SelectField>
             <div className="flex gap-2">
               <Button
                 onClick={() => void handleCreateProject()}
-                disabled={createMutation.isPending || !createForm.name || !createForm.projectManagerId}
+                disabled={
+                  createMutation.isPending || !createForm.name || !createForm.projectManagerId
+                }
               >
                 Create Project
               </Button>
@@ -180,7 +186,11 @@ export function ProjectsListPage() {
       {isError ? <p className="text-destructive">Failed to load projects.</p> : null}
 
       <PageDataBoundary isLoading={isLoading} isError={isError} source="projects-list">
-        <DataTable columns={columns} data={data?.items ?? []} onRowClick={(row) => navigate(ROUTES.projectDetail(row.id))} />
+        <DataTable
+          columns={columns}
+          data={data?.items ?? []}
+          onRowClick={(row) => navigate(ROUTES.projectDetail(row.id))}
+        />
       </PageDataBoundary>
     </div>
   );

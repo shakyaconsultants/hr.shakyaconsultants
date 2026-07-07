@@ -15,6 +15,10 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx src/scripts/seed.ts",
     "seed:init": "tsx src/scripts/seed.local.ts",
+    "db:purge-system-garbage": "tsx scripts/purge-system-garbage.ts",
+    "db:diagnose-workforce": "tsx scripts/diagnose-workforce.ts",
+    "db:check-email": "tsx scripts/check-email.ts",
+    "admin:ensure-access": "tsx scripts/ensure-admin-access.ts",
     "test": "node --import tsx --test tests/**/*.test.ts"
   },
   "engines": {

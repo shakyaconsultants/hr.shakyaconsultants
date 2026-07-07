@@ -1,5 +1,6 @@
 import { EffectivePermissionService } from '@modules/rbac/services/effective-permission.service.js';
 import { PermissionCacheService } from '@modules/rbac/services/permission-cache.service.js';
+import { logger } from '@logging/winston.logger.js';
 
 export const PermissionEngineService = {
   async getPermissionsForUser(companyId: string, employeeId: string): Promise<string[]> {
@@ -11,8 +12,12 @@ export const PermissionEngineService = {
     const result = await EffectivePermissionService.calculateForEmployee(companyId, employeeId);
     try {
       await PermissionCacheService.set(companyId, employeeId, result.permissions);
-    } catch {
-      // Cache write failures must not block auth/session shell.
+    } catch (error) {
+      logger.warn('Permission cache write failed — continuing with computed permissions', {
+        companyId,
+        employeeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     return result.permissions;
   },

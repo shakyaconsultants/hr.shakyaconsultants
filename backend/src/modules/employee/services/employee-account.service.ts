@@ -1,8 +1,9 @@
 import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { RoleRepository } from '@domain/permission/permission.schemas.js';
-import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
+import { NotFoundError, ConflictError, ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { PasswordService } from '@modules/auth/services/password.service.js';
@@ -53,9 +54,36 @@ export const EmployeeAccountService = {
 
       if (isSystemAdmin) {
         throw new ConflictError(
-          'This email belongs to the system administrator account and cannot be used for an employee',
+          'This email is reserved for the company administrator login. Use a different work email for the employee.',
           ERROR_CODES.EMAIL_ALREADY_EXISTS,
+          { field: 'email', value: email, reason: 'SYSTEM_ADMIN_EMAIL' },
         );
+      }
+
+      if (existingUser.employeeId) {
+        const linkedEmployee = await EmployeeRepository.findById(existingUser.employeeId, {
+          companyId: input.companyId,
+        });
+        if (
+          linkedEmployee &&
+          linkedEmployee.status === ENTITY_STATUS.ACTIVE &&
+          !linkedEmployee.isDeleted &&
+          linkedEmployee.email.toLowerCase() === email
+        ) {
+          const employeeLabel =
+            `${linkedEmployee.firstName} ${linkedEmployee.lastName}`.trim() ||
+            linkedEmployee.employeeNumber;
+          throw new ConflictError(
+            `Email "${email}" is already assigned to ${employeeLabel}`,
+            ERROR_CODES.EMAIL_ALREADY_EXISTS,
+            {
+              field: 'email',
+              value: email,
+              reason: 'DUPLICATE_EMAIL',
+              employeeId: linkedEmployee.id,
+            },
+          );
+        }
       }
 
       await UserRepository.update(
@@ -118,20 +146,22 @@ export const EmployeeAccountService = {
 
     const loginUrl = `${getEnv().FRONTEND_URL.split(',')[0]?.trim() ?? 'http://localhost:5173'}/login`;
 
-    if (employee.email) {
-      await RecruitmentEmailService.sendAccountCredentials(actor, employee.email, {
-        employeeName: `${employee.firstName} ${employee.lastName}`,
-        email: employee.email,
-        password,
-        loginUrl,
-      });
-      await EmployeeLifecycleService.recordEmailSuccess(
-        actor.companyId,
-        employeeId,
-        EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
-        actor.userId,
-      );
+    if (!employee.email.trim()) {
+      throw new ValidationError('Employee email is required to send welcome credentials');
     }
+
+    await RecruitmentEmailService.sendAccountCredentialsNow(actor, employee.email, {
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      email: employee.email,
+      password,
+      loginUrl,
+    });
+    await EmployeeLifecycleService.recordEmailSuccess(
+      actor.companyId,
+      employeeId,
+      EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
+      actor.userId,
+    );
 
     return { temporaryPassword: password };
   },

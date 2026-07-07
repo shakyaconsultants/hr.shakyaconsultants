@@ -27,7 +27,8 @@ export async function connectMongoDB(): Promise<void> {
 
   const env = getEnv();
   mongoose.set('strictQuery', true);
-  mongoose.set('bufferCommands', false);
+  // Buffer briefly in development to survive transient reconnects; fail fast in production.
+  mongoose.set('bufferCommands', env.NODE_ENV === 'development');
 
   try {
     await mongoose.connect(env.MONGODB_URI, {
@@ -37,7 +38,7 @@ export async function connectMongoDB(): Promise<void> {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(buildMongoConnectionHint(message));
+    throw new Error(buildMongoConnectionHint(message), { cause: error });
   }
 
   isConnected = true;

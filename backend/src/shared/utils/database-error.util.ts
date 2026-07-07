@@ -1,23 +1,29 @@
 import mongoose from 'mongoose';
 import { MongoServerError } from 'mongodb';
-import {
-  ConflictError,
-  ValidationError,
-  type AppError,
-} from '@shared/errors/app.error.js';
+import { ConflictError, ValidationError, type AppError } from '@shared/errors/app.error.js';
 import { ERROR_CODES, type ErrorCode } from '@shared/constants/error-codes.js';
+import { formatDuplicateKeyValue } from '@shared/utils/safe-string.util.js';
 
 const SKIP_DUPLICATE_FIELDS = new Set(['companyId', '_id']);
 
 const INDEX_DUPLICATE_HINTS: Record<string, { field: string; label: string; code?: ErrorCode }> = {
-  uq_employees_company_email: { field: 'email', label: 'Email', code: ERROR_CODES.EMAIL_ALREADY_EXISTS },
-  uq_users_company_email: { field: 'email', label: 'Email', code: ERROR_CODES.EMAIL_ALREADY_EXISTS },
+  uq_employees_company_email: {
+    field: 'email',
+    label: 'Email',
+    code: ERROR_CODES.EMAIL_ALREADY_EXISTS,
+  },
+  uq_users_company_email: {
+    field: 'email',
+    label: 'Email',
+    code: ERROR_CODES.EMAIL_ALREADY_EXISTS,
+  },
   uq_employees_company_number: { field: 'employeeNumber', label: 'Employee number' },
   uq_employees_company_aadhaar: { field: 'aadhaarNumber', label: 'Aadhaar number' },
   uq_employees_company_pan: { field: 'panNumber', label: 'PAN' },
   uq_departments_company_code: { field: 'code', label: 'Department code' },
   uq_designations_company_code: { field: 'code', label: 'Designation code' },
   uq_branches_company_code: { field: 'code', label: 'Branch code' },
+  uq_project_drafts_user: { field: 'userId', label: 'Project draft' },
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -30,17 +36,20 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 function humanizeField(field: string): string {
-  return FIELD_LABELS[field] ?? field.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+  return (
+    FIELD_LABELS[field] ?? field.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+  );
 }
 
 function formatDuplicateValue(field: string, value: unknown): string {
-  if (value === undefined || value === null) {
+  const formatted = formatDuplicateKeyValue(value);
+  if (!formatted) {
     return '';
   }
   if (field === 'email' || field === 'code' || field === 'employeeNumber') {
-    return `"${String(value)}"`;
+    return `"${formatted}"`;
   }
-  return `"${String(value)}"`;
+  return `"${formatted}"`;
 }
 
 function parseIndexName(message: string): string | undefined {
@@ -76,17 +85,25 @@ function buildDuplicateConflict(
 function duplicateKeyMessage(err: MongoServerError): ConflictError {
   const keyValue = (err.keyValue ?? {}) as Record<string, unknown>;
   const keyPattern = (err.keyPattern ?? {}) as Record<string, unknown>;
-  const indexName = parseIndexName(err.message ?? '');
+  const indexName = parseIndexName(err.message);
+  const hint = indexName !== undefined ? INDEX_DUPLICATE_HINTS[indexName] : undefined;
 
-  if (indexName && INDEX_DUPLICATE_HINTS[indexName]) {
-    const hint = INDEX_DUPLICATE_HINTS[indexName];
-    return buildDuplicateConflict(hint.field, keyValue[hint.field], hint.code ?? ERROR_CODES.CONFLICT);
+  if (hint !== undefined) {
+    return buildDuplicateConflict(
+      hint.field,
+      keyValue[hint.field],
+      hint.code ?? ERROR_CODES.CONFLICT,
+    );
   }
 
   const fields = Object.keys(keyPattern).filter((field) => !SKIP_DUPLICATE_FIELDS.has(field));
   for (const field of ['email', 'employeeNumber', 'aadhaarNumber', 'panNumber', 'code']) {
     if (fields.includes(field)) {
-      return buildDuplicateConflict(field, keyValue[field], field === 'email' ? ERROR_CODES.EMAIL_ALREADY_EXISTS : ERROR_CODES.CONFLICT);
+      return buildDuplicateConflict(
+        field,
+        keyValue[field],
+        field === 'email' ? ERROR_CODES.EMAIL_ALREADY_EXISTS : ERROR_CODES.CONFLICT,
+      );
     }
   }
 
@@ -98,7 +115,11 @@ function duplicateKeyMessage(err: MongoServerError): ConflictError {
   if (fields.length > 1) {
     const parts = fields.map((field) => {
       const value = keyValue[field];
-      return value !== undefined ? `${humanizeField(field)}: ${String(value)}` : humanizeField(field);
+      if (value === undefined) {
+        return humanizeField(field);
+      }
+      const formatted = formatDuplicateKeyValue(value);
+      return formatted ? `${humanizeField(field)}: ${formatted}` : humanizeField(field);
     });
     return new ConflictError(
       `A record with the same ${parts.join(', ')} already exists`,

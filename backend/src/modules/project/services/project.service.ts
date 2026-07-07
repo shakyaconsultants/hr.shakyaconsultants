@@ -12,9 +12,16 @@ import { ProjectAuditService } from '@modules/project/services/project-audit.ser
 import { ProjectEventService } from '@modules/project/services/project-event.service.js';
 import { ProjectActivityService } from '@modules/project/services/project-activity.service.js';
 import { ProjectValidationService } from '@modules/project/services/project-validation.service.js';
+import { ProjectCodeService } from '@modules/project/services/project-code.service.js';
 import { PROJECT_EVENT } from '@modules/project/services/project-event.service.js';
-import type { CreateProjectInput, UpdateProjectInput } from '@modules/project/validators/project.validator.js';
-import type { ProjectActorContext, ProjectListQuery } from '@modules/project/types/project.types.js';
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+} from '@modules/project/validators/project.validator.js';
+import type {
+  ProjectActorContext,
+  ProjectListQuery,
+} from '@modules/project/types/project.types.js';
 
 export const ProjectService = {
   async getById(companyId: string, id: string): Promise<ProjectDocument> {
@@ -33,7 +40,15 @@ export const ProjectService = {
     if (query.visibleProjectIds && query.visibleProjectIds.length > 0) {
       filters.push({ id: { $in: query.visibleProjectIds } });
     } else if (query.visibleProjectIds && query.visibleProjectIds.length === 0) {
-      return { items: [], pagination: { page: query.page ?? 1, pageSize: query.pageSize ?? 20, total: 0, totalPages: 0 } };
+      return {
+        items: [],
+        pagination: {
+          page: query.page ?? 1,
+          pageSize: query.pageSize ?? 20,
+          total: 0,
+          totalPages: 0,
+        },
+      };
     }
     if (query.status) {
       filters.push({ status: query.status });
@@ -42,7 +57,15 @@ export const ProjectService = {
       const now = new Date();
       filters.push({
         $or: [
-          { riskLevel: { $in: [PROJECT_RISK_LEVEL.HIGH, PROJECT_RISK_LEVEL.CRITICAL, PROJECT_RISK_LEVEL.MEDIUM] } },
+          {
+            riskLevel: {
+              $in: [
+                PROJECT_RISK_LEVEL.HIGH,
+                PROJECT_RISK_LEVEL.CRITICAL,
+                PROJECT_RISK_LEVEL.MEDIUM,
+              ],
+            },
+          },
           {
             targetDate: { $exists: true, $ne: null, $lt: now },
             status: { $ne: PROJECT_STATUS.COMPLETED },
@@ -67,18 +90,31 @@ export const ProjectService = {
     }
     const filter = mergeFilters(...filters);
 
-    return ProjectRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: query.sortBy ?? 'createdAt',
-      sortOrder: query.sortOrder ?? 'desc',
-    }, { companyId });
+    return ProjectRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: query.sortBy ?? 'createdAt',
+        sortOrder: query.sortOrder ?? 'desc',
+      },
+      { companyId },
+    );
   },
 
-  async create(context: ProjectActorContext, payload: CreateProjectInput): Promise<ProjectDocument> {
-    const code = payload.code.toUpperCase();
+  async create(
+    context: ProjectActorContext,
+    payload: CreateProjectInput,
+  ): Promise<ProjectDocument> {
+    const code = payload.code?.trim()
+      ? payload.code.toUpperCase()
+      : await ProjectCodeService.generateUnique(context.companyId, context.userId, payload.name);
     await ProjectValidationService.assertUniqueCode(context.companyId, code);
-    ProjectValidationService.assertValidDates(payload.startDate, payload.targetDate, payload.endDate);
+    ProjectValidationService.assertValidDates(
+      payload.startDate,
+      payload.targetDate,
+      payload.endDate,
+    );
 
     const id = generateUuid();
     const project = await ProjectRepository.create(
@@ -141,15 +177,19 @@ export const ProjectService = {
     return project;
   },
 
-  async update(context: ProjectActorContext, id: string, payload: UpdateProjectInput): Promise<ProjectDocument> {
+  async update(
+    context: ProjectActorContext,
+    id: string,
+    payload: UpdateProjectInput,
+  ): Promise<ProjectDocument> {
     const before = await this.getById(context.companyId, id);
     const updatePayload: UpdateProjectInput = { ...payload };
-    if (updatePayload.code) {
-      await ProjectValidationService.assertUniqueCode(context.companyId, updatePayload.code, id);
-      updatePayload.code = updatePayload.code.toUpperCase();
-    }
 
-    const updated = await ProjectRepository.update(id, { ...updatePayload, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await ProjectRepository.update(
+      id,
+      { ...updatePayload, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
     if (!updated) {
       throw new NotFoundError('Project not found', ERROR_CODES.NOT_FOUND);
     }
@@ -253,7 +293,11 @@ export const ProjectService = {
     });
   },
 
-  async uploadLogo(context: ProjectActorContext, id: string, file: Express.Multer.File): Promise<ProjectDocument> {
+  async uploadLogo(
+    context: ProjectActorContext,
+    id: string,
+    file: Express.Multer.File,
+  ): Promise<ProjectDocument> {
     const project = await this.getById(context.companyId, id);
     const upload = await UploadService.uploadImage({
       buffer: file.buffer,

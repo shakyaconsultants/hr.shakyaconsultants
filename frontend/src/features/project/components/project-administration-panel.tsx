@@ -27,12 +27,27 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { ConfirmDialog } from '@/shared/components/confirm-dialog';
 import { ROUTES } from '@/config/app.config';
-import { runActionMutation, runDeleteMutation, runFormMutation } from '@/shared/feedback/run-form-mutation';
+import {
+  runActionMutation,
+  runDeleteMutation,
+  runFormMutation,
+} from '@/shared/feedback/run-form-mutation';
 import { useAuthStore } from '@/shared/stores/app.store';
 
 const PROJECT_STATUSES = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
 const PROJECT_PRIORITIES = ['low', 'medium', 'high', 'critical'];
-const MEMBER_ROLES = ['project_manager', 'assistant_project_manager', 'developer', 'qa', 'designer', 'devops', 'business_analyst', 'intern', 'owner', 'viewer'];
+const MEMBER_ROLES = [
+  'project_manager',
+  'assistant_project_manager',
+  'developer',
+  'qa',
+  'designer',
+  'devops',
+  'business_analyst',
+  'intern',
+  'owner',
+  'viewer',
+];
 
 export interface ProjectAdministrationPanelProps {
   project: ProjectRecord;
@@ -66,7 +81,6 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
 
   const [settingsForm, setSettingsForm] = useState({
     name: project.name,
-    code: project.code,
     description: project.description ?? '',
     status: project.status,
     priority: project.priority,
@@ -96,7 +110,6 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
   useEffect(() => {
     setSettingsForm({
       name: project.name,
-      code: project.code,
       description: project.description ?? '',
       status: project.status,
       priority: project.priority,
@@ -138,7 +151,6 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
           id: project.id,
           payload: {
             name: settingsForm.name,
-            code: settingsForm.code,
             description: settingsForm.description || undefined,
             status: settingsForm.status,
             priority: settingsForm.priority,
@@ -246,7 +258,12 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
   }
 
   async function addSprint() {
-    if (!sprintForm.name || !sprintForm.startDate || !sprintForm.endDate || createSprintMutation.isPending) {
+    if (
+      !sprintForm.name ||
+      !sprintForm.startDate ||
+      !sprintForm.endDate ||
+      createSprintMutation.isPending
+    ) {
       return;
     }
     await runActionMutation({
@@ -282,7 +299,9 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Enterprise Administration</h2>
-          <p className="text-sm text-muted-foreground">Full project control — override permissions and configure all project assets.</p>
+          <p className="text-sm text-muted-foreground">
+            Full project control — override permissions and configure all project assets.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canUpdate && !project.isArchived ? (
@@ -316,7 +335,14 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             </Button>
           ) : null}
           {canDelete ? (
-            <Button variant="outline" size="sm" className="text-destructive" onClick={() => setConfirmDelete(true)}>Delete</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete
+            </Button>
           ) : null}
         </div>
       </div>
@@ -328,50 +354,126 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
           <section className="rounded-lg border bg-card p-4 space-y-3">
             <h3 className="font-medium">Project Settings</h3>
             <div className="grid gap-3 md:grid-cols-2">
-              <Input placeholder="Name" value={settingsForm.name} onChange={(e) => setSettingsForm((p) => ({ ...p, name: e.target.value }))} />
-              <Input placeholder="Code" value={settingsForm.code} onChange={(e) => setSettingsForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))} />
-              <Input placeholder="Client" value={settingsForm.clientName} onChange={(e) => setSettingsForm((p) => ({ ...p, clientName: e.target.value }))} />
-              <select className="h-10 rounded-md border px-3 text-sm" value={settingsForm.status} onChange={(e) => setSettingsForm((p) => ({ ...p, status: e.target.value }))}>
-                {PROJECT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+              <Input
+                placeholder="Name"
+                value={settingsForm.name}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, name: e.target.value }))}
+              />
+              <div className="flex h-10 items-center rounded-md border bg-muted/40 px-3 font-mono text-sm text-muted-foreground">
+                {project.code}
+              </div>
+              <Input
+                placeholder="Client"
+                value={settingsForm.clientName}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, clientName: e.target.value }))}
+              />
+              <select
+                className="h-10 rounded-md border px-3 text-sm"
+                value={settingsForm.status}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, status: e.target.value }))}
+              >
+                {PROJECT_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
               </select>
-              <select className="h-10 rounded-md border px-3 text-sm" value={settingsForm.priority} onChange={(e) => setSettingsForm((p) => ({ ...p, priority: e.target.value }))}>
-                {PROJECT_PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
+              <select
+                className="h-10 rounded-md border px-3 text-sm"
+                value={settingsForm.priority}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, priority: e.target.value }))}
+              >
+                {PROJECT_PRIORITIES.map((priority) => (
+                  <option key={priority} value={priority}>
+                    {priority}
+                  </option>
+                ))}
               </select>
               <ProjectManagerSelect
                 className="rounded-md px-3"
                 value={settingsForm.projectManagerId}
-                onChange={(projectManagerId) => setSettingsForm((p) => ({ ...p, projectManagerId }))}
+                onChange={(projectManagerId) =>
+                  setSettingsForm((p) => ({ ...p, projectManagerId }))
+                }
                 placeholder="Select project manager"
                 includeEmployeeId={project.projectManagerId}
               />
-              <DatePicker value={settingsForm.startDate} onChange={(value) => setSettingsForm((p) => ({ ...p, startDate: value }))} max={settingsForm.targetDate || undefined} />
-              <DatePicker value={settingsForm.targetDate} onChange={(value) => setSettingsForm((p) => ({ ...p, targetDate: value }))} min={settingsForm.startDate || undefined} />
+              <DatePicker
+                value={settingsForm.startDate}
+                onChange={(value) => setSettingsForm((p) => ({ ...p, startDate: value }))}
+                max={settingsForm.targetDate || undefined}
+              />
+              <DatePicker
+                value={settingsForm.targetDate}
+                onChange={(value) => setSettingsForm((p) => ({ ...p, targetDate: value }))}
+                min={settingsForm.startDate || undefined}
+              />
             </div>
-            <textarea className="min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Description" value={settingsForm.description} onChange={(e) => setSettingsForm((p) => ({ ...p, description: e.target.value }))} />
-            <Button size="sm" onClick={() => void saveSettings()} disabled={updateMutation.isPending}>Save Settings</Button>
+            <textarea
+              className="min-h-20 w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Description"
+              value={settingsForm.description}
+              onChange={(e) => setSettingsForm((p) => ({ ...p, description: e.target.value }))}
+            />
+            <Button
+              size="sm"
+              onClick={() => void saveSettings()}
+              disabled={updateMutation.isPending}
+            >
+              Save Settings
+            </Button>
           </section>
 
           <section className="rounded-lg border bg-card p-4 space-y-3">
             <h3 className="font-medium">Team Members</h3>
             <div className="grid gap-2 md:grid-cols-3">
-              <select className="h-10 rounded-md border px-3 text-sm" value={memberForm.employeeId} onChange={(e) => setMemberForm((p) => ({ ...p, employeeId: e.target.value }))}>
+              <select
+                className="h-10 rounded-md border px-3 text-sm"
+                value={memberForm.employeeId}
+                onChange={(e) => setMemberForm((p) => ({ ...p, employeeId: e.target.value }))}
+              >
                 <option value="">Select employee</option>
                 {(employees ?? []).map((employee) => (
-                  <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName}</option>
+                  <option key={employee.id} value={employee.id}>
+                    {employee.firstName} {employee.lastName}
+                  </option>
                 ))}
               </select>
-              <select className="h-10 rounded-md border px-3 text-sm" value={memberForm.role} onChange={(e) => setMemberForm((p) => ({ ...p, role: e.target.value }))}>
-                {MEMBER_ROLES.map((role) => <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>)}
+              <select
+                className="h-10 rounded-md border px-3 text-sm"
+                value={memberForm.role}
+                onChange={(e) => setMemberForm((p) => ({ ...p, role: e.target.value }))}
+              >
+                {MEMBER_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {role.replace(/_/g, ' ')}
+                  </option>
+                ))}
               </select>
-              <Button size="sm" onClick={() => void assignMember()} disabled={!memberForm.employeeId || assignMemberMutation.isPending}>
+              <Button
+                size="sm"
+                onClick={() => void assignMember()}
+                disabled={!memberForm.employeeId || assignMemberMutation.isPending}
+              >
                 Assign Member
               </Button>
             </div>
             <ul className="space-y-2">
               {members.map((member) => (
-                <li key={String(member.id)} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
-                  <span>{String(member.employeeId)} · {String(member.role)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => void removeMember(String(member.id))}>Remove</Button>
+                <li
+                  key={String(member.id)}
+                  className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                >
+                  <span>
+                    {String(member.employeeId)} · {String(member.role)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void removeMember(String(member.id))}
+                  >
+                    Remove
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -380,17 +482,38 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
           <section className="rounded-lg border bg-card p-4 space-y-3">
             <h3 className="font-medium">Modules</h3>
             <div className="grid gap-2 md:grid-cols-3">
-              <Input placeholder="Module name" value={moduleForm.name} onChange={(e) => setModuleForm((p) => ({ ...p, name: e.target.value }))} />
-              <Input placeholder="Description" value={moduleForm.description} onChange={(e) => setModuleForm((p) => ({ ...p, description: e.target.value }))} />
-              <Button size="sm" onClick={() => void addModule()} disabled={!moduleForm.name || createModuleMutation.isPending}>
+              <Input
+                placeholder="Module name"
+                value={moduleForm.name}
+                onChange={(e) => setModuleForm((p) => ({ ...p, name: e.target.value }))}
+              />
+              <Input
+                placeholder="Description"
+                value={moduleForm.description}
+                onChange={(e) => setModuleForm((p) => ({ ...p, description: e.target.value }))}
+              />
+              <Button
+                size="sm"
+                onClick={() => void addModule()}
+                disabled={!moduleForm.name || createModuleMutation.isPending}
+              >
                 Add Module
               </Button>
             </div>
             <ul className="space-y-2">
               {modules.map((module) => (
-                <li key={String(module.id)} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                <li
+                  key={String(module.id)}
+                  className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                >
                   <span>{String(module.name)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => void removeModule(String(module.id))}>Delete</Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void removeModule(String(module.id))}
+                  >
+                    Delete
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -399,17 +522,39 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
           <section className="rounded-lg border bg-card p-4 space-y-3">
             <h3 className="font-medium">Milestones</h3>
             <div className="grid gap-2 md:grid-cols-3">
-              <Input placeholder="Milestone name" value={milestoneForm.name} onChange={(e) => setMilestoneForm((p) => ({ ...p, name: e.target.value }))} />
-              <DatePicker value={milestoneForm.dueDate} onChange={(value) => setMilestoneForm((p) => ({ ...p, dueDate: value }))} />
-              <Button size="sm" onClick={() => void addMilestone()} disabled={!milestoneForm.name || !milestoneForm.dueDate || createMilestoneMutation.isPending}>
+              <Input
+                placeholder="Milestone name"
+                value={milestoneForm.name}
+                onChange={(e) => setMilestoneForm((p) => ({ ...p, name: e.target.value }))}
+              />
+              <DatePicker
+                value={milestoneForm.dueDate}
+                onChange={(value) => setMilestoneForm((p) => ({ ...p, dueDate: value }))}
+              />
+              <Button
+                size="sm"
+                onClick={() => void addMilestone()}
+                disabled={
+                  !milestoneForm.name || !milestoneForm.dueDate || createMilestoneMutation.isPending
+                }
+              >
                 Add Milestone
               </Button>
             </div>
             <ul className="space-y-2">
               {milestones.map((milestone) => (
-                <li key={String(milestone.id)} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                <li
+                  key={String(milestone.id)}
+                  className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                >
                   <span>{String(milestone.name)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => void removeMilestone(String(milestone.id))}>Delete</Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void removeMilestone(String(milestone.id))}
+                  >
+                    Delete
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -418,19 +563,46 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
           <section className="rounded-lg border bg-card p-4 space-y-3">
             <h3 className="font-medium">Sprints</h3>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-              <Input placeholder="Sprint name" value={sprintForm.name} onChange={(e) => setSprintForm((p) => ({ ...p, name: e.target.value }))} />
-              <DatePicker value={sprintForm.startDate} onChange={(value) => setSprintForm((p) => ({ ...p, startDate: value }))} max={sprintForm.endDate || undefined} />
-              <DatePicker value={sprintForm.endDate} onChange={(value) => setSprintForm((p) => ({ ...p, endDate: value }))} min={sprintForm.startDate || undefined} />
-              <Input placeholder="Goal" value={sprintForm.goal} onChange={(e) => setSprintForm((p) => ({ ...p, goal: e.target.value }))} />
+              <Input
+                placeholder="Sprint name"
+                value={sprintForm.name}
+                onChange={(e) => setSprintForm((p) => ({ ...p, name: e.target.value }))}
+              />
+              <DatePicker
+                value={sprintForm.startDate}
+                onChange={(value) => setSprintForm((p) => ({ ...p, startDate: value }))}
+                max={sprintForm.endDate || undefined}
+              />
+              <DatePicker
+                value={sprintForm.endDate}
+                onChange={(value) => setSprintForm((p) => ({ ...p, endDate: value }))}
+                min={sprintForm.startDate || undefined}
+              />
+              <Input
+                placeholder="Goal"
+                value={sprintForm.goal}
+                onChange={(e) => setSprintForm((p) => ({ ...p, goal: e.target.value }))}
+              />
             </div>
-            <Button size="sm" onClick={() => void addSprint()} disabled={!sprintForm.name || !sprintForm.startDate || !sprintForm.endDate || createSprintMutation.isPending}>
+            <Button
+              size="sm"
+              onClick={() => void addSprint()}
+              disabled={
+                !sprintForm.name ||
+                !sprintForm.startDate ||
+                !sprintForm.endDate ||
+                createSprintMutation.isPending
+              }
+            >
               Add Sprint
             </Button>
             <ul className="space-y-2">
               {sprints.map((sprint) => (
                 <li key={String(sprint.id)} className="rounded border px-3 py-2 text-sm">
                   <p className="font-medium">{String(sprint.name)}</p>
-                  <p className="text-muted-foreground">{String(sprint.status)} · {String(sprint.startDate)} → {String(sprint.endDate)}</p>
+                  <p className="text-muted-foreground">
+                    {String(sprint.status)} · {String(sprint.startDate)} → {String(sprint.endDate)}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -438,11 +610,34 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
 
           <section className="rounded-lg border bg-card p-4 space-y-3">
             <h3 className="font-medium">Repository & Environment</h3>
-            <Input placeholder="Repository URL" value={kbForm.repositoryUrl} onChange={(e) => setKbForm((p) => ({ ...p, repositoryUrl: e.target.value }))} />
-            <textarea className="min-h-24 w-full rounded-md border px-3 py-2 font-mono text-sm" placeholder="Environment variables (KEY=value per line)" value={kbForm.envVariables} onChange={(e) => setKbForm((p) => ({ ...p, envVariables: e.target.value }))} />
-            <textarea className="min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Deployment guide" value={kbForm.deploymentGuide} onChange={(e) => setKbForm((p) => ({ ...p, deploymentGuide: e.target.value }))} />
-            <textarea className="min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Architecture notes" value={kbForm.architectureNotes} onChange={(e) => setKbForm((p) => ({ ...p, architectureNotes: e.target.value }))} />
-            <Button size="sm" onClick={() => void saveKnowledgeBase()} disabled={upsertKbMutation.isPending}>
+            <Input
+              placeholder="Repository URL"
+              value={kbForm.repositoryUrl}
+              onChange={(e) => setKbForm((p) => ({ ...p, repositoryUrl: e.target.value }))}
+            />
+            <textarea
+              className="min-h-24 w-full rounded-md border px-3 py-2 font-mono text-sm"
+              placeholder="Environment variables (KEY=value per line)"
+              value={kbForm.envVariables}
+              onChange={(e) => setKbForm((p) => ({ ...p, envVariables: e.target.value }))}
+            />
+            <textarea
+              className="min-h-20 w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Deployment guide"
+              value={kbForm.deploymentGuide}
+              onChange={(e) => setKbForm((p) => ({ ...p, deploymentGuide: e.target.value }))}
+            />
+            <textarea
+              className="min-h-20 w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Architecture notes"
+              value={kbForm.architectureNotes}
+              onChange={(e) => setKbForm((p) => ({ ...p, architectureNotes: e.target.value }))}
+            />
+            <Button
+              size="sm"
+              onClick={() => void saveKnowledgeBase()}
+              disabled={upsertKbMutation.isPending}
+            >
               Save Repository & Environment
             </Button>
           </section>

@@ -4,8 +4,6 @@ import { ArrowLeft, Upload } from 'lucide-react';
 import {
   useEmployeeDashboard,
   useUploadDocument,
-  useArchiveEmployee,
-  useRestoreEmployee,
   useDeactivateEmployee,
   useReactivateEmployee,
   useDeleteEmployee,
@@ -47,8 +45,6 @@ export function EmployeeDetailPage() {
   const uploadMutation = useUploadDocument();
   const navigate = useNavigate();
 
-  const archiveMutation = useArchiveEmployee();
-  const restoreMutation = useRestoreEmployee();
   const deactivateMutation = useDeactivateEmployee();
   const reactivateMutation = useReactivateEmployee();
   const deleteMutation = useDeleteEmployee();
@@ -66,17 +62,14 @@ export function EmployeeDetailPage() {
 
   const employee = data.employee;
 
-  async function handleArchive() {
+  async function handleDelete() {
+    if (!confirm('Permanently remove this employee and their portal account from the system?')) {
+      return;
+    }
     await runActionMutation({
-      successMessage: 'Employee archived successfully.',
-      mutation: () => archiveMutation.mutateAsync(id),
-    });
-  }
-
-  async function handleRestore() {
-    await runActionMutation({
-      successMessage: 'Employee restored successfully.',
-      mutation: () => restoreMutation.mutateAsync(id),
+      successMessage: 'Employee removed from the system.',
+      mutation: () => deleteMutation.mutateAsync(id),
+      onSuccess: () => navigate(ROUTES.EMPLOYEES),
     });
   }
 
@@ -91,17 +84,6 @@ export function EmployeeDetailPage() {
     await runActionMutation({
       successMessage: 'Employee reactivated successfully.',
       mutation: () => reactivateMutation.mutateAsync(id),
-    });
-  }
-
-  async function handleDelete() {
-    if (!confirm('Are you sure you want to permanently delete this employee?')) {
-      return;
-    }
-    await runActionMutation({
-      successMessage: 'Employee deleted successfully.',
-      mutation: () => deleteMutation.mutateAsync(id),
-      onSuccess: () => navigate(ROUTES.EMPLOYEES),
     });
   }
 
@@ -151,9 +133,7 @@ export function EmployeeDetailPage() {
             <h1 className="text-2xl font-bold">
               {employee.firstName} {employee.lastName}
             </h1>
-            <p className="text-sm font-medium text-primary">
-              {(employee as any).designationName ?? ''}
-            </p>
+            <p className="text-sm font-medium text-primary">{employee.designationName ?? ''}</p>
             <p className="font-mono text-sm text-muted-foreground">{employee.employeeNumber}</p>
             <p className="text-sm text-muted-foreground">{employee.email}</p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -188,32 +168,13 @@ export function EmployeeDetailPage() {
               Reactivate
             </Button>
           ) : null}
-          {employee.status !== 'archived' ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-amber-600 hover:text-amber-700"
-              onClick={handleArchive}
-            >
-              Archive
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-green-600 hover:text-green-700"
-              onClick={handleRestore}
-            >
-              Restore
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"
             className="text-destructive hover:text-red-700"
             onClick={handleDelete}
           >
-            Delete
+            Remove from system
           </Button>
         </div>
       </div>
@@ -268,11 +229,11 @@ export function EmployeeDetailPage() {
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Department</dt>
-                <dd>{(employee as any).departmentName ?? '—'}</dd>
+                <dd>{employee.departmentName ?? '—'}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Designation</dt>
-                <dd>{(employee as any).designationName ?? '—'}</dd>
+                <dd>{employee.designationName ?? '—'}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Joined</dt>

@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { invalidateAndRefetch } from '@/shared/api/query-config';
 import type { ListEmployeesParams } from '@/features/employee/api/employee.api';
 
 export const employeeQueryKeys = {
@@ -10,11 +11,13 @@ export const employeeQueryKeys = {
 };
 
 /** Invalidate and refetch employee list caches so the directory updates without a full page reload. */
-export async function refreshEmployeeQueries(queryClient: QueryClient, employeeId?: string): Promise<void> {
-  await queryClient.invalidateQueries({ queryKey: employeeQueryKeys.all });
+export async function refreshEmployeeQueries(
+  queryClient: QueryClient,
+  employeeId?: string,
+): Promise<void> {
+  await invalidateAndRefetch(queryClient, employeeQueryKeys.all);
   if (employeeId) {
-    await queryClient.invalidateQueries({ queryKey: employeeQueryKeys.detail(employeeId) });
-    await queryClient.invalidateQueries({ queryKey: employeeQueryKeys.dashboard(employeeId) });
+    await invalidateAndRefetch(queryClient, employeeQueryKeys.detail(employeeId));
+    await invalidateAndRefetch(queryClient, employeeQueryKeys.dashboard(employeeId));
   }
-  await queryClient.refetchQueries({ queryKey: employeeQueryKeys.all });
 }

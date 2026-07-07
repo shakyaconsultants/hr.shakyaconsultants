@@ -1,5 +1,6 @@
-/** Centralized MongoDB collection names — snake_case plural */
+/** Centralized MongoDB collection names — grouped by domain in backend/docs/DATABASE.md */
 export const COLLECTIONS = {
+  // Identity & tenant
   COMPANIES: 'companies',
   USERS: 'users',
   PASSWORD_RESET_TOKENS: 'password_reset_tokens',

@@ -25,6 +25,9 @@ import { EmployeeAccountService } from '@modules/employee/services/employee-acco
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
 import { EmployeePurgeService } from '@modules/employee/services/employee-purge.service.js';
 import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
+import { WorkforceCleanupService } from '@modules/employee/services/workforce-cleanup.service.js';
+import { UserRepository } from '@domain/auth/user.schema.js';
+import { SystemAdminProfileService } from '@modules/auth/services/system-admin-profile.service.js';
 import { logger } from '@logging/winston.logger.js';
 
 const ENTITY_TYPE = 'employee';
@@ -73,6 +76,27 @@ function pickAdminCreatePayload(payload: Record<string, unknown>): Record<string
   return sanitizeCreatePayload(picked);
 }
 
+async function prepareWorkforceCreate(context: EmployeeActorContext): Promise<void> {
+  const actorUser = await UserRepository.findById(context.userId, { companyId: context.companyId });
+  if (
+    actorUser &&
+    (await SystemAdminProfileService.isLegacyEmployeeLinkedAdmin(context.companyId, actorUser))
+  ) {
+    await SystemAdminProfileService.migrateLegacyEmployeeLinkedAdmin(context.companyId, actorUser);
+  }
+}
+
+export interface EmployeeCreateResult {
+  employee: EmployeeDocument;
+  welcomeEmailSent: boolean;
+  welcomeEmailError?: string;
+}
+
+function omitEmailField(payload: Record<string, unknown>): Record<string, unknown> {
+  const { email: _removed, ...rest } = payload;
+  return rest;
+}
+
 export const EmployeeService = {
   async getById(companyId: string, id: string, includeDeleted = false): Promise<EmployeeDocument> {
     const employee = await EmployeeRepository.findById(id, { companyId, includeDeleted });
@@ -93,18 +117,26 @@ export const EmployeeService = {
   async create(
     context: EmployeeActorContext,
     payload: Record<string, unknown>,
-  ): Promise<EmployeeDocument> {
+  ): Promise<EmployeeCreateResult> {
     const email = typeof payload.email === 'string' ? payload.email.toLowerCase() : '';
     const departmentId = typeof payload.departmentId === 'string' ? payload.departmentId : '';
     const designationId = typeof payload.designationId === 'string' ? payload.designationId : '';
     const branchId = typeof payload.branchId === 'string' ? payload.branchId : undefined;
+
+    await prepareWorkforceCreate(context);
 
     await EmployeeValidationService.assertOrganizationPlacement(context.companyId, {
       departmentId,
       designationId,
       branchId,
     });
-    await EmployeeValidationService.assertUniqueEmail(context.companyId, email);
+
+    await WorkforceCleanupService.reclaimGhostRecordsForEmail(
+      context.companyId,
+      email,
+      context.userId,
+    );
+    await EmployeeValidationService.assertEmailAvailableForCreate(context.companyId, email);
 
     if (typeof payload.reportingManagerId === 'string') {
       await EmployeeValidationService.assertManagerExists(
@@ -115,20 +147,12 @@ export const EmployeeService = {
 
     const employeeNumber = await EmployeeNumberService.generate(context.companyId, context.userId);
     const id = generateUuid();
-    const sanitized = pickAdminCreatePayload(payload);
+    const sanitized = omitEmailField(pickAdminCreatePayload(payload));
     const temporaryPassword = EmployeeAccountService.resolveTemporaryPassword(
       typeof payload.temporaryPassword === 'string' ? payload.temporaryPassword : undefined,
     );
 
-    const { userId } = await EmployeeAccountService.provisionPortalUser({
-      companyId: context.companyId,
-      userId: context.userId,
-      email,
-      employeeId: id,
-      temporaryPassword,
-    });
-
-    const employee = await EmployeeRepository.create(
+    let employee = await EmployeeRepository.create(
       {
         id,
         companyId: context.companyId,
@@ -137,7 +161,6 @@ export const EmployeeService = {
         languages: [],
         employmentStatus: EMPLOYEE_EMPLOYMENT_STATUS.ACTIVE,
         status: ENTITY_STATUS.ACTIVE,
-        userId,
         ...sanitized,
         createdBy: context.userId,
         updatedBy: context.userId,
@@ -145,65 +168,102 @@ export const EmployeeService = {
       { companyId: context.companyId },
     );
 
-    await EmployeeTimelineService.record(context, {
-      employeeId: id,
-      eventType: EmployeeTimelineService.EVENT.CREATED,
-      title: 'Employee created',
-      description: `${employee.firstName} ${employee.lastName} was added to the system`,
-    });
-
-    await EmployeeTimelineService.record(context, {
-      employeeId: id,
-      eventType: EmployeeTimelineService.EVENT.JOINED,
-      title: 'Joined organization',
-      occurredAt: employee.joinedAt,
-      metadata: { employeeNumber },
-    });
-
-    await EmployeeAuditService.log({
-      companyId: context.companyId,
-      userId: context.userId,
-      entityType: ENTITY_TYPE,
-      entityId: id,
-      action: 'create',
-      after: EmployeeAuditService.toRecord(employee),
-      ip: context.ip,
-      userAgent: context.userAgent,
-    });
-
-    await EmployeeProvisioningService.ensureDefaultEmployeeRole(context.companyId, id, {
-      companyId: context.companyId,
-      userId: context.userId,
-      employeeId: id,
-      ip: context.ip,
-      userAgent: context.userAgent,
-    });
-
-    await OnboardingService.startForEmployee(
-      { companyId: context.companyId, userId: context.userId },
-      id,
-      employee.joinedAt,
-    );
-
     try {
-      await EmployeeAccountService.sendWelcomeCredentialsEmail(context, id, temporaryPassword);
-    } catch (emailError) {
-      const message = emailError instanceof Error ? emailError.message : String(emailError);
-      await EmployeeLifecycleService.recordEmailFailure(
-        context.companyId,
-        id,
-        EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
-        context.userId,
-        emailError,
-      );
-      logger.error('Failed to send welcome credentials email', {
-        employeeId: id,
+      const { userId } = await EmployeeAccountService.provisionPortalUser({
+        companyId: context.companyId,
+        userId: context.userId,
         email,
-        message,
+        employeeId: id,
+        temporaryPassword,
       });
-    }
 
-    return employee;
+      const linked = await EmployeeRepository.update(
+        id,
+        { userId, updatedBy: context.userId },
+        { companyId: context.companyId },
+      );
+      if (linked) {
+        employee = linked;
+      }
+
+      await EmployeeTimelineService.record(context, {
+        employeeId: id,
+        eventType: EmployeeTimelineService.EVENT.CREATED,
+        title: 'Employee created',
+        description: `${employee.firstName} ${employee.lastName} was added to the system`,
+      });
+
+      await EmployeeTimelineService.record(context, {
+        employeeId: id,
+        eventType: EmployeeTimelineService.EVENT.JOINED,
+        title: 'Joined organization',
+        occurredAt: employee.joinedAt,
+        metadata: { employeeNumber },
+      });
+
+      await EmployeeAuditService.log({
+        companyId: context.companyId,
+        userId: context.userId,
+        entityType: ENTITY_TYPE,
+        entityId: id,
+        action: 'create',
+        after: EmployeeAuditService.toRecord(employee),
+        ip: context.ip,
+        userAgent: context.userAgent,
+      });
+
+      await EmployeeProvisioningService.ensureDefaultEmployeeRole(context.companyId, id, {
+        companyId: context.companyId,
+        userId: context.userId,
+        employeeId: id,
+        ip: context.ip,
+        userAgent: context.userAgent,
+      });
+
+      await OnboardingService.startForEmployee(
+        { companyId: context.companyId, userId: context.userId },
+        id,
+        employee.joinedAt,
+      );
+
+      let welcomeEmailSent = false;
+      let welcomeEmailError: string | undefined;
+      try {
+        await EmployeeAccountService.sendWelcomeCredentialsEmail(context, id, temporaryPassword);
+        welcomeEmailSent = true;
+      } catch (emailError) {
+        welcomeEmailError = emailError instanceof Error ? emailError.message : String(emailError);
+        await EmployeeLifecycleService.recordEmailFailure(
+          context.companyId,
+          id,
+          EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
+          context.userId,
+          emailError,
+        );
+        logger.error('Failed to send welcome credentials email', {
+          employeeId: id,
+          email,
+          message: welcomeEmailError,
+        });
+      }
+
+      return { employee, welcomeEmailSent, welcomeEmailError };
+    } catch (postCreateError) {
+      try {
+        await EmployeePurgeService.hardDelete(context, id);
+      } catch (rollbackError) {
+        logger.error('Failed to rollback employee after create failure', {
+          companyId: context.companyId,
+          employeeId: id,
+          email,
+          rollbackError:
+            rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+          postCreateError:
+            postCreateError instanceof Error ? postCreateError.message : String(postCreateError),
+        });
+      }
+      throw postCreateError;
+    }
   },
 
   async update(
@@ -309,36 +369,8 @@ export const EmployeeService = {
     return updated;
   },
 
-  async archive(context: EmployeeActorContext, id: string): Promise<EmployeeDocument> {
-    const before = await this.getById(context.companyId, id);
-    const updated = await EmployeeRepository.update(
-      id,
-      { status: ENTITY_STATUS.ARCHIVED, updatedBy: context.userId },
-      { companyId: context.companyId },
-    );
-    if (!updated) {
-      throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
-    }
-
-    await EmployeeTimelineService.record(context, {
-      employeeId: id,
-      eventType: EmployeeTimelineService.EVENT.ARCHIVED,
-      title: 'Employee archived',
-    });
-
-    await EmployeeAuditService.log({
-      companyId: context.companyId,
-      userId: context.userId,
-      entityType: ENTITY_TYPE,
-      entityId: id,
-      action: 'archive',
-      before: EmployeeAuditService.toRecord(before),
-      after: EmployeeAuditService.toRecord(updated),
-      ip: context.ip,
-      userAgent: context.userAgent,
-    });
-
-    return updated;
+  async archive(context: EmployeeActorContext, id: string): Promise<void> {
+    await this.delete(context, id);
   },
 
   async restore(context: EmployeeActorContext, id: string): Promise<EmployeeDocument> {

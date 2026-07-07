@@ -24,6 +24,12 @@ export interface EmployeeRecord {
   employmentStatus: string;
   status: string;
   joinedAt: string;
+  departmentName?: string;
+  designationName?: string;
+  welcomeEmailSent?: boolean;
+  welcomeEmailError?: string;
+  alreadyExists?: boolean;
+  message?: string;
 }
 
 export interface EmployeeEmailDeliveryView {
@@ -118,6 +124,24 @@ export async function fetchEmployee(id: string): Promise<EmployeeRecord> {
 export async function fetchEmployeeDashboard(id: string): Promise<EmployeeDashboard> {
   const { data } = await apiClient.get<ApiSuccessResponse<EmployeeDashboard>>(
     `${EMPLOYEE_PREFIX}/${id}/dashboard`,
+  );
+  return data.data;
+}
+
+export interface EmailAvailabilityResult {
+  available: boolean;
+  reason: 'AVAILABLE' | 'DUPLICATE_EMAIL' | 'SYSTEM_ADMIN_EMAIL' | 'PORTAL_USER_LINKED';
+  message: string;
+  employeeId?: string;
+  employeeName?: string;
+}
+
+export async function checkEmployeeEmailAvailability(
+  email: string,
+): Promise<EmailAvailabilityResult> {
+  const { data } = await apiClient.get<ApiSuccessResponse<EmailAvailabilityResult>>(
+    `${EMPLOYEE_PREFIX}/check-email`,
+    { params: { email: email.trim() } },
   );
   return data.data;
 }

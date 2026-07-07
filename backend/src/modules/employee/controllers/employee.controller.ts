@@ -12,9 +12,11 @@ import {
 import { EmployeeReportingService } from '@modules/employee/services/employee-reporting.service.js';
 import { CompanyRepository } from '@domain/company/company.schema.js';
 import type { EmployeeActorContext } from '@modules/employee/types/employee.types.js';
+import { EmployeeValidationService } from '@modules/employee/services/employee-validation.service.js';
 import { EmployeeLifecycleService } from '@modules/employee/services/employee-lifecycle.service.js';
-import { ValidationError } from '@shared/errors/app.error.js';
+import { ValidationError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+import { logger } from '@logging/winston.logger.js';
 import type { z } from 'zod';
 import {
   adminCreateEmployeeSchema,
@@ -73,6 +75,26 @@ export const searchEmployees: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const checkEmployeeEmail: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const email = typeof req.query.email === 'string' ? req.query.email.trim() : '';
+    if (!email) {
+      throw new ValidationError('Email query parameter is required', [{ email: 'Required' }], {
+        code: ERROR_CODES.VALIDATION_FAILED,
+      });
+    }
+    const result = await EmployeeValidationService.checkEmailAvailability(
+      authReq.user.companyId,
+      email,
+    );
+    return ResponseService.success(res, authReq, result);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const getEmployee: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -101,9 +123,49 @@ export const createEmployee: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const payload = validateInput(adminCreateEmployeeSchema, req.body);
-    const employee = await EmployeeService.create(buildActor(authReq), payload);
-    return ResponseService.created(res, authReq, employee);
+    const result = await EmployeeService.create(buildActor(authReq), payload);
+    return ResponseService.created(res, authReq, {
+      ...result.employee,
+      welcomeEmailSent: result.welcomeEmailSent,
+      welcomeEmailError: result.welcomeEmailError,
+    });
   } catch (error) {
+    if (error instanceof ConflictError) {
+      const bodyRecord: Record<string, unknown> =
+        typeof req.body === 'object' && req.body !== null
+          ? (req.body as Record<string, unknown>)
+          : {};
+      try {
+        const authReq = req as AuthenticatedRequest;
+        const email =
+          typeof bodyRecord.email === 'string' ? bodyRecord.email.trim().toLowerCase() : '';
+        const metadata = error.metadata;
+        const employeeId =
+          typeof metadata.employeeId === 'string' ? metadata.employeeId : undefined;
+
+        if (email) {
+          const availability = await EmployeeValidationService.checkEmailAvailability(
+            authReq.user.companyId,
+            email,
+          );
+          const resolvedId = employeeId ?? availability.employeeId;
+          if (!availability.available && resolvedId) {
+            const employee = await EmployeeService.getById(authReq.user.companyId, resolvedId);
+            return ResponseService.success(res, authReq, {
+              ...employee,
+              alreadyExists: true,
+              welcomeEmailSent: false,
+              message: availability.message,
+            });
+          }
+        }
+      } catch (recoveryError) {
+        logger.warn('Employee create conflict recovery failed', {
+          email: typeof bodyRecord.email === 'string' ? bodyRecord.email : undefined,
+          error: recoveryError instanceof Error ? recoveryError.message : String(recoveryError),
+        });
+      }
+    }
     next(error);
     return;
   }
@@ -126,8 +188,8 @@ export const archiveEmployee: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { id } = validateInput(idParamSchema, req.params);
-    const employee = await EmployeeService.archive(buildActor(authReq), id);
-    return ResponseService.success(res, authReq, employee);
+    await EmployeeService.archive(buildActor(authReq), id);
+    return ResponseService.success(res, authReq, { id, removed: true });
   } catch (error) {
     next(error);
     return;
@@ -198,7 +260,10 @@ export const exportEmployees: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(listQuerySchema, req.query);
-    const result = await EmployeeService.list(authReq.user.companyId, { ...query, pageSize: 10000 });
+    const result = await EmployeeService.list(authReq.user.companyId, {
+      ...query,
+      pageSize: 10000,
+    });
     const csv = EmployeeExportService.toCsv(result.items);
     await EmployeeExportService.logExport(buildActor(authReq), result.items.length);
     res.setHeader('Content-Type', 'text/csv');
@@ -218,10 +283,16 @@ export const importEmployees: RequestHandler = async (req, res, next) => {
     const actor = buildActor(authReq);
     const created = [];
     for (const row of rows) {
-      if (!row.email || !row.firstName || !row.lastName || !row.departmentId || !row.designationId) {
+      if (
+        !row.email ||
+        !row.firstName ||
+        !row.lastName ||
+        !row.departmentId ||
+        !row.designationId
+      ) {
         continue;
       }
-      const employee = await EmployeeService.create(actor, {
+      const result = await EmployeeService.create(actor, {
         firstName: row.firstName,
         lastName: row.lastName,
         email: row.email,
@@ -232,7 +303,7 @@ export const importEmployees: RequestHandler = async (req, res, next) => {
         joinedAt: row.joinedAt ? new Date(row.joinedAt) : new Date(),
         employmentType: row.employmentType,
       });
-      created.push(employee.id);
+      created.push(result.employee.id);
     }
     return ResponseService.success(res, authReq, { imported: created.length, ids: created });
   } catch (error) {
@@ -309,7 +380,11 @@ export const getSignedUploadParams: RequestHandler = (req, res, next) => {
 // Sub-resources — generic pattern
 function subResourceHandlers(
   listFn: (companyId: string, employeeId: string) => Promise<unknown>,
-  createFn: (ctx: EmployeeActorContext, employeeId: string, payload: Record<string, unknown>) => Promise<unknown>,
+  createFn: (
+    ctx: EmployeeActorContext,
+    employeeId: string,
+    payload: Record<string, unknown>,
+  ) => Promise<unknown>,
   schema: z.ZodType<Record<string, unknown>>,
 ) {
   return {
@@ -428,7 +503,12 @@ export const returnAsset: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { employeeId, id } = validateInput(subResourceIdParamSchema, req.params);
     const { condition } = validateInput(returnAssetSchema, req.body);
-    const asset = await EmployeeSubresourceService.returnAsset(buildActor(authReq), employeeId, id, condition);
+    const asset = await EmployeeSubresourceService.returnAsset(
+      buildActor(authReq),
+      employeeId,
+      id,
+      condition,
+    );
     return ResponseService.success(res, authReq, asset);
   } catch (error) {
     next(error);
@@ -440,7 +520,10 @@ export const listManagers: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const managers = await EmployeeReportingService.listManagersEnriched(authReq.user.companyId, employeeId);
+    const managers = await EmployeeReportingService.listManagersEnriched(
+      authReq.user.companyId,
+      employeeId,
+    );
     return ResponseService.success(res, authReq, managers);
   } catch (error) {
     next(error);
@@ -452,7 +535,10 @@ export const listDirectReports: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const reports = await EmployeeReportingService.listDirectReportsEnriched(authReq.user.companyId, employeeId);
+    const reports = await EmployeeReportingService.listDirectReportsEnriched(
+      authReq.user.companyId,
+      employeeId,
+    );
     return ResponseService.success(res, authReq, reports);
   } catch (error) {
     next(error);
@@ -463,7 +549,9 @@ export const listDirectReports: RequestHandler = async (req, res, next) => {
 export const getReportingTree: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const company = await CompanyRepository.findById(authReq.user.companyId, { companyId: authReq.user.companyId });
+    const company = await CompanyRepository.findById(authReq.user.companyId, {
+      companyId: authReq.user.companyId,
+    });
     const tree = await EmployeeReportingService.getReportingTree(
       authReq.user.companyId,
       company?.name ?? 'Company',
@@ -480,7 +568,11 @@ export const assignManager: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
     const payload = validateInput(assignManagerSchema, req.body);
-    const record = await EmployeeSubresourceService.assignManager(buildActor(authReq), employeeId, payload);
+    const record = await EmployeeSubresourceService.assignManager(
+      buildActor(authReq),
+      employeeId,
+      payload,
+    );
     return ResponseService.created(res, authReq, record);
   } catch (error) {
     next(error);
@@ -492,7 +584,11 @@ export const endManagerRelationship: RequestHandler = async (req, res, next) => 
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId, id } = validateInput(subResourceIdParamSchema, req.params);
-    const record = await EmployeeSubresourceService.endManagerRelationship(buildActor(authReq), employeeId, id);
+    const record = await EmployeeSubresourceService.endManagerRelationship(
+      buildActor(authReq),
+      employeeId,
+      id,
+    );
     return ResponseService.success(res, authReq, record);
   } catch (error) {
     next(error);
@@ -504,7 +600,10 @@ export const listTimeline: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const timeline = await EmployeeSubresourceService.listTimeline(authReq.user.companyId, employeeId);
+    const timeline = await EmployeeSubresourceService.listTimeline(
+      authReq.user.companyId,
+      employeeId,
+    );
     return ResponseService.success(res, authReq, timeline);
   } catch (error) {
     next(error);
@@ -529,7 +628,12 @@ export const updateEducation: RequestHandler = async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const { employeeId, id } = validateInput(subResourceIdParamSchema, req.params);
     const payload = validateInput(educationSchema.partial(), req.body);
-    const record = await EmployeeSubresourceService.updateEducation(buildActor(authReq), employeeId, id, payload);
+    const record = await EmployeeSubresourceService.updateEducation(
+      buildActor(authReq),
+      employeeId,
+      id,
+      payload,
+    );
     return ResponseService.success(res, authReq, record);
   } catch (error) {
     next(error);
@@ -541,7 +645,10 @@ export const activateEmployeeAccount: RequestHandler = async (req, res, next) =>
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const result = await EmployeeLifecycleService.sendActivationEmail(buildActor(authReq), employeeId);
+    const result = await EmployeeLifecycleService.sendActivationEmail(
+      buildActor(authReq),
+      employeeId,
+    );
     return ResponseService.success(res, authReq, result);
   } catch (error) {
     next(error);
@@ -553,7 +660,10 @@ export const sendEmployeeOnboardingEmail: RequestHandler = async (req, res, next
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const result = await EmployeeLifecycleService.sendOnboardingEmail(buildActor(authReq), employeeId);
+    const result = await EmployeeLifecycleService.sendOnboardingEmail(
+      buildActor(authReq),
+      employeeId,
+    );
     return ResponseService.success(res, authReq, result);
   } catch (error) {
     next(error);
@@ -565,7 +675,10 @@ export const sendEmployeePasswordResetEmail: RequestHandler = async (req, res, n
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
-    const result = await EmployeeLifecycleService.sendPasswordResetEmail(buildActor(authReq), employeeId);
+    const result = await EmployeeLifecycleService.sendPasswordResetEmail(
+      buildActor(authReq),
+      employeeId,
+    );
     return ResponseService.success(res, authReq, result);
   } catch (error) {
     next(error);

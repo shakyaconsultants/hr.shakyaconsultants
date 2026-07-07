@@ -3,14 +3,23 @@ import { APP_CONFIG, ROUTES } from '@/config/app.config';
 import type { ApiErrorResponse } from '@/shared/types/api.types';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { isAuthBootstrapActive, refreshAccessTokenOnce } from '@/shared/auth/auth-session';
-import { clearStoredTokens, resolveBearerToken, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
+import {
+  clearStoredTokens,
+  resolveBearerToken,
+  usesHttpOnlyCookies,
+} from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   _authRetried?: boolean;
 }
 
-const AUTH_REFRESH_SKIP_PATHS = ['/auth/login', '/auth/refresh', '/auth/forgot-password', '/auth/reset-password'];
+const AUTH_REFRESH_SKIP_PATHS = [
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
 
 function shouldSkipAuthRefresh(url: string | undefined): boolean {
   if (!url) return false;
@@ -40,7 +49,12 @@ apiClient.interceptors.response.use(
     const original = error.config as RetryableRequestConfig | undefined;
     const status = error.response?.status;
 
-    if (status === 401 && original && !original._authRetried && !shouldSkipAuthRefresh(original.url)) {
+    if (
+      status === 401 &&
+      original &&
+      !original._authRetried &&
+      !shouldSkipAuthRefresh(original.url)
+    ) {
       original._authRetried = true;
 
       const refreshed = await refreshAccessTokenOnce();
@@ -60,7 +74,10 @@ apiClient.interceptors.response.use(
         useAuthStore.getState().clearAuth();
 
         if (window.location.pathname !== ROUTES.LOGIN) {
-          authDiag.log('redirect_to_login', { reason: '401_confirmed', from: window.location.pathname });
+          authDiag.log('redirect_to_login', {
+            reason: '401_confirmed',
+            from: window.location.pathname,
+          });
           window.location.assign(ROUTES.LOGIN);
         }
       }
@@ -73,6 +90,14 @@ apiClient.interceptors.response.use(
       };
       return Promise.reject(rejectedData);
     }
+
+    if (!error.response && error.config && !shouldSkipAuthRefresh(error.config.url)) {
+      const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+      if (offline && window.location.pathname !== ROUTES.NETWORK_ERROR) {
+        window.location.assign(ROUTES.NETWORK_ERROR);
+      }
+    }
+
     return Promise.reject(error);
   },
 );

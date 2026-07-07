@@ -68,6 +68,12 @@ import {
   type UpdateLeadPayload,
 } from '@/features/sales/api/sales.api';
 
+function invalidateSalesLeadQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['sales', 'leads'] });
+  void queryClient.invalidateQueries({ queryKey: ['sales', 'dashboard'] });
+  void queryClient.invalidateQueries({ queryKey: ['sales', 'kanban'] });
+}
+
 export function useEnterpriseSalesDashboard() {
   return useQuery({
     queryKey: ['sales', 'dashboard', 'enterprise'],
@@ -134,7 +140,8 @@ export function useCreatePipeline() {
 export function useUpdatePipeline() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreatePipelinePayload> }) => updatePipeline(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreatePipelinePayload> }) =>
+      updatePipeline(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'pipelines'] }),
@@ -171,7 +178,8 @@ export function useCreateLeadSource() {
 export function useUpdateLeadSource() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateLeadSourcePayload> }) => updateLeadSource(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateLeadSourcePayload> }) =>
+      updateLeadSource(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'lead-sources'] }),
@@ -208,7 +216,8 @@ export function useCreateSalesTeam() {
 export function useUpdateSalesTeam() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateSalesTeamPayload> }) => updateSalesTeam(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateSalesTeamPayload> }) =>
+      updateSalesTeam(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'teams'] }),
@@ -245,7 +254,8 @@ export function useCreateTerritory() {
 export function useUpdateTerritory() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateTerritoryPayload> }) => updateTerritory(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateTerritoryPayload> }) =>
+      updateTerritory(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'territories'] }),
@@ -282,7 +292,8 @@ export function useCreateSalesTarget() {
 export function useUpdateSalesTarget() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateSalesTargetPayload> }) => updateSalesTarget(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateSalesTargetPayload> }) =>
+      updateSalesTarget(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'targets'] }),
@@ -334,18 +345,19 @@ export function useCreateLead() {
     mutationFn: (payload: CreateLeadPayload) => createLead(payload),
     errorToast: false,
     successMessage: false,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'leads'] }),
+    onSuccess: () => invalidateSalesLeadQueries(queryClient),
   });
 }
 
 export function useUpdateLead() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UpdateLeadPayload }) => updateLead(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateLeadPayload }) =>
+      updateLead(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['sales', 'leads'] });
+      invalidateSalesLeadQueries(queryClient);
       void queryClient.invalidateQueries({ queryKey: ['sales', 'lead', variables.id] });
     },
   });
@@ -357,18 +369,19 @@ export function useDeleteLead() {
     mutationFn: (id: string) => deleteLead(id),
     errorToast: false,
     successMessage: false,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'leads'] }),
+    onSuccess: () => invalidateSalesLeadQueries(queryClient),
   });
 }
 
 export function useAssignLead() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: AssignLeadPayload }) => assignLead(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: AssignLeadPayload }) =>
+      assignLead(id, payload),
     errorToast: false,
     successMessage: false,
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['sales', 'leads'] });
+      invalidateSalesLeadQueries(queryClient);
       void queryClient.invalidateQueries({ queryKey: ['sales', 'lead', variables.id] });
     },
   });
@@ -377,10 +390,11 @@ export function useAssignLead() {
 export function useMoveLeadStage() {
   const queryClient = useQueryClient();
   return useAppMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: MoveStagePayload }) => moveLeadStage(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: MoveStagePayload }) =>
+      moveLeadStage(id, payload),
     successMessage: 'Updated successfully',
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['sales'] });
+      invalidateSalesLeadQueries(queryClient);
       void queryClient.invalidateQueries({ queryKey: ['sales', 'lead', variables.id] });
     },
   });
@@ -406,7 +420,7 @@ export function useImportLeads() {
   return useAppMutation({
     mutationFn: (file: File) => importLeads(file),
     successMessage: 'Imported successfully',
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['sales', 'leads'] }),
+    onSuccess: () => invalidateSalesLeadQueries(queryClient),
   });
 }
 
@@ -432,7 +446,9 @@ export function useCreateActivity() {
     successMessage: false,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['sales', 'activities'] });
-      void queryClient.invalidateQueries({ queryKey: ['sales', 'lead', variables.leadId, 'timeline'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['sales', 'lead', variables.leadId, 'timeline'],
+      });
     },
   });
 }
@@ -502,7 +518,11 @@ export function useExportSalesReport() {
   });
 }
 
-export function useConversionAnalytics(params: { startDate: string; endDate: string; pipelineId?: string }) {
+export function useConversionAnalytics(params: {
+  startDate: string;
+  endDate: string;
+  pipelineId?: string;
+}) {
   return useQuery({
     queryKey: ['sales', 'analytics', 'conversion', params],
     queryFn: () => fetchConversionAnalytics(params),
@@ -510,7 +530,11 @@ export function useConversionAnalytics(params: { startDate: string; endDate: str
   });
 }
 
-export function useRevenueAnalytics(params: { startDate: string; endDate: string; teamId?: string }) {
+export function useRevenueAnalytics(params: {
+  startDate: string;
+  endDate: string;
+  teamId?: string;
+}) {
   return useQuery({
     queryKey: ['sales', 'analytics', 'revenue', params],
     queryFn: () => fetchRevenueAnalytics(params),

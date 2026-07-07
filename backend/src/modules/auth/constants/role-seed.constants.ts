@@ -12,6 +12,7 @@ export const DIRECTOR_ROLE = {
   isSystem: true,
 } as const;
 
+/** Bootstrap org labels — structure only. Super admin is NOT an employee. */
 export const BOOTSTRAP_ORG_DEFAULTS = {
   DEPARTMENT_CODE: 'ADMIN',
   DEPARTMENT_NAME: 'Administration',

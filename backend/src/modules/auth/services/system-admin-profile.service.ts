@@ -4,6 +4,7 @@ import { EmployeeRoleRepository, RoleRepository } from '@domain/permission/permi
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { BOOTSTRAP_ORG_DEFAULTS } from '@modules/auth/constants/role-seed.constants.js';
+import { EmployeePurgeService } from '@modules/employee/services/employee-purge.service.js';
 import { logger } from '@logging/winston.logger.js';
 
 const SYSTEM_ACTOR = 'system';
@@ -86,18 +87,11 @@ export const SystemAdminProfileService = {
     }
 
     if (employee) {
-      await EmployeeRepository.update(
+      await EmployeePurgeService.hardDelete({ companyId, userId: SYSTEM_ACTOR }, employeeId);
+      logger.info('Removed legacy admin employee row from database', {
+        companyId,
         employeeId,
-        {
-          $set: {
-            status: ENTITY_STATUS.ARCHIVED,
-            employeeNumber: `__SYS__${employee.id.slice(0, 8)}`,
-            updatedBy: SYSTEM_ACTOR,
-          },
-          $unset: { userId: '' },
-        },
-        { companyId },
-      );
+      });
     }
 
     logger.info('Migrated legacy admin from employee profile to system user profile', {

@@ -12,10 +12,7 @@ import { CandidatePipelineService } from '@modules/recruitment/services/candidat
 import { RecruitmentTimelineService } from '@modules/recruitment/services/recruitment-timeline.service.js';
 import { RecruitmentAuditService } from '@modules/recruitment/services/recruitment-audit.service.js';
 import { RecruitmentActivityService } from '@modules/recruitment/services/recruitment-activity.service.js';
-import {
-  RecruitmentEmailService,
-  RecruitmentEmailTemplates,
-} from '@modules/recruitment/services/recruitment-email.service.js';
+import { RecruitmentEmailService } from '@modules/recruitment/services/recruitment-email.service.js';
 import type { RecruitmentActorContext } from '@modules/recruitment/types/recruitment.types.js';
 
 export const InterviewService = {
@@ -30,19 +27,16 @@ export const InterviewService = {
     if (filters.status) {
       query.status = filters.status;
     }
-    const interviews = await InterviewRepository.findMany(query, { companyId });
     if (filters.from || filters.to) {
-      return interviews.filter((i) => {
-        const t = i.scheduledAt.getTime();
-        if (filters.from && t < filters.from.getTime()) {
-          return false;
-        }
-        if (filters.to && t > filters.to.getTime()) {
-          return false;
-        }
-        return true;
-      });
+      query.scheduledAt = {};
+      if (filters.from) {
+        (query.scheduledAt as Record<string, Date>).$gte = filters.from;
+      }
+      if (filters.to) {
+        (query.scheduledAt as Record<string, Date>).$lte = filters.to;
+      }
     }
+    const interviews = await InterviewRepository.findMany(query, { companyId });
     return interviews.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
   },
 
@@ -168,16 +162,10 @@ export const InterviewService = {
       metadata: { interviewId: id, scheduledAt },
     });
 
-    const template = RecruitmentEmailTemplates.reschedule({
+    await RecruitmentEmailService.sendReschedule(context, candidate.email, {
       candidateName: `${candidate.firstName} ${candidate.lastName}`,
       newDate: scheduledAt.toLocaleString(),
     });
-    await RecruitmentEmailService.queueEmail(
-      context,
-      'recruitment.interview_reschedule',
-      { ...template, to: candidate.email },
-      candidate.email,
-    );
 
     await RecruitmentAuditService.log({
       companyId: context.companyId,
