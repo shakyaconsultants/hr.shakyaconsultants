@@ -44,8 +44,7 @@ export interface PaginatedResult<T> {
 
 export interface HealthCheckData {
   mongodb: 'healthy' | 'unhealthy';
-  redis: 'healthy' | 'unavailable';
-  queue: 'enabled' | 'disabled';
+  email: 'direct' | 'unconfigured';
 }
 
 export interface UploadMetadata {

@@ -1,19 +1,24 @@
 import { ActivityLogRepository } from '@domain/audit/audit.schemas.js';
 import { NotificationRepository } from '@domain/communication/communication.schemas.js';
-import { NOTIFICATION_CHANNELS, NOTIFICATION_STATUS } from '@shared/constants/notification.constants.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import {
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_STATUS,
+} from '@shared/constants/notification.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { APPROVAL_NOTIFICATION_JOB } from '@modules/approval/constants/approval.constants.js';
 import type { ApprovalActorContext } from '@modules/approval/types/approval.types.js';
 
 export const ApprovalEventService = {
-  async publishActivity(context: ApprovalActorContext, input: {
-    activityType: string;
-    description: string;
-    entityType?: string;
-    entityId?: string;
-    metadata?: Record<string, unknown>;
-  }): Promise<void> {
+  async publishActivity(
+    context: ApprovalActorContext,
+    input: {
+      activityType: string;
+      description: string;
+      entityType?: string;
+      entityId?: string;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<void> {
     await ActivityLogRepository.create(
       {
         id: generateUuid(),
@@ -31,16 +36,19 @@ export const ApprovalEventService = {
     );
   },
 
-  async notify(context: ApprovalActorContext, input: {
-    recipientUserId: string;
-    title: string;
-    body: string;
-    entityType?: string;
-    entityId?: string;
-    category?: string;
-    deepLink?: string;
-    jobName: string;
-  }): Promise<void> {
+  async notify(
+    context: ApprovalActorContext,
+    input: {
+      recipientUserId: string;
+      title: string;
+      body: string;
+      entityType?: string;
+      entityId?: string;
+      category?: string;
+      deepLink?: string;
+      jobName: string;
+    },
+  ): Promise<void> {
     await NotificationRepository.create(
       {
         id: generateUuid(),
@@ -49,7 +57,7 @@ export const ApprovalEventService = {
         title: input.title,
         body: input.body,
         channel: NOTIFICATION_CHANNELS.DATABASE,
-        status: NOTIFICATION_STATUS.PENDING,
+        status: NOTIFICATION_STATUS.SENT,
         entityType: input.entityType,
         entityId: input.entityId,
         category: input.category ?? 'approval',
@@ -60,15 +68,6 @@ export const ApprovalEventService = {
       },
       { companyId: context.companyId },
     );
-
-    await QueueProducer.addNotificationJob(input.jobName, {
-      tenantId: context.companyId,
-      recipientId: input.recipientUserId,
-      title: input.title,
-      body: input.body,
-      entityType: input.entityType,
-      entityId: input.entityId,
-    });
   },
 };
 

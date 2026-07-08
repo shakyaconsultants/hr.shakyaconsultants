@@ -1,7 +1,7 @@
 import type { ClientSession } from 'mongoose';
 import { getEnv } from '@config/env.js';
 import type { DeviceSessionDocument } from '@domain/audit/audit.schemas.js';
-import { CacheService } from '@infrastructure/redis/cache.service.js';
+import { CacheService } from '@infrastructure/cache/cache.service.js';
 import {
   AUTH_CACHE_KEY_PREFIX,
   buildRefreshReplayKey,
@@ -122,7 +122,7 @@ export const SessionService = {
     }
 
     const session = await AuthSessionRepository.findActiveBySessionIdForAuth(companyId, sessionId);
-    SessionCacheService.set(companyId, sessionId, session !== null);
+    SessionCacheService.set(companyId, sessionId, session !== null, session?.userId);
     return session;
   },
 
@@ -148,10 +148,8 @@ export const SessionService = {
     updatedBy: string;
   }): Promise<void> {
     const env = getEnv();
-    const replayKey = buildRefreshReplayKey(env.QUEUE_PREFIX, params.oldJti);
+    const replayKey = buildRefreshReplayKey(env.CACHE_PREFIX, params.oldJti);
     const replayTtlSeconds = Math.ceil(parseExpiresInToMs(env.JWT_REFRESH_EXPIRES_IN) / 1000);
-
-    await CacheService.setReplayKey(replayKey, replayTtlSeconds);
 
     await AuthSessionRepository.updateRefreshTokenHash(
       params.companyId,
@@ -159,11 +157,13 @@ export const SessionService = {
       hashRefreshToken(params.newRefreshToken),
       params.updatedBy,
     );
+
+    await CacheService.setReplayKey(replayKey, replayTtlSeconds);
   },
 
   async isRefreshReplay(jti: string): Promise<boolean> {
     const env = getEnv();
-    const replayKey = buildRefreshReplayKey(env.QUEUE_PREFIX, jti);
+    const replayKey = buildRefreshReplayKey(env.CACHE_PREFIX, jti);
     return CacheService.existsReplayKey(replayKey);
   },
 

@@ -14,7 +14,7 @@ export enum LogCategory {
   Audit = 'audit',
   Security = 'security',
   Http = 'http',
-  Queue = 'queue',
+  Infrastructure = 'infrastructure',
   Database = 'database',
   Error = 'error',
 }

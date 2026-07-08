@@ -1,6 +1,6 @@
-/** Three-state authentication model — never redirect while LOADING. */
+/** Auth states — app renders immediately; RESTORING only blocks protected routes. */
 export const AUTH_STATUS = {
-  LOADING: 'loading',
+  RESTORING: 'restoring',
   AUTHENTICATED: 'authenticated',
   UNAUTHENTICATED: 'unauthenticated',
 } as const;

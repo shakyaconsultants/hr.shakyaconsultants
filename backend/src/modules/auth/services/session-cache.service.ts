@@ -4,6 +4,7 @@ const MAX_SESSION_CACHE_ENTRIES = 5_000;
 interface SessionCacheEntry {
   valid: boolean;
   expiresAt: number;
+  userId?: string;
 }
 
 const sessionCache = new Map<string, SessionCacheEntry>();
@@ -38,11 +39,12 @@ export const SessionCacheService = {
     return entry.valid;
   },
 
-  set(companyId: string, sessionId: string, valid: boolean): void {
+  set(companyId: string, sessionId: string, valid: boolean, userId?: string): void {
     pruneSessionCache();
     sessionCache.set(buildSessionCacheKey(companyId, sessionId), {
       valid,
       expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
+      userId,
     });
   },
 
@@ -52,11 +54,10 @@ export const SessionCacheService = {
 
   invalidateUser(companyId: string, userId: string): void {
     const prefix = `${companyId}:`;
-    for (const key of sessionCache.keys()) {
-      if (key.startsWith(prefix)) {
+    for (const [key, entry] of sessionCache.entries()) {
+      if (key.startsWith(prefix) && entry.userId === userId) {
         sessionCache.delete(key);
       }
     }
-    void userId;
   },
 };

@@ -192,6 +192,7 @@ export interface MyProjectDetail {
   project: Record<string, unknown>;
   role: string;
   canManage: boolean;
+  canViewEnv: boolean;
   myTasks: TaskRecord[];
   milestones: Record<string, unknown>[];
   sprints: Record<string, unknown>[];

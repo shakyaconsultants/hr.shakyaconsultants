@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { z } from 'zod';
 import type { AuthenticatedRequest } from '@modules/auth/interfaces/auth-request.interface.js';
 import { ResponseService } from '@shared/services/response.service.js';
 import { validateInput } from '@modules/auth/validators/validate.util.js';
@@ -265,7 +266,21 @@ export const testWebhook: RequestHandler = async (req, res, next) => {
   }
 };
 
-export const getImportTemplate: RequestHandler = async (req, res, next) => {
+export const retryWebhookDelivery: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { deliveryId } = validateInput(z.object({ deliveryId: z.uuid() }), {
+      deliveryId: req.params.deliveryId,
+    });
+    const data = await WebhookPlatformService.retryDelivery(authReq.user.companyId, deliveryId);
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getImportTemplate: RequestHandler = (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { module } = validateInput(moduleParamSchema, req.params);
@@ -278,11 +293,11 @@ export const getImportTemplate: RequestHandler = async (req, res, next) => {
   }
 };
 
-export const previewImport: RequestHandler = async (req, res, next) => {
+export const previewImport: RequestHandler = (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const payload = validateInput(importPreviewSchema, req.body);
-    const data = await ImportPlatformService.preview(actor(authReq), payload);
+    const data = ImportPlatformService.preview(actor(authReq), payload);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);

@@ -18,7 +18,10 @@ export function SchedulerPage() {
 
   const { data: jobs, isLoading, isError } = useSchedulerJobs();
   const { data: history, isLoading: historyLoading } = useSchedulerJobHistory(selectedJobId ?? '');
-  const { data: failures, isLoading: failuresLoading } = useSchedulerFailures({ page: 1, pageSize: 20 });
+  const { data: failures, isLoading: failuresLoading } = useSchedulerFailures({
+    page: 1,
+    pageSize: 20,
+  });
   const toggleMutation = useToggleSchedulerJob();
 
   async function handleToggle(jobId: string, enabled: boolean) {
@@ -35,7 +38,7 @@ export function SchedulerPage() {
       <PageHeader
         icon={<Clock className="h-6 w-6 text-primary" />}
         title="Scheduler"
-        description="Manage cron jobs, enable or disable scheduled tasks, and review run history and failures."
+        description="Manual-run scheduled jobs only (no background cron). Use Run now to trigger a job immediately."
       />
 
       {isLoading ? <Loading message="Loading scheduler jobs..." /> : null}

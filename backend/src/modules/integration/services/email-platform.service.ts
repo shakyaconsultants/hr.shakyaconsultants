@@ -1,5 +1,5 @@
 import { EmailService, type SendEmailInput } from '@infrastructure/email/email.service.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import { EmailDispatcher } from '@infrastructure/email/email-outbound.service.js';
 import type { EmailTemplateType } from '@shared/constants/email.constants.js';
 
 export const EmailPlatformService = {
@@ -11,11 +11,8 @@ export const EmailPlatformService = {
     return EmailService.send(input);
   },
 
-  queueEmail(
-    jobName: string,
-    payload: Record<string, unknown>,
-  ): Promise<string | undefined> {
-    return QueueProducer.addEmailJob(jobName, payload);
+  queueEmail(jobName: string, payload: Record<string, unknown>): Promise<string | undefined> {
+    return EmailDispatcher.sendEmail(jobName, payload);
   },
 
   buildJobPayload(

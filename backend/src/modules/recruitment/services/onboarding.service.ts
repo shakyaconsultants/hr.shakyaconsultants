@@ -15,7 +15,7 @@ import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { RecruitmentAuditService } from '@modules/recruitment/services/recruitment-audit.service.js';
 import { RecruitmentEmailService } from '@modules/recruitment/services/recruitment-email.service.js';
 import { PortalOnboardingService } from '@modules/portal/services/portal-onboarding.service.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import { EmailDispatcher } from '@infrastructure/email/email-outbound.service.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { AUTH_EMAIL_JOBS } from '@modules/auth/constants/auth.constants.js';
 import type { RecruitmentActorContext } from '@modules/recruitment/types/recruitment.types.js';
@@ -210,7 +210,7 @@ export const OnboardingService = {
       createdByUserId: context.userId,
     });
 
-    await QueueProducer.addEmailJob(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
+    await EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
       tenantId: context.companyId,
       userId: context.userId,
       to: candidate.email,
@@ -289,7 +289,7 @@ export const OnboardingService = {
       createdByUserId: context.userId,
     });
 
-    await QueueProducer.addEmailJob(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
+    await EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
       tenantId: context.companyId,
       userId: context.userId,
       to: employee.email,

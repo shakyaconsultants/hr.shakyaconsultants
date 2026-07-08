@@ -1,15 +1,20 @@
-import { EmployeeRepository, EMPLOYEE_EMPLOYMENT_STATUS } from '@domain/employee/employee.schemas.js';
+import {
+  EmployeeRepository,
+  EMPLOYEE_EMPLOYMENT_STATUS,
+} from '@domain/employee/employee.schemas.js';
 import { DepartmentRepository } from '@domain/organization/organization.schemas.js';
 import { ProjectRepository } from '@domain/project/project.schemas.js';
 import { CandidateLeadRepository } from '@domain/recruitment/recruitment.schemas.js';
-import { ApprovalRequestRepository, APPROVAL_REQUEST_STATUS } from '@domain/approval/approval.schemas.js';
+import {
+  ApprovalRequestRepository,
+  APPROVAL_REQUEST_STATUS,
+} from '@domain/approval/approval.schemas.js';
 import { AuditLogRepository, LoginHistoryRepository } from '@domain/audit/audit.schemas.js';
 import { PIPELINE_STAGE } from '@domain/recruitment/recruitment-extended.schemas.js';
 import { PROJECT_STATUS } from '@shared/constants/status.constants.js';
 import { MONGODB_HEALTH } from '@shared/constants/health.constants.js';
 import { getMongoConnectionState } from '@infrastructure/database/mongodb.connection.js';
-import { checkRedisHealth } from '@infrastructure/redis/redis.client.js';
-import { getQueueHealthStatus } from '@infrastructure/queue/bullmq.connection.js';
+import { SystemAdminService } from '@modules/settings/services/system-admin.service.js';
 import { AttendanceDashboardService } from '@modules/attendance/services/attendance-dashboard.service.js';
 import { PayrollDashboardService } from '@modules/payroll/services/payroll-dashboard.service.js';
 import { SalesDashboardService } from '@modules/sales/services/sales-dashboard.service.js';
@@ -48,27 +53,28 @@ export const ExecutiveDashboardService = {
         startDate: filters.startDate,
         endDate: filters.endDate,
       }),
-      ApprovalRequestRepository.count(
-        { status: APPROVAL_REQUEST_STATUS.PENDING },
-        { companyId },
-      ),
-      this.getSystemHealth(),
-      Promise.resolve(getQueueHealthStatus()),
+      ApprovalRequestRepository.count({ status: APPROVAL_REQUEST_STATUS.PENDING }, { companyId }),
+      Promise.resolve(this.getSystemHealth()),
+      Promise.resolve('direct' as const),
       AuditLogRepository.findMany({}, { companyId }),
       LoginHistoryRepository.findMany({ success: false }, { companyId }),
     ]);
 
     const activeEmployees = employees.filter(
-      (e) => e.employmentStatus !== EMPLOYEE_EMPLOYMENT_STATUS.TERMINATED
-        && e.employmentStatus !== EMPLOYEE_EMPLOYMENT_STATUS.RESIGNED,
+      (e) =>
+        e.employmentStatus !== EMPLOYEE_EMPLOYMENT_STATUS.TERMINATED &&
+        e.employmentStatus !== EMPLOYEE_EMPLOYMENT_STATUS.RESIGNED,
     );
 
     const openPositions = new Set(
       candidates
-        .filter((c) => c.pipelineStage !== PIPELINE_STAGE.EMPLOYEE_CONVERTED
-          && c.pipelineStage !== PIPELINE_STAGE.REJECTED
-          && c.designationId)
-        .map((c) => c.designationId!),
+        .filter(
+          (c): c is (typeof candidates)[number] & { designationId: string } =>
+            c.pipelineStage !== PIPELINE_STAGE.EMPLOYEE_CONVERTED &&
+            c.pipelineStage !== PIPELINE_STAGE.REJECTED &&
+            Boolean(c.designationId),
+        )
+        .map((c) => c.designationId),
     ).size;
 
     const sortedAudit = recentAuditEvents
@@ -136,10 +142,11 @@ export const ExecutiveDashboardService = {
     };
   },
 
-  async getSystemHealth() {
-    const redis = await checkRedisHealth();
+  getSystemHealth() {
     const mongodb = getMongoHealthStatus();
-    const queue = getQueueHealthStatus();
-    return { mongodb, redis, queue };
+    const email = SystemAdminService.getEmailDeliveryStatus().configured
+      ? 'direct'
+      : 'unconfigured';
+    return { mongodb, email };
   },
 };

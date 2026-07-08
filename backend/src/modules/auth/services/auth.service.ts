@@ -11,7 +11,7 @@ import { FeatureFlagService } from '@modules/settings/services/feature-flag.serv
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
 import { getAuthPortalHomeRoute, resolveAuthPortal } from '@modules/auth/utils/auth-portal.util.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import { EmailDispatcher } from '@infrastructure/email/email-outbound.service.js';
 import { AuditAction } from '@shared/enums/index.js';
 import {
   AUTH_AUDIT_WHERE,
@@ -388,7 +388,7 @@ export const AuthService = {
     const env = getEnv();
     const resetUrl = `${env.FRONTEND_URL.split(',')[0]}/reset-password?token=${rawToken}`;
 
-    await QueueProducer.addEmailJob(AUTH_EMAIL_JOBS.PASSWORD_RESET, {
+    await EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.PASSWORD_RESET, {
       tenantId: company.id,
       userId: user.id,
       to: user.email,

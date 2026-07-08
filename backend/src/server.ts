@@ -2,18 +2,9 @@ import { createServer, type Server as HttpServer } from 'node:http';
 import { createApp } from '@app.js';
 import { getEnv } from '@config/env.js';
 import { connectMongoDB, disconnectMongoDB } from '@infrastructure/database/mongodb.connection.js';
-import { connectRedis, disconnectRedis } from '@infrastructure/redis/redis.client.js';
-import {
-  initializeQueues,
-  closeQueues,
-} from '@infrastructure/queue/bullmq.connection.js';
-import { initializeWorkers } from '@infrastructure/queue/queue.worker.js';
 import { initializeCloudinary } from '@infrastructure/storage/cloudinary.service.js';
 import { initializeNotificationHandlers } from '@infrastructure/notification/notification.service.js';
-import {
-  initializeSocket,
-  closeSocket,
-} from '@infrastructure/socket/socket.server.js';
+import { initializeSocket, closeSocket } from '@infrastructure/socket/socket.server.js';
 import { logger } from '@logging/winston.logger.js';
 
 let httpServer: HttpServer | null = null;
@@ -29,6 +20,15 @@ export async function startServer(): Promise<HttpServer> {
 
   initializeCloudinary();
   initializeNotificationHandlers();
+
+  if (
+    env.CLOUDINARY_API_SECRET === 'not-configured' ||
+    env.CLOUDINARY_CLOUD_NAME === 'not-configured'
+  ) {
+    logger.warn('Cloudinary is not fully configured — file uploads will fail', {
+      cloudName: env.CLOUDINARY_CLOUD_NAME,
+    });
+  }
 
   if (env.SMTP_HOST.includes('example.com') || env.SMTP_PASSWORD === 'not-configured') {
     logger.warn('SMTP is not fully configured — transactional emails will fail', {
@@ -46,9 +46,12 @@ export async function startServer(): Promise<HttpServer> {
 
   const primaryFrontendUrl = env.FRONTEND_URL.split(',')[0]?.trim() ?? '';
   if (env.NODE_ENV === 'production' && primaryFrontendUrl.includes('localhost')) {
-    logger.warn('FRONTEND_URL points to localhost in production — email activation/onboarding links will be wrong', {
-      frontendUrl: env.FRONTEND_URL,
-    });
+    logger.warn(
+      'FRONTEND_URL points to localhost in production — email activation/onboarding links will be wrong',
+      {
+        frontendUrl: env.FRONTEND_URL,
+      },
+    );
   } else {
     logger.info('Email link base URL', { primaryFrontendUrl });
   }
@@ -66,7 +69,7 @@ export async function startServer(): Promise<HttpServer> {
       if (err.code === 'EADDRINUSE') {
         reject(
           new Error(
-            `Port ${env.PORT} is already in use. Stop the other backend process (or change PORT in .env) and restart.`,
+            `Port ${String(env.PORT)} is already in use. Stop the other backend process (or change PORT in .env) and restart.`,
           ),
         );
         return;
@@ -79,28 +82,10 @@ export async function startServer(): Promise<HttpServer> {
         port: env.PORT,
         env: env.NODE_ENV,
         apiPrefix: env.API_PREFIX,
-        redis: 'connecting',
       });
       resolve();
     });
   });
-
-  void connectRedis()
-    .then((redisConnected) => {
-      initializeQueues();
-      if (redisConnected) {
-        initializeWorkers();
-      }
-      logger.info('Background services ready', {
-        redis: redisConnected ? 'connected' : 'disabled',
-        queues: redisConnected ? 'enabled' : 'disabled',
-      });
-    })
-    .catch((error: unknown) => {
-      logger.warn('Background Redis/queue init failed — API remains available', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
 
   return httpServer;
 }
@@ -120,8 +105,6 @@ export async function stopServer(): Promise<void> {
   }
 
   await closeSocket();
-  await closeQueues();
-  await disconnectRedis();
   await disconnectMongoDB();
 
   logger.info('Graceful shutdown complete');

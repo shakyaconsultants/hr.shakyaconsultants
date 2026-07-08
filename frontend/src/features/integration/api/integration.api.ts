@@ -30,6 +30,8 @@ export interface IntegrationDashboard {
   storageQuotaMb: number;
   emailQueuePending: number;
   emailQueueFailed: number;
+  emailConfigured?: boolean;
+  emailMode?: string;
   recentFailures: IntegrationFailureSummary[];
   updatedAt: string;
 }
@@ -326,6 +328,66 @@ async function unwrapPaginated<T>(response: {
   return { items, pagination };
 }
 
+function mapConnector(raw: Record<string, unknown>): Connector {
+  const healthStatus = String(raw.healthStatus ?? '');
+  const enabled = Boolean(raw.enabled);
+  let status: IntegrationStatus = 'pending';
+  if (!enabled) status = 'disabled';
+  else if (healthStatus === 'healthy') status = 'connected';
+  else if (healthStatus === 'unhealthy' || healthStatus === 'degraded') status = 'error';
+
+  return {
+    id: String(raw.id),
+    provider: String(raw.type ?? raw.provider ?? ''),
+    name: String(raw.name ?? ''),
+    status,
+    enabled,
+    config: (raw.config as Record<string, unknown>) ?? {},
+    lastTestedAt: raw.lastSyncAt ? String(raw.lastSyncAt) : undefined,
+    lastSyncAt: raw.lastSyncAt ? String(raw.lastSyncAt) : undefined,
+    errorMessage: raw.lastError ? String(raw.lastError) : undefined,
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+    updatedAt: String(raw.updatedAt ?? new Date().toISOString()),
+  };
+}
+
+function mapApiKey(raw: Record<string, unknown>): ApiKey {
+  const isRevoked = Boolean(raw.isRevoked);
+  return {
+    id: String(raw.id),
+    name: String(raw.name ?? ''),
+    prefix: String(raw.keyPrefix ?? raw.prefix ?? ''),
+    permissions: Array.isArray(raw.permissions) ? raw.permissions.map(String) : [],
+    rateLimitPerMinute: typeof raw.rateLimit === 'number' ? raw.rateLimit : undefined,
+    expiresAt: raw.expiresAt ? String(raw.expiresAt) : undefined,
+    lastUsedAt: raw.lastUsedAt ? String(raw.lastUsedAt) : undefined,
+    status: isRevoked ? 'revoked' : 'active',
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+    createdBy: raw.createdBy ? String(raw.createdBy) : undefined,
+  };
+}
+
+function mapApiKeyCreated(raw: Record<string, unknown>, secret?: string): ApiKeyCreated {
+  return {
+    ...mapApiKey(raw),
+    secret: String(secret ?? raw.plainKey ?? raw.secret ?? ''),
+  };
+}
+
+function mapSchedulerJob(raw: Record<string, unknown>): SchedulerJob {
+  return {
+    id: String(raw.id),
+    name: String(raw.name ?? ''),
+    cron: String(raw.cronExpression ?? raw.cron ?? ''),
+    handler: String(raw.jobType ?? raw.handler ?? ''),
+    enabled: Boolean(raw.enabled),
+    lastRunAt: raw.lastRunAt ? String(raw.lastRunAt) : undefined,
+    nextRunAt: raw.nextRunAt ? String(raw.nextRunAt) : undefined,
+    lastStatus: raw.lastStatus ? (String(raw.lastStatus) as JobStatus) : undefined,
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+  };
+}
+
 export async function fetchIntegrationDashboard(): Promise<IntegrationDashboard> {
   const response = await apiClient.get<ApiSuccessResponse<IntegrationDashboard>>(
     `${INTEGRATION_PREFIX}/dashboard`,
@@ -334,10 +396,11 @@ export async function fetchIntegrationDashboard(): Promise<IntegrationDashboard>
 }
 
 export async function fetchConnectors(): Promise<Connector[]> {
-  const response = await apiClient.get<ApiSuccessResponse<Connector[]>>(
-    `${INTEGRATION_PREFIX}/connectors`,
-  );
-  return unwrap(response);
+  const response = await apiClient.get<
+    ApiSuccessResponse<Connector[]> | ApiSuccessResponse<PaginatedResult<Record<string, unknown>>>
+  >(`${INTEGRATION_PREFIX}/connectors`);
+  const result = await unwrapPaginated<Record<string, unknown>>(response as never);
+  return result.items.map(mapConnector);
 }
 
 export async function fetchConnector(id: string): Promise<Connector> {
@@ -350,22 +413,27 @@ export async function fetchConnector(id: string): Promise<Connector> {
 }
 
 export async function createConnector(payload: CreateConnectorPayload): Promise<Connector> {
-  const response = await apiClient.post<ApiSuccessResponse<Connector>>(
+  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
     `${INTEGRATION_PREFIX}/connectors`,
-    payload,
+    {
+      type: payload.provider,
+      name: payload.name,
+      config: payload.config,
+      enabled: payload.enabled,
+    },
   );
-  return unwrap(response);
+  return mapConnector(await unwrap(response));
 }
 
 export async function updateConnector(
   id: string,
   payload: UpdateConnectorPayload,
 ): Promise<Connector> {
-  const response = await apiClient.patch<ApiSuccessResponse<Connector>>(
+  const response = await apiClient.patch<ApiSuccessResponse<Record<string, unknown>>>(
     `${INTEGRATION_PREFIX}/connectors/${id}`,
     payload,
   );
-  return unwrap(response);
+  return mapConnector(await unwrap(response));
 }
 
 export async function deleteConnector(id: string): Promise<void> {
@@ -387,7 +455,11 @@ export async function fetchApiKeys(params: ListParams = {}): Promise<PaginatedRe
   const response = await apiClient.get<
     ApiSuccessResponse<ApiKey[]> & { pagination?: PaginationMeta }
   >(`${INTEGRATION_PREFIX}/api-keys`, { params });
-  return unwrapPaginated(response);
+  const result = await unwrapPaginated<Record<string, unknown>>(response as never);
+  return {
+    items: result.items.map(mapApiKey),
+    pagination: result.pagination,
+  };
 }
 
 export async function fetchApiKey(id: string): Promise<ApiKey> {
@@ -400,11 +472,20 @@ export async function fetchApiKey(id: string): Promise<ApiKey> {
 }
 
 export async function createApiKey(payload: CreateApiKeyPayload): Promise<ApiKeyCreated> {
-  const response = await apiClient.post<ApiSuccessResponse<ApiKeyCreated>>(
+  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
     `${INTEGRATION_PREFIX}/api-keys`,
-    payload,
+    {
+      name: payload.name,
+      permissions: payload.permissions,
+      rateLimit: payload.rateLimitPerMinute,
+      expiresAt: payload.expiresAt,
+    },
   );
-  return unwrap(response);
+  const data = await unwrap(response);
+  return mapApiKeyCreated(
+    (data.apiKey as Record<string, unknown> | undefined) ?? data,
+    typeof data.plainKey === 'string' ? data.plainKey : undefined,
+  );
 }
 
 export async function updateApiKey(_id: string, _payload: UpdateApiKeyPayload): Promise<ApiKey> {
@@ -412,24 +493,28 @@ export async function updateApiKey(_id: string, _payload: UpdateApiKeyPayload): 
 }
 
 export async function revokeApiKey(id: string): Promise<ApiKey> {
-  const response = await apiClient.post<ApiSuccessResponse<ApiKey>>(
+  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
     `${INTEGRATION_PREFIX}/api-keys/${id}/revoke`,
   );
-  return unwrap(response);
+  return mapApiKey(await unwrap(response));
 }
 
 export async function rotateApiKey(id: string): Promise<ApiKeyCreated> {
-  const response = await apiClient.post<ApiSuccessResponse<ApiKeyCreated>>(
+  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
     `${INTEGRATION_PREFIX}/api-keys/${id}/rotate`,
   );
-  return unwrap(response);
+  const data = await unwrap(response);
+  const apiKey = (data.apiKey as Record<string, unknown> | undefined) ?? data;
+  return mapApiKeyCreated(apiKey, typeof data.plainKey === 'string' ? data.plainKey : undefined);
 }
 
 export async function regenerateApiKey(id: string): Promise<ApiKeyCreated> {
-  const response = await apiClient.post<ApiSuccessResponse<ApiKeyCreated>>(
+  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
     `${INTEGRATION_PREFIX}/api-keys/${id}/regenerate`,
   );
-  return unwrap(response);
+  const data = await unwrap(response);
+  const apiKey = (data.apiKey as Record<string, unknown> | undefined) ?? data;
+  return mapApiKeyCreated(apiKey, typeof data.plainKey === 'string' ? data.plainKey : undefined);
 }
 
 export async function fetchApiKeyUsage(
@@ -496,9 +581,22 @@ export async function testWebhook(id: string, event?: string): Promise<WebhookDe
 
 export async function retryWebhookDelivery(
   webhookId: string,
-  _deliveryId: string,
+  deliveryId: string,
 ): Promise<WebhookDelivery> {
-  return testWebhook(webhookId);
+  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
+    `${INTEGRATION_PREFIX}/webhooks/${webhookId}/deliveries/${deliveryId}/retry`,
+  );
+  const raw = await unwrap(response);
+  return {
+    id: String(raw.id),
+    webhookId,
+    event: String(raw.event ?? ''),
+    status: String(raw.status ?? 'pending') as WebhookDeliveryStatus,
+    statusCode: typeof raw.responseCode === 'number' ? raw.responseCode : undefined,
+    attempt: typeof raw.attempts === 'number' ? raw.attempts : 1,
+    errorMessage: raw.error ? String(raw.error) : undefined,
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+  };
 }
 
 export async function fetchImportModules(): Promise<ImportModule[]> {
@@ -579,18 +677,20 @@ export async function downloadExport(id: string): Promise<Blob> {
 }
 
 export async function fetchSchedulerJobs(): Promise<SchedulerJob[]> {
-  const response = await apiClient.get<ApiSuccessResponse<SchedulerJob[]>>(
-    `${INTEGRATION_PREFIX}/scheduler/jobs`,
-  );
-  return unwrap(response);
+  const response = await apiClient.get<
+    | ApiSuccessResponse<SchedulerJob[]>
+    | ApiSuccessResponse<PaginatedResult<Record<string, unknown>>>
+  >(`${INTEGRATION_PREFIX}/scheduler/jobs`);
+  const result = await unwrapPaginated<Record<string, unknown>>(response as never);
+  return result.items.map(mapSchedulerJob);
 }
 
 export async function toggleSchedulerJob(id: string, enabled: boolean): Promise<SchedulerJob> {
-  const response = await apiClient.patch<ApiSuccessResponse<SchedulerJob>>(
+  const response = await apiClient.patch<ApiSuccessResponse<Record<string, unknown>>>(
     `${INTEGRATION_PREFIX}/scheduler/jobs/${id}`,
     { enabled },
   );
-  return unwrap(response);
+  return mapSchedulerJob(await unwrap(response));
 }
 
 export async function fetchSchedulerJobHistory(

@@ -12,7 +12,7 @@ import { EmployeeAccountService } from '@modules/employee/services/employee-acco
 import { NotFoundError, ValidationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { getEnv } from '@config/env.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import { EmailDispatcher } from '@infrastructure/email/email-outbound.service.js';
 import { AUTH_EMAIL_JOBS } from '@modules/auth/constants/auth.constants.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import {
@@ -303,7 +303,7 @@ export const EmployeeLifecycleService = {
       const env = getEnv();
       const resetUrl = `${env.FRONTEND_URL.split(',')[0]}/reset-password?token=${rawToken}`;
 
-      await QueueProducer.addEmailJob(AUTH_EMAIL_JOBS.PASSWORD_RESET, {
+      await EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.PASSWORD_RESET, {
         tenantId: actor.companyId,
         userId: user.id,
         to: user.email,

@@ -3,7 +3,7 @@ import { UserRepository, USER_STATUS } from '@domain/auth/user.schema.js';
 import { AuthUserRepository } from '@modules/auth/repositories/user.repository.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import { EmailDispatcher } from '@infrastructure/email/email-outbound.service.js';
 import { AuditAction } from '@shared/enums/index.js';
 import {
   SECURE_TOKEN_ENTITY_TYPE,
@@ -81,7 +81,7 @@ export const AccountActivationService = {
       });
     }
 
-    await QueueProducer.addEmailJob(AUTH_EMAIL_JOBS.ACCOUNT_ACTIVATION, {
+    await EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.ACCOUNT_ACTIVATION, {
       tenantId: actor.companyId,
       userId: user.id,
       to: user.email,

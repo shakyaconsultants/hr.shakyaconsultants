@@ -87,7 +87,21 @@ export function hasStoredAuth(): boolean {
 }
 
 export function shouldAttemptSessionRestore(): boolean {
-  return hasStoredAuth() || hasSessionHint();
+  if (usesHttpOnlyCookies()) {
+    return hasSessionHint();
+  }
+  // Bearer mode: require tokens — a stale localStorage hint alone must not block login.
+  return Boolean(getAccessToken() || getRefreshToken());
+}
+
+/** Drop orphan session hints left after token expiry or manual token removal. */
+export function clearOrphanSessionHint(): void {
+  if (usesHttpOnlyCookies()) {
+    return;
+  }
+  if (hasSessionHint() && !getAccessToken() && !getRefreshToken()) {
+    clearSessionHint();
+  }
 }
 
 export function isCookieAuthSession(): boolean {

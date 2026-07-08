@@ -1,20 +1,25 @@
 import { NotificationRepository } from '@domain/communication/communication.schemas.js';
 import { NOTIFICATION_CATEGORY } from '@domain/communication/communication.schemas.js';
-import { NOTIFICATION_CHANNELS, NOTIFICATION_STATUS } from '@shared/constants/notification.constants.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import {
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_STATUS,
+} from '@shared/constants/notification.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { ActivityLogRepository } from '@domain/audit/audit.schemas.js';
 import { COMMUNICATION_NOTIFICATION_JOB } from '@modules/communication/constants/communication.constants.js';
 import type { CommunicationActorContext } from '@modules/approval/types/approval.types.js';
 
 export const CommunicationEventService = {
-  async publishActivity(context: CommunicationActorContext, input: {
-    activityType: string;
-    description: string;
-    entityType?: string;
-    entityId?: string;
-    metadata?: Record<string, unknown>;
-  }): Promise<void> {
+  async publishActivity(
+    context: CommunicationActorContext,
+    input: {
+      activityType: string;
+      description: string;
+      entityType?: string;
+      entityId?: string;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<void> {
     await ActivityLogRepository.create(
       {
         id: generateUuid(),
@@ -32,17 +37,20 @@ export const CommunicationEventService = {
     );
   },
 
-  async notify(context: CommunicationActorContext, input: {
-    recipientUserId: string;
-    title: string;
-    body: string;
-    entityType?: string;
-    entityId?: string;
-    category?: string;
-    deepLink?: string;
-    priority?: string;
-    jobName: string;
-  }): Promise<void> {
+  async notify(
+    context: CommunicationActorContext,
+    input: {
+      recipientUserId: string;
+      title: string;
+      body: string;
+      entityType?: string;
+      entityId?: string;
+      category?: string;
+      deepLink?: string;
+      priority?: string;
+      jobName: string;
+    },
+  ): Promise<void> {
     await NotificationRepository.create(
       {
         id: generateUuid(),
@@ -51,7 +59,7 @@ export const CommunicationEventService = {
         title: input.title,
         body: input.body,
         channel: NOTIFICATION_CHANNELS.DATABASE,
-        status: NOTIFICATION_STATUS.PENDING,
+        status: NOTIFICATION_STATUS.SENT,
         entityType: input.entityType,
         entityId: input.entityId,
         category: input.category ?? NOTIFICATION_CATEGORY.COMMUNICATION,
@@ -63,15 +71,6 @@ export const CommunicationEventService = {
       },
       { companyId: context.companyId },
     );
-
-    await QueueProducer.addNotificationJob(input.jobName, {
-      tenantId: context.companyId,
-      recipientId: input.recipientUserId,
-      title: input.title,
-      body: input.body,
-      entityType: input.entityType,
-      entityId: input.entityId,
-    });
   },
 };
 

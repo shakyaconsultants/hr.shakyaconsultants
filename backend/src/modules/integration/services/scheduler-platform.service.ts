@@ -8,10 +8,10 @@ import {
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import { runScheduledJobPayload } from '@infrastructure/scheduler/scheduled-job.runner.js';
 import { IntegrationLogService } from '@modules/integration/services/integration-log.service.js';
 import { IntegrationAuditService } from '@modules/integration/services/integration-audit.service.js';
-import { SCHEDULER_QUEUE_JOB } from '@modules/integration/constants/integration.constants.js';
+import { getCorrelationId } from '@shared/context/request.context.js';
 import type { IntegrationActorContext } from '@modules/approval/types/approval.types.js';
 import type { PaginatedResult } from '@shared/types/api.types.js';
 
@@ -24,7 +24,10 @@ export interface ScheduledJobInput {
 }
 
 export const SchedulerPlatformService = {
-  async list(companyId: string, query: { page?: number; pageSize?: number; enabled?: boolean }): Promise<PaginatedResult<ScheduledJobDocument>> {
+  async list(
+    companyId: string,
+    query: { page?: number; pageSize?: number; enabled?: boolean },
+  ): Promise<PaginatedResult<ScheduledJobDocument>> {
     const filter: Record<string, unknown> = {};
     if (query.enabled !== undefined) filter.enabled = query.enabled;
     return ScheduledJobRepository.paginate(filter, {
@@ -36,7 +39,10 @@ export const SchedulerPlatformService = {
     });
   },
 
-  async create(context: IntegrationActorContext, input: ScheduledJobInput): Promise<ScheduledJobDocument> {
+  async create(
+    context: IntegrationActorContext,
+    input: ScheduledJobInput,
+  ): Promise<ScheduledJobDocument> {
     const doc = await ScheduledJobRepository.create({
       id: generateUuid(),
       companyId: context.companyId,
@@ -65,8 +71,14 @@ export const SchedulerPlatformService = {
     return doc;
   },
 
-  async update(context: IntegrationActorContext, id: string, input: Partial<ScheduledJobInput>): Promise<ScheduledJobDocument> {
-    const before = await ScheduledJobRepository.findByIdOrFail(id, { companyId: context.companyId });
+  async update(
+    context: IntegrationActorContext,
+    id: string,
+    input: Partial<ScheduledJobInput>,
+  ): Promise<ScheduledJobDocument> {
+    const before = await ScheduledJobRepository.findByIdOrFail(id, {
+      companyId: context.companyId,
+    });
     const update: Record<string, unknown> = { updatedBy: context.userId };
     if (input.name !== undefined) update.name = input.name;
     if (input.cronExpression !== undefined) {
@@ -77,7 +89,11 @@ export const SchedulerPlatformService = {
     if (input.enabled !== undefined) update.enabled = input.enabled;
     if (input.config !== undefined) update.config = input.config;
 
-    const updated = await ScheduledJobRepository.update(id, { $set: update }, { companyId: context.companyId });
+    const updated = await ScheduledJobRepository.update(
+      id,
+      { $set: update },
+      { companyId: context.companyId },
+    );
     if (!updated) throw new NotFoundError('Scheduled job not found', ERROR_CODES.NOT_FOUND);
 
     await IntegrationAuditService.log({
@@ -99,45 +115,63 @@ export const SchedulerPlatformService = {
     return new Date(Date.now() + 60 * 60 * 1000);
   },
 
-  async runNow(context: IntegrationActorContext, id: string): Promise<{ jobId: string; queueJobId?: string }> {
+  async runNow(
+    context: IntegrationActorContext,
+    id: string,
+  ): Promise<{ jobId: string; queueJobId?: string }> {
     const job = await ScheduledJobRepository.findByIdOrFail(id, { companyId: context.companyId });
+    const correlationId = getCorrelationId() ?? 'system';
 
-    const queueJobId = await QueueProducer.addSchedulerJob(SCHEDULER_QUEUE_JOB.RUN, {
-      tenantId: context.companyId,
-      userId: context.userId,
-      scheduledJobId: job.id,
-      jobType: job.jobType,
-      config: job.config ?? {},
-    });
-
-    await ScheduledJobRepository.update(id, {
-      $set: {
-        lastRunAt: new Date(),
-        lastStatus: JOB_STATUS.PROCESSING,
-        nextRunAt: this.computeNextRun(job.cronExpression),
-        updatedBy: context.userId,
+    await runScheduledJobPayload(
+      {
+        tenantId: context.companyId,
+        userId: context.userId,
+        scheduledJobId: job.id,
+        jobType: job.jobType,
+        config: job.config ?? {},
       },
-    }, { companyId: context.companyId });
+      correlationId,
+      context.userId,
+    );
+
+    await ScheduledJobRepository.update(
+      id,
+      {
+        $set: {
+          lastRunAt: new Date(),
+          lastStatus: JOB_STATUS.PROCESSING,
+          nextRunAt: this.computeNextRun(job.cronExpression),
+          updatedBy: context.userId,
+        },
+      },
+      { companyId: context.companyId },
+    );
 
     await IntegrationLogService.log({
       companyId: context.companyId,
       userId: context.userId,
       category: INTEGRATION_LOG_CATEGORY.SCHEDULER,
       message: `Scheduled job triggered: ${job.name}`,
-      metadata: { scheduledJobId: job.id, queueJobId },
+      metadata: { scheduledJobId: job.id },
     });
 
-    return { jobId: job.id, queueJobId };
+    return { jobId: job.id, queueJobId: 'delivered' };
   },
 
-  async getHistory(companyId: string, query: { page?: number; pageSize?: number }): Promise<PaginatedResult<ScheduledJobDocument>> {
-    return ScheduledJobRepository.paginate({}, {
-      page: query.page,
-      pageSize: query.pageSize,
-      companyId,
-      sortBy: 'lastRunAt',
-      sortOrder: 'desc',
-    });
+  async getHistory(
+    companyId: string,
+    query: { page?: number; pageSize?: number },
+  ): Promise<PaginatedResult<ScheduledJobDocument>> {
+    return ScheduledJobRepository.paginate(
+      {},
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        companyId,
+        sortBy: 'lastRunAt',
+        sortOrder: 'desc',
+      },
+    );
   },
 
   jobTypes(): string[] {

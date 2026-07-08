@@ -11,7 +11,7 @@ HR Shakya is built as a **modular monolith** with a React SPA frontend and Expre
 ```
 Frontend (React/Vite)  →  Express API  →  MongoDB (Mongoose)
                               ↓
-                         Redis + BullMQ
+                    Direct SMTP + Mongo cache
 ```
 
 - **Clean Architecture:** Controllers → Services → Repositories
@@ -29,8 +29,8 @@ See [`.ai/architecture.md`](.ai/architecture.md) for full system design.
 | Node.js 20+ | Runtime |
 | Express | HTTP framework |
 | TypeScript (strict) | Language |
-| MongoDB + Mongoose | Database |
-| Redis + BullMQ | Cache, locks, job queues |
+| MongoDB + Mongoose | Database & application cache (`cache_entries`) |
+| Nodemailer | Direct transactional email (no queue) |
 | Winston | Application logging (daily rotation) |
 | Morgan | HTTP access logging |
 | Zod | Config & validation |
@@ -56,7 +56,6 @@ See [`.ai/architecture.md`](.ai/architecture.md) for full system design.
 - Node.js >= 20
 - npm >= 10
 - MongoDB 7.x (local or Docker)
-- Redis 7.x (local or Docker)
 - Docker & Docker Compose (optional, for containerized stack)
 
 ## Setup
@@ -74,15 +73,15 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Edit `backend/.env` — set `MONGODB_URI`, `REDIS_HOST`, and JWT secrets (min 32 chars).
+Edit `backend/.env` — set `MONGODB_URI` and JWT secrets (min 32 chars). Configure `SMTP_*` for email.
 
 ### 3. Start infrastructure (Docker)
 
 ```bash
-docker compose up mongodb redis -d
+docker compose up mongodb -d
 ```
 
-Or use locally installed MongoDB and Redis.
+Or use a locally installed MongoDB instance.
 
 ### 4. Development
 

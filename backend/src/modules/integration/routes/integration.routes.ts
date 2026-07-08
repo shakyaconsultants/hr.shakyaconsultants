@@ -38,6 +38,7 @@ import {
   runScheduledJob,
   testConnector,
   testWebhook,
+  retryWebhookDelivery,
   updateConnector,
   updateScheduledJob,
   updateWebhook,
@@ -80,6 +81,11 @@ integrationRoutes.patch('/webhooks/:id', managePerm, updateWebhook);
 integrationRoutes.delete('/webhooks/:id', managePerm, deleteWebhook);
 integrationRoutes.get('/webhooks/:id/deliveries', readPerm, getWebhookDeliveries);
 integrationRoutes.post('/webhooks/:id/test', managePerm, testWebhook);
+integrationRoutes.post(
+  '/webhooks/:id/deliveries/:deliveryId/retry',
+  managePerm,
+  retryWebhookDelivery,
+);
 
 integrationRoutes.get('/import/templates/:module', readPerm, getImportTemplate);
 integrationRoutes.post('/import/preview', managePerm, previewImport);

@@ -36,7 +36,11 @@ export function IntegrationDashboardPage() {
               value={dashboard.failedIntegrations}
               hint="Requires attention"
             />
-            <StatCard icon={Webhook} label="Webhook Activity (24h)" value={dashboard.webhookActivity24h} />
+            <StatCard
+              icon={Webhook}
+              label="Webhook Activity (24h)"
+              value={dashboard.webhookActivity24h}
+            />
             <StatCard icon={Activity} label="API Usage (24h)" value={dashboard.apiUsage24h} />
             <StatCard icon={Upload} label="Imports Today" value={dashboard.importJobsToday} />
             <StatCard icon={Upload} label="Exports Today" value={dashboard.exportJobsToday} />
@@ -50,9 +54,13 @@ export function IntegrationDashboardPage() {
             />
             <StatCard
               icon={Mail}
-              label="Email Queue"
-              value={dashboard.emailQueuePending}
-              hint={`${dashboard.emailQueueFailed} failed`}
+              label="Email (Direct)"
+              value={dashboard.emailConfigured ? 'Ready' : 'Not configured'}
+              hint={
+                dashboard.emailConfigured
+                  ? `${dashboard.emailQueueFailed} failures`
+                  : 'Set SMTP in backend env'
+              }
             />
           </WidgetGrid>
 
@@ -70,7 +78,10 @@ export function IntegrationDashboardPage() {
             ) : (
               <ul className="divide-y">
                 {dashboard.recentFailures.map((failure) => (
-                  <li key={failure.id} className="flex items-start justify-between gap-4 py-3 text-sm">
+                  <li
+                    key={failure.id}
+                    className="flex items-start justify-between gap-4 py-3 text-sm"
+                  >
                     <div>
                       <p className="font-medium">{failure.source}</p>
                       <p className="text-muted-foreground">{failure.message}</p>

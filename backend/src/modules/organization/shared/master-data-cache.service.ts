@@ -1,4 +1,4 @@
-import { CacheService } from '@infrastructure/redis/cache.service.js';
+import { CacheService } from '@infrastructure/cache/cache.service.js';
 
 const DEFAULT_TTL_SECONDS = 300;
 

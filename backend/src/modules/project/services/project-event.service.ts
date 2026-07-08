@@ -1,6 +1,8 @@
 import { NotificationRepository } from '@domain/communication/communication.schemas.js';
-import { NOTIFICATION_CHANNELS, NOTIFICATION_STATUS } from '@shared/constants/notification.constants.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import {
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_STATUS,
+} from '@shared/constants/notification.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { PROJECT_NOTIFICATION_JOB } from '@modules/project/constants/project.constants.js';
 import type { ProjectActorContext } from '@modules/project/types/project.types.js';
@@ -24,7 +26,7 @@ export const ProjectNotificationService = {
         title: input.title,
         body: input.message,
         channel: NOTIFICATION_CHANNELS.DATABASE,
-        status: NOTIFICATION_STATUS.PENDING,
+        status: NOTIFICATION_STATUS.SENT,
         entityType: input.entityType,
         entityId: input.entityId,
         createdBy: context.userId,
@@ -32,15 +34,6 @@ export const ProjectNotificationService = {
       },
       { companyId: context.companyId },
     );
-
-    await QueueProducer.addNotificationJob(input.jobName, {
-      tenantId: context.companyId,
-      recipientId: input.userId,
-      title: input.title,
-      body: input.message,
-      entityType: input.entityType,
-      entityId: input.entityId,
-    });
   },
 };
 
@@ -66,7 +59,8 @@ export const ProjectEventService = {
       notification?: NotificationInput;
     },
   ): Promise<void> {
-    const { ProjectActivityService } = await import('@modules/project/services/project-activity.service.js');
+    const { ProjectActivityService } =
+      await import('@modules/project/services/project-activity.service.js');
 
     await ProjectActivityService.publish(context, {
       activityType: event.activityType,

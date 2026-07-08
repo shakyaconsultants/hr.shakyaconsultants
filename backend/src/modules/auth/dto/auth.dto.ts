@@ -63,7 +63,7 @@ export interface CurrentUserResponse {
     reportingManagerId?: string;
     employmentType: string;
     status: string;
-    joinedAt: string;
+    joinedAt: string | null;
   };
   portal: 'enterprise' | 'manager' | 'workspace';
   homeRoute: string;

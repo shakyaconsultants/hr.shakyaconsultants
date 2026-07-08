@@ -17,8 +17,9 @@ const PROVIDER_OPTIONS: Array<{ value: ConnectorProvider; label: string }> = [
   { value: 'cloudinary', label: 'Cloudinary (Storage)' },
   { value: 'smtp', label: 'SMTP (Email)' },
   { value: 'rest_api', label: 'REST API' },
-  { value: 'slack', label: 'Slack' },
-  { value: 'google_calendar', label: 'Google Calendar' },
+  { value: 'calendar', label: 'Calendar' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'sms', label: 'SMS' },
 ];
 
 export function IntegrationConnectorsPage() {
@@ -78,7 +79,10 @@ export function IntegrationConnectorsPage() {
       />
 
       {showForm ? (
-        <form onSubmit={(e) => void handleCreate(e)} className="space-y-4 rounded-lg border bg-card p-4">
+        <form
+          onSubmit={(e) => void handleCreate(e)}
+          className="space-y-4 rounded-lg border bg-card p-4"
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium">Provider</label>
@@ -96,7 +100,12 @@ export function IntegrationConnectorsPage() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Display Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Production SMTP" required />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Production SMTP"
+                required
+              />
             </div>
           </div>
           <div className="flex gap-2">

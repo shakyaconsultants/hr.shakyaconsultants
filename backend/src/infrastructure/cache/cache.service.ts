@@ -1,5 +1,4 @@
 import { CacheEntryRepository } from '@infrastructure/cache/cache-entry.schema.js';
-import { getRedisClient, isRedisAvailable } from '@infrastructure/redis/redis.client.js';
 import { MongoServerError } from 'mongodb';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 
@@ -49,98 +48,30 @@ async function setMongoCacheValue(key: string, value: string, ttlSeconds?: numbe
   }
 }
 
-const REDIS_TIMEOUT_MS = 150;
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timeoutId: NodeJS.Timeout | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error('Redis operation timed out'));
-    }, timeoutMs);
-  });
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  });
-}
-
 export const CacheService = {
   isEnabled(): boolean {
-    return isRedisAvailable();
+    return true;
   },
 
   async get(key: string): Promise<string | null> {
-    if (isRedisAvailable()) {
-      try {
-        const value = await withTimeout(getRedisClient().get(key), REDIS_TIMEOUT_MS);
-        if (value !== null) {
-          return value;
-        }
-      } catch {
-        // Fall through to Mongo when Redis is temporarily unavailable or slow.
-      }
-    }
-
     return getMongoCacheValue(key);
   },
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
-    if (isRedisAvailable()) {
-      try {
-        const client = getRedisClient();
-        const setPromise =
-          ttlSeconds !== undefined && ttlSeconds > 0
-            ? client.set(key, value, 'EX', ttlSeconds)
-            : client.set(key, value);
-        await withTimeout(setPromise, REDIS_TIMEOUT_MS);
-        void setMongoCacheValue(key, value, ttlSeconds).catch(() => undefined);
-        return true;
-      } catch {
-        // Fall through to Mongo-only persistence.
-      }
-    }
-
     await setMongoCacheValue(key, value, ttlSeconds);
     return true;
   },
 
-  /** Redis-only replay marker — never blocks auth when Redis is unavailable. */
   async setReplayKey(key: string, ttlSeconds: number): Promise<void> {
-    if (!isRedisAvailable()) {
-      return;
-    }
-
-    try {
-      await withTimeout(getRedisClient().set(key, '1', 'EX', ttlSeconds), REDIS_TIMEOUT_MS);
-    } catch {
-      // Replay protection is best-effort when Redis is unavailable.
-    }
+    await setMongoCacheValue(key, '1', ttlSeconds);
   },
 
-  /** Redis-only replay lookup — returns false when Redis is unavailable. */
   async existsReplayKey(key: string): Promise<boolean> {
-    if (!isRedisAvailable()) {
-      return false;
-    }
-
-    try {
-      const value = await withTimeout(getRedisClient().get(key), REDIS_TIMEOUT_MS);
-      return value !== null;
-    } catch {
-      return false;
-    }
+    const value = await getMongoCacheValue(key);
+    return value !== null;
   },
 
   async del(key: string): Promise<boolean> {
-    if (isRedisAvailable()) {
-      try {
-        await withTimeout(getRedisClient().del(key), REDIS_TIMEOUT_MS);
-      } catch {
-        // Continue with Mongo cleanup.
-      }
-    }
-
     const entry = await CacheEntryRepository.findOne({ cacheKey: key });
     if (entry) {
       await CacheEntryRepository.softDelete(entry.id, SYSTEM_ACTOR);

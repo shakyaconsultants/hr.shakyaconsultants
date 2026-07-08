@@ -9,7 +9,6 @@ Set these in **Render → Environment** (Dashboard). All other vars use safe def
 | `JWT_ACCESS_SECRET` | Yes | 32+ random chars (`openssl rand -base64 32`) |
 | `JWT_REFRESH_SECRET` | Yes | different 32+ random chars |
 | `FIELD_ENCRYPTION_KEY` | Yes | different 32+ random chars |
-| `REDIS_URL` | Yes | `rediss://default:TOKEN@host.upstash.io:6379` |
 | `AUTH_USE_HTTP_ONLY_COOKIES` | Yes | `true` |
 | `AUTH_COOKIE_SECURE` | Yes | `true` |
 | `FRONTEND_URL` | Yes | your deployed frontend URL |

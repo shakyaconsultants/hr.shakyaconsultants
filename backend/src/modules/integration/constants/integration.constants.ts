@@ -13,13 +13,24 @@ export const INTEGRATION_SETTING_KEYS = {
   WEBHOOK_DEFAULT_RETRY: 'integrations.webhook.default_retry',
 } as const;
 
-export const IMPORT_TEMPLATES: Record<string, { headers: string[]; sampleRow: Record<string, string> }> = {
+export const IMPORT_TEMPLATES: Record<
+  string,
+  { headers: string[]; sampleRow: Record<string, string> }
+> = {
   organization: {
     headers: ['name', 'code', 'status'],
     sampleRow: { name: 'Sample Department', code: 'DEPT-001', status: 'active' },
   },
   employee: {
-    headers: ['firstName', 'lastName', 'email', 'departmentId', 'designationId', 'branchId', 'joinedAt'],
+    headers: [
+      'firstName',
+      'lastName',
+      'email',
+      'departmentId',
+      'designationId',
+      'branchId',
+      'joinedAt',
+    ],
     sampleRow: {
       firstName: 'John',
       lastName: 'Doe',
@@ -52,12 +63,3 @@ export const IMPORT_TEMPLATES: Record<string, { headers: string[]; sampleRow: Re
     },
   },
 };
-
-export const WEBHOOK_QUEUE_JOB = {
-  DELIVER: 'webhook.deliver',
-  RETRY: 'webhook.retry',
-} as const;
-
-export const SCHEDULER_QUEUE_JOB = {
-  RUN: 'scheduler.run',
-} as const;

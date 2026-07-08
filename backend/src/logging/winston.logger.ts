@@ -19,7 +19,7 @@ function shouldLog(level: LogLevel): boolean {
   const env = getEnv();
   const configured = env.LOG_LEVEL;
   const order: LogLevel[] = ['debug', 'http', 'info', 'warn', 'error'];
-  const minIndex = order.indexOf(configured as LogLevel);
+  const minIndex = order.indexOf(configured);
   const levelIndex = order.indexOf(level);
   if (minIndex === -1) {
     return levelIndex >= order.indexOf('info');
@@ -34,7 +34,7 @@ function writeLog(level: LogLevel, category: LogCategory, message: string, meta?
 
   const correlationId = getCorrelationId();
   const payload = redactUnknown({
-    ...(meta && typeof meta === 'object' ? (meta as LogMeta) : {}),
+    ...(meta && typeof meta === 'object' ? meta : {}),
     ...(correlationId ? { correlationId } : {}),
     service: getEnv().APP_NAME,
     category,
@@ -82,7 +82,8 @@ export const logger = createCategoryLogger(LogCategory.Application);
 export const auditLogger = createCategoryLogger(LogCategory.Audit);
 export const securityLogger = createCategoryLogger(LogCategory.Security);
 export const httpLogger = createCategoryLogger(LogCategory.Http);
-export const queueLogger = createCategoryLogger(LogCategory.Queue);
+export const queueLogger = createCategoryLogger(LogCategory.Infrastructure);
+export const infraLogger = queueLogger;
 export const databaseLogger = createCategoryLogger(LogCategory.Database);
 export const errorLogger = createCategoryLogger(LogCategory.Error);
 

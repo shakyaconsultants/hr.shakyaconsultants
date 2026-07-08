@@ -3,7 +3,11 @@ import { persist } from 'zustand/middleware';
 import { SUPER_ADMIN_ROLE_SLUG } from '@/config/roles.constants';
 import type { FeatureFlags } from '@/config/module-registry';
 import type { PortalType } from '@/config/portals';
-import { clearStoredTokens, setStoredTokens } from '@/shared/auth/token-storage';
+import {
+  clearStoredTokens,
+  setStoredTokens,
+  shouldAttemptSessionRestore,
+} from '@/shared/auth/token-storage';
 
 import { AUTH_STATUS, type AuthStatus } from '@/shared/auth/auth-status.constants';
 
@@ -41,7 +45,7 @@ export interface AuthEmployeeProfile {
   reportingManagerId?: string;
   employmentType: string;
   status: string;
-  joinedAt: string;
+  joinedAt: string | null;
 }
 
 export interface SessionNavigationItem {
@@ -93,11 +97,15 @@ interface AuthState {
 
 const emptyFeatureFlags = {} as FeatureFlags;
 
+const initialAuthStatus: AuthStatus = shouldAttemptSessionRestore()
+  ? AUTH_STATUS.RESTORING
+  : AUTH_STATUS.UNAUTHENTICATED;
+
 const initialState = {
-  authStatus: AUTH_STATUS.LOADING as AuthStatus,
+  authStatus: initialAuthStatus,
   isAuthenticated: false,
-  isInitialized: false,
-  isLoading: true,
+  isInitialized: initialAuthStatus !== AUTH_STATUS.RESTORING,
+  isLoading: initialAuthStatus === AUTH_STATUS.RESTORING,
   user: null,
   company: null,
   employee: null,
@@ -133,8 +141,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({
       authStatus: status,
       isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
-      isInitialized: status !== AUTH_STATUS.LOADING,
-      isLoading: status === AUTH_STATUS.LOADING,
+      isInitialized: status !== AUTH_STATUS.RESTORING,
+      isLoading: status === AUTH_STATUS.RESTORING,
     }),
   setSessionNavigation: (items) => set({ navigation: items }),
   setSessionFeatureFlags: (flags) => set({ featureFlags: flags }),
@@ -156,7 +164,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isSuperAdmin: () => get().roles.some((role) => role.slug === SUPER_ADMIN_ROLE_SLUG),
 }));
 
-export function selectLinkedEmployeeId(state: Pick<AuthState, 'employee' | 'user'>): string | undefined {
+export function selectLinkedEmployeeId(
+  state: Pick<AuthState, 'employee' | 'user'>,
+): string | undefined {
   return state.employee?.id ?? state.user?.employeeId ?? undefined;
 }
 

@@ -14,6 +14,7 @@ import {
   listFeatureFlags,
   listSettings,
   testEmailSettings,
+  getSystemHealth,
   toggleFeatureFlag,
   updateSetting,
 } from '@modules/settings/controllers/settings.controller.js';
@@ -25,8 +26,13 @@ settingsRoutes.use(companyScopeMiddleware());
 
 settingsRoutes.get('/history/:key', authorize(SETTINGS_PERMISSIONS.READ), getSettingHistory);
 settingsRoutes.get('/feature-flags', authorize(SETTINGS_PERMISSIONS.READ), listFeatureFlags);
-settingsRoutes.patch('/feature-flags/:flagKey', authorize(SETTINGS_PERMISSIONS.MANAGE), toggleFeatureFlag);
+settingsRoutes.patch(
+  '/feature-flags/:flagKey',
+  authorize(SETTINGS_PERMISSIONS.MANAGE),
+  toggleFeatureFlag,
+);
 settingsRoutes.post('/email/test', authorize(SETTINGS_PERMISSIONS.MANAGE), testEmailSettings);
+settingsRoutes.get('/system/health', authorize(SETTINGS_PERMISSIONS.READ), getSystemHealth);
 
 /**
  * @swagger
@@ -77,7 +83,11 @@ settingsRoutes.get(SETTINGS_ROUTES.PUBLIC, authorize(SETTINGS_PERMISSIONS.READ),
  *       200:
  *         description: Group settings
  */
-settingsRoutes.get(`${SETTINGS_ROUTES.GROUP}/:group`, authorize(SETTINGS_PERMISSIONS.READ), getSettingsByGroup);
+settingsRoutes.get(
+  `${SETTINGS_ROUTES.GROUP}/:group`,
+  authorize(SETTINGS_PERMISSIONS.READ),
+  getSettingsByGroup,
+);
 
 /**
  * @swagger

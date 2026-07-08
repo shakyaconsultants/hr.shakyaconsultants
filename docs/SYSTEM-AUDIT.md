@@ -1,513 +1,440 @@
 # HR Shakya ERP — Full System Audit
 
-**Audit date:** 2026-07-07  
-**Remediation date:** 2026-07-07  
-**Auditor scope:** Backend, frontend, database, infrastructure, cross-module flows  
-**Method:** Static code review, live health checks, DB workforce diagnosis, TypeScript/build verification, route/API tracing
-
-**Post-remediation build status:** Backend `tsc --noEmit` ✅ · Frontend `tsc + vite build` ✅
+**Audit date:** 2026-07-08  
+**Scope:** Backend, frontend, infrastructure, deployment, cross-module flows  
+**Team context:** Small ERP (~10 employees, ~10 projects) — simplicity is a requirement  
+**Method:** Static code review, disk verification, API contract tracing, grep for legacy infra, build verification  
+**Status:** Remediated 2026-07-08 — Phases A–D implemented (see summary at end).
 
 ---
 
 ## Executive summary
 
-The platform is **functionally broad** (HR, projects, recruitment, payroll, sales, communication) with **solid foundations** (typed env, structured errors, RBAC, tenant scoping). However, **many user-visible failures are environmental or UX-layer issues**, not deep business-logic bugs:
+The Redis/BullMQ removal (2026-07-08) is **mostly complete in runtime code**: `bullmq` and `ioredis` are removed from `backend/package.json`, `server.ts` no longer starts workers, and email sends **directly via SMTP**. However, **significant leftovers** remain in documentation, Docker, naming, health API shapes, and stub code paths. Several features **look implemented in the UI but do not work** against the current backend.
 
-| Symptom users report | Most likely root cause |
-|----------------------|------------------------|
-| `500` on `/api/v1/projects/wizard/draft` | Backend down / proxy `ECONNREFUSED`, or unauthenticated call, or Mongo disconnect |
-| `409` on employee create | Email already in DB (legitimate conflict); UI previously showed error even when record existed |
-| UI stale until manual refresh | Query cache was configured with 5min stale + no refetch (partially fixed) |
-| Email not sent | Redis queue disabled locally; welcome email now bypasses queue (fix applied) |
-| Errors on “every module” | Combination of: backend not running, infinite loading on failed queries, missing routes, swallowed errors |
+| Category | Count (approx.) |
+|----------|-----------------|
+| P0 — Broken / non-functional | 8 |
+| P1 — Major gaps / security / deploy | 12 |
+| P2 — Dead code / inconsistency / docs drift | 25+ |
+| P3 — Cleanup / naming / small team simplification | 30+ |
 
-**Build status at audit time:** Backend `tsc --noEmit` ✅ · Frontend `tsc + vite build` ✅  
-**Live health (`GET http://localhost:4000/health`):** MongoDB healthy · Redis unavailable · Queue disabled
+**Build verified at audit time:** Backend `npm run typecheck` ✅ · `npm run build` ✅ (498 TS files in `backend/src`)
+
+**Bottom line for a 10-person team:** Core HR flows (auth, employees, projects, recruitment email-on-click) can work. The **Integration hub is largely broken** due to API contract drift. **Background jobs, push/realtime notifications, and cron scheduler are stubs.** Docs and Docker still describe Redis as required.
 
 ---
 
-## Live environment snapshot (2026-07-07)
+## 1. Redis / BullMQ / worker removal — verification
 
-### Infrastructure
+### 1.1 What was successfully removed ✅
+
+| Item | Status |
+|------|--------|
+| `bullmq`, `ioredis` npm packages | Removed from `backend/package.json` |
+| `REDIS_URL` production requirement | Removed from `backend/src/config/env.schema.ts` |
+| Redis boot in `server.ts` | Removed — startup is Mongo + SMTP check only |
+| `render.yaml` `REDIS_URL` | Removed |
+| `backend/RENDER.md` Redis requirement | Updated |
+| Dead files on disk | `redis.client.ts`, `redis.config.ts`, `bullmq.connection.ts`, `queue.worker.ts`, `queue.monitor.ts`, email/scheduler processors — **deleted** |
+| Active email path | `QueueProducer.addEmailJob` → `email-dispatcher.ts` → `EmailService.send()` (SMTP, synchronous) |
+| Cache | `infrastructure/cache/cache.service.ts` — Mongo `cache_entries` only |
+| Webhooks | Inline HTTP delivery in `webhook-platform.service.ts` (no queue) |
+
+### 1.2 What remains (leftover / dead / misleading) ⚠️
+
+| Severity | Item | Location | Fix suggestion |
+|----------|------|----------|----------------|
+| P2 | Empty folder `infrastructure/redis/` | Disk | Delete empty directory |
+| P2 | Empty folder `infrastructure/queue/processors/` | Disk | Delete empty directory |
+| P2 | Misleading name `QueueProducer` | `backend/src/infrastructure/queue/queue.producer.ts` | Rename to `DirectEmailDispatcher` or move to `infrastructure/email/` |
+| P2 | No-op stub methods still exported | `queue.producer.ts` lines 30–52 (`addNotificationJob`, `addPayrollJob`, etc.) | Delete methods + remove 8 caller sites, or wire to real handlers |
+| P2 | `QueueJobData` type alias | `queue.producer.ts` line 9 | Rename to `EmailJobData` (already in `email-dispatcher.ts`) |
+| P2 | `queueLogger` used for non-queue logging | `winston.logger.ts`, `email.service.ts`, `cloudinary.service.ts`, `notification.service.ts` | Rename to `infraLogger` |
+| P2 | `LogCategory.Queue` enum | `backend/src/shared/enums/index.ts` | Rename or remove |
+| P2 | `QUEUE_NAMES`, `QUEUE_DEFAULTS` | `backend/src/shared/constants/queue.constants.ts` | Delete file + export from `shared/constants/index.ts` |
+| P2 | `WEBHOOK_QUEUE_JOB`, `SCHEDULER_QUEUE_JOB` | `integration.constants.ts` lines 56–63 | Delete — unused after queue removal |
+| P2 | Health API still exposes `redis` + `queue` | `api.types.ts`, `health.controller.ts`, `system-admin.service.ts`, `executive-dashboard.service.ts` | Simplify to `{ mongodb, email: 'direct' }` or remove legacy fields |
+| P1 | **Stale docs — Redis still required** | `backend/docs/DATABASE.md` lines 58–66 | Rewrite: Mongo cache, direct email, Mongo-only readiness |
+| P1 | **Docker Compose still runs Redis** | `docker-compose.yml` lines 16–26, 41, 49–50 | Remove `redis` service and `REDIS_URL` env |
+| P1 | **README still mentions Redis** | `README.md` line 82 (`docker compose up mongodb redis`) | Update local dev instructions |
+| P3 | `.ai/` docs reference Redis/BullMQ extensively | `.ai/architecture.md`, `.ai/decisions.md`, `.ai/modules.md`, `.ai/changelog.md`, etc. | Archive or update ADRs (ADR-002, ADR-003 superseded) |
+| P3 | Old audit references deleted files | Previous sections of this file (pre-2026-07-08) | Superseded by this audit |
+| P3 | Error sanitizers still filter redis/bullmq strings | `user-facing-error.util.ts`, `production-sanitize.util.ts` | Harmless — keep or remove |
+
+### 1.3 Disk state (verified 2026-07-08)
 
 ```
-GET /health → 200
-{
-  "mongodb": "healthy",
-  "redis": "unavailable",
-  "queue": "disabled"
-}
+backend/src/infrastructure/redis/          → empty (no files)
+backend/src/infrastructure/queue/          → queue.producer.ts only
+backend/src/infrastructure/queue/processors/ → empty
+backend/src/infrastructure/cache/          → cache.service.ts, cache-entry.schema.ts
+backend/src/infrastructure/email/          → email-dispatcher.ts (+ existing email files)
+backend/src/infrastructure/scheduler/      → scheduled-job.runner.ts
 ```
 
-| Component | Status | Impact |
-|-----------|--------|--------|
-| MongoDB (`hr_shakya`) | Connected | Core API works |
-| Redis / BullMQ | Not running locally | Background jobs disabled; cache disabled |
-| SMTP (Gmail) | Configured in `.env` | Direct send works; queued emails do not |
-| Backend port 4000 | Intermittently blocked | Multiple `npm run dev` attempts → `EADDRINUSE` |
-| Vite proxy | `/api` → `localhost:4000` | When backend down, browser shows 500/502 |
-
-### Workforce DB (`npm run db:diagnose-workforce`)
-
-| Type | Count | Notes |
-|------|-------|-------|
-| Departments | 6 | Org master data intact |
-| Designations | 9 | Org master data intact |
-| Branches | 1 | Org master data intact |
-| Active employees | 3 | EMP00023, EMP00024, EMP00025 |
-| Portal users | 4 | Super admin has no `employeeId` (correct) |
-
-**Reserved emails (will 409 on employee create):**
-- `sachannishchal@gmail.com` — super admin login
-- `nishchalsachan206.ns@gmail.com`, `nandinigupta9934@gmail.com`, `harshitshakya94@gmail.com` — active employees
+**Grep/index note:** Some IDE search indexes may still show deleted files (`bullmq.connection.ts`, etc.). They are **not on disk** and **not compiled**.
 
 ---
 
-## Remediation summary (2026-07-07)
+## 2. P0 — Not working / broken features
 
-| ID | Status | Fix |
-|----|--------|-----|
-| C1 | Documented | Local dev startup order in `backend/docs/DATABASE.md` |
-| C2 | Fixed | `PageDataBoundary` on project/workspace detail pages |
-| C3 | Fixed | Wizard finalize compensating `softDelete` on failure |
-| C4 | Fixed | Scheduler jobs processed on WEBHOOK queue + direct fallback |
-| C5 | Fixed | Readiness: Redis required in production only |
-| H1 | Fixed | `syncDomainIndexes` includes `project_drafts` |
-| H2 | Fixed | Org controllers return `ValidationError` (400) |
-| H3 | Fixed | Wizard stale closure, one-time remote hydrate, draft error UI, no double toast |
-| H4 | Fixed | Missing routes redirect to working pages |
-| H5 | Fixed | Sales/project dashboard + kanban invalidation |
-| H6 | Mitigated | `bufferCommands` enabled in development only |
-| H7 | Fixed | Permission cache + employee conflict recovery logging |
-| M3 | Fixed | Wizard PUT returns same DTO shape as GET |
-| M4 | Fixed | `uq_project_drafts_user` duplicate hint |
-| M5 | Fixed | Interview date filters pushed to Mongo query |
-| M8 | Fixed | Payroll routes redirect to payroll reports |
-| L4 | Fixed | Employee detail uses typed `departmentName` / `designationName` |
-| L5 | Fixed | Per-widget error boundary in `widget-frame.tsx` |
-| L6 | Partial | Offline requests redirect to `/network-error` |
-| L8 | Fixed | `DATABASE.md` expanded (drafts, cache, queue, dev runbook) |
+These are features exposed in UI or API that **fail or silently do nothing** today.
 
-**Still environmental / out of scope for code-only fixes:** Redis must run in production for full queue throughput; SMTP credentials must be valid for email delivery; Cloudinary env vars required for uploads; comprehensive E2E test suite not added.
+### 2.1 Integration dashboard — API shape mismatch
 
----
-
-
-### C1 — Backend process instability (port 4000)
-
-**Evidence:** Terminal logs show repeated `Port 4000 is already in use` and Vite `ECONNREFUSED` for `/api/*`.  
-**Impact:** All API calls fail → frontend shows 500 across every module.  
-**Fix:** Kill stale node processes; run **one** backend instance. Verify with `GET http://localhost:4000/health`.
-
-### C2 — Detail pages infinite loading on API errors
+| | Frontend expects | Backend returns |
+|--|------------------|-----------------|
+| Endpoint | `GET /api/v1/integration/dashboard` | Same |
+| Shape | Flat: `connectedServices`, `emailQueuePending`, `recentFailures`, … | Nested: `{ summary, systemHealth, recentImports, recentExports }` |
 
 **Files:**
-- `frontend/src/features/project/pages/project-detail-page.tsx`
-- `frontend/src/features/workspace/pages/workspace-profile-page.tsx`
-- `frontend/src/features/workspace/pages/workspace-project-detail-page.tsx`
+- FE: `frontend/src/features/integration/api/integration.api.ts` (lines 20–35, 329–334)
+- FE: `frontend/src/features/integration/pages/integration-dashboard-page.tsx` (lines 32–56)
+- BE: `backend/src/modules/integration/services/integration-dashboard.service.ts` (lines 60–75)
 
-**Pattern:** `if (isLoading || !data) return <Loading />` — no `isError` branch.  
-**Impact:** 404/403/500 → spinner forever.  
-**Fix:** Use `PageDataBoundary` or explicit error UI when `isError`.
+**Symptom:** All stat cards show `undefined` or `0`. "Email Queue" card is meaningless (no queue exists).
 
-### C3 — Project wizard finalize has no transaction / rollback
-
-**File:** `backend/src/modules/project/services/project-wizard.service.ts` (`finalizeWizard`)  
-**Impact:** Partial project created (members, modules, milestones) if mid-flow fails.  
-**Fix:** Mongo transaction or compensating deletes on failure.
-
-### C4 — Scheduler jobs routed to no-op queue
-
-**File:** `backend/src/infrastructure/queue/queue.producer.ts` (`addSchedulerJob` → `QUEUE_NAMES.WEBHOOK`)  
-**File:** `backend/src/infrastructure/queue/queue.worker.ts` (WEBHOOK worker = no-op)  
-**Impact:** Scheduled integration jobs never execute.
-
-### C5 — Production requires Redis; local dev runs without it
-
-**File:** `backend/src/config/env.schema.ts` (production `REDIS_URL` required)  
-**File:** `backend/src/modules/health/health.controller.ts` (readiness fails without Redis)  
-**Impact:** Render/production deploy may fail readiness; local dev has queue/cache disabled silently.
+**Fix:** Either map BE response to FE DTO in API layer, or rewrite FE to consume `summary.*` and drop queue metrics.
 
 ---
 
-## High priority issues
+### 2.2 Integration connectors — multiple contract breaks
 
-### H1 — Index sync only runs for Employee collection
-
-**File:** `backend/src/domain/index.ts` (`syncDomainIndexes` → `repairEmployeeUniqueIndexes` only)  
-**Missing:** `project_drafts` unique index `uq_project_drafts_user`, recruitment indexes, etc.  
-**Impact:** Duplicate key races, generic 409/500 on concurrent wizard saves.
-
-### H2 — Org controllers throw raw `Error` → HTTP 500
-
-**Files:**
-- `backend/src/modules/organization/controllers/department.controller.ts:22`
-- `backend/src/modules/organization/controllers/designation.controller.ts:11`
-
-**Fix:** Use `ValidationError` / `BadRequestError` (400), not `throw new Error`.
-
-### H3 — Project wizard draft GET — code is safe; failures are infra/auth
-
-**Route:** `GET /api/v1/projects/wizard/draft`  
-**Chain:** `project.routes.ts:115` → `getWizardDraft` → `ProjectWizardService.getDraft`  
-**Expected:** `200` + `data: null` when no draft.  
-**500 causes:** Mongo down, permission lookup throw, backend not running.  
-**Permission required:** `project.create`
-
-**Frontend wiring:** Correct (`project.api.ts`, `useProjectWizardDraft`).
-
-**Wizard UX bugs (frontend):**
-- Stale closure in `persistDraft()` — may save outdated step data
-- `remoteDraft` merge can overwrite in-progress edits
-- Double success toast on finalize
-- No error UI when draft fetch fails
-
-### H4 — Missing frontend routes (dead links)
-
-**Constants defined but no route in `protected-routes.tsx`:**
-- `ROUTES.ORGANIZATION_SETUP` (`/organization/setup`)
-- `ROUTES.REPORTS`, `REPORTS_EXECUTIVE`, `REPORTS_DASHBOARD`, `REPORTS_RUN`
-- `ROUTES.ANALYTICS`
-
-**Impact:** Navigation to these URLs → 404 or wrong entity page.
-
-### H5 — Query invalidation gaps (stale dashboards)
+| Issue | Frontend | Backend |
+|-------|----------|---------|
+| List response | Unwraps `data` as `Connector[]` | Paginated `{ items, pagination }` |
+| Create field | Sends `provider` | Validates `type` (`INTEGRATION_TYPE` enum) |
+| Document fields | `provider`, `errorMessage`, `lastTestedAt`, `status` | `type`, `lastError`, `healthStatus`, entity `status` |
+| Invalid providers in UI | `slack`, `google_calendar` | Enum has `calendar`, no `slack` |
 
 **Files:**
-- `frontend/src/features/sales/hooks/use-sales.ts` — mutations don't invalidate dashboard/kanban keys
-- `frontend/src/features/project/hooks/use-projects.ts` — sub-resource mutations don't invalidate project dashboard/kanban
+- FE: `integration.api.ts` lines 336–340, 352+
+- FE: `integration-connectors-page.tsx` lines 20–21, 39
+- BE: `integration.validator.ts` lines 30–35
+- BE: `integration.schemas.ts` `INTEGRATION_TYPE` lines 7–17
 
-**Impact:** Enterprise/manager widgets show stale counts after create/update/delete.
+**Symptom:** Connectors page may **throw** on `.map()` (array vs paginated). Create connector **400 Bad Request**. Slack/Google options invalid.
 
-### H6 — MongoDB `bufferCommands: false`
-
-**File:** `backend/src/infrastructure/database/mongodb.connection.ts`  
-**Impact:** Any brief disconnect → immediate query failures (500s), no buffering.
-
-### H7 — Swallowed errors in auth/employee flows
-
-| Location | Behavior |
-|----------|----------|
-| `permission-engine.service.ts` | Cache write failure ignored → stale permissions |
-| `account-activation.service.ts` | Email failure logged; activation still “succeeds” |
-| `employee.controller.ts` create conflict recovery | Lookup errors swallowed |
+**Fix:** Align FE types and payloads to BE; use `unwrapPaginated()` for list; map field names in one adapter module.
 
 ---
 
-## Medium priority issues
+### 2.3 Integration API keys — field name mismatch
 
-### M1 — Employee create (recent fixes + remaining notes)
+| Frontend | Backend |
+|----------|---------|
+| `rateLimitPerMinute` | `rateLimit` |
+| `prefix`, `status` | `keyPrefix`, `isRevoked` |
 
-**Fixed in session:**
-- Removed 60s cleanup on every create
-- Direct SMTP for welcome email (bypass queue)
-- Email availability pre-check in UI
-- Form submit button outside `<form>` (fixed with `form` attribute)
-- Idempotent response when email already exists
-- Query cache refetch defaults updated
+**Files:** FE `api-key-form.tsx`, `api-keys-page.tsx`, `integration.api.ts` · BE `createApiKeySchema`, `api-key.service.ts`
 
-**Remaining:**
-- Welcome email still fails if SMTP credentials invalid (check backend logs)
-- Duplicate email on genuinely new address → verify with `npm run db:check-email -- <email>`
+**Symptom:** Create/list/display broken or shows wrong values.
 
-### M2 — Email architecture split-brain
+---
+
+### 2.4 Integration scheduler — field name mismatch + no cron runner
+
+| Frontend | Backend |
+|----------|---------|
+| `cron`, `handler` | `cronExpression`, `jobType` |
+
+**Files:** FE `scheduler-page.tsx`, `integration.api.ts` · BE `createScheduledJobSchema`, `scheduler-platform.service.ts`
+
+**Additional:** No background process runs cron. `computeNextRun()` returns `now + 1 hour` stub (`scheduler-platform.service.ts` lines 98–99). `runScheduledJobPayload()` only updates DB status + logs — **does not execute import/export/backup logic** (`scheduled-job.runner.ts`).
+
+**Symptom:** Scheduler UI broken; "Run now" marks job completed without doing work.
+
+**Fix for small team:** Hide scheduler UI until needed, or implement only manual "Run now" with real handlers.
+
+---
+
+### 2.5 Notification delivery — stubs (post-queue removal)
 
 | Path | Behavior |
 |------|----------|
-| Employee welcome | Direct SMTP (`sendAccountCredentialsNow`) ✅ |
-| Recruitment/onboarding | Queued via BullMQ — **requires Redis** |
-| Dev without SMTP | Logged to console only |
-| Production without SMTP | Throws `ExternalServiceError` |
+| Domain events write DB notification | ✅ Works (`NotificationRepository.create`) |
+| `QueueProducer.addNotificationJob(...)` | ❌ Returns `'skipped'` — no-op |
+| `NotificationService.send()` | ❌ Handlers only **log**, never deliver |
+| Email/realtime/push handlers | Log "queued" and return |
 
-### M3 — Wizard draft API inconsistency
+**Callers still invoking no-op queue (8 modules):**
+- `approval-event.service.ts`
+- `attendance-event.service.ts`
+- `communication-event.service.ts`
+- `leave-exit-event.service.ts`
+- `payroll-event.service.ts`
+- `project-event.service.ts`
+- `sales-event.service.ts`
+- `recruitment-email.service.ts` (`createWelcomeNotification`)
 
-**File:** `project-wizard.service.ts`  
-- GET returns shaped DTO  
-- PUT returns raw Mongoose document  
-**Fix:** Normalize PUT response to match GET.
+**Files:** `queue.producer.ts` lines 30–32 · `notification.service.ts` lines 65–98
 
-### M4 — Duplicate error hint missing for project drafts
+**Symptom:** In-app notifications in DB work. Email/push/realtime from events **never fire**. Socket.io has no FE client.
 
-**File:** `backend/src/shared/utils/database-error.util.ts`  
-**Missing:** `uq_project_drafts_user` in `INDEX_DUPLICATE_HINTS`
-
-### M5 — Interview service loads all records then filters in memory
-
-**File:** `backend/src/modules/recruitment/services/interview.service.ts`  
-**Impact:** Performance degradation at scale.
-
-### M6 — Cloudinary defaults to `not-configured`
-
-**Impact:** Document/avatar uploads fail at runtime without env vars.
-
-### M7 — Auth replay protection disabled without Redis
-
-**File:** `backend/src/infrastructure/redis/cache.service.ts`
-
-### M8 — Payroll routes redirect stubs
-
-**File:** `frontend/src/app/routes/protected-routes.tsx`  
-`/payroll/*` redirects to `/employees` — may confuse users.
+**Fix:** For 10 users: mark DB notifications as `sent` after create; delete `addNotificationJob` calls; disable SOCKET until needed.
 
 ---
 
-## Low priority issues
+### 2.6 Admin "test email" — does not send
 
-| ID | Issue | Location |
-|----|-------|----------|
-| L1 | No TODO/FIXME markers in backend source | Tech debt untracked |
-| L2 | Most BullMQ workers are no-op placeholders | `queue.worker.ts` |
-| L3 | `as any` in API pagination unwrap | Multiple `*.api.ts` files |
-| L4 | Employee detail uses `(employee as any).designationName` | `employee-detail-page.tsx` |
-| L5 | Widget lazy loads lack per-widget error boundary | `widget-registry.ts` |
-| L6 | Status pages (`/500`, `/network-error`) never navigated to programmatically | `status-pages.tsx` |
-| L7 | Only 1 backend test file | `backend/tests/search.helper.test.ts` |
-| L8 | `DATABASE.md` incomplete (no project_drafts, cache, queue notes) | `backend/docs/DATABASE.md` |
+**File:** `backend/src/modules/settings/services/system-admin.service.ts` lines 123–139
+
+Returns `success: true` with message *"Email delivery test is not yet implemented."*
+
+**Symptom:** Admin thinks email works after "test" passes.
+
+**Fix:** Call `EmailService.send()` with test message using env SMTP.
 
 ---
 
-## Module-by-module audit
+### 2.7 SMTP config split — misleading health checks
 
-### Auth & RBAC
-- ✅ Super admin in `users` only; JWT + token version validation
-- ✅ Company scope middleware on tenant routes
-- ⚠️ Permission cache write failures silent
-- ⚠️ Portal permission sync failures logged but `/auth/me` continues
+| Concern | Source |
+|---------|--------|
+| Actual email sending | `backend/.env` → `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` (`email.service.ts` lines 29–35) |
+| Admin "email configured" check | DB settings keys `email.smtp_host`, `email.from_address` (`system-admin.service.ts` lines 51, 109–120) |
 
-### Employee / HR
-- ✅ Create rollback on post-create failure
-- ✅ Email availability validation (employee + portal user + super admin)
-- ✅ Workforce cleanup script preserves org master data
-- ⚠️ Welcome email depends on SMTP credentials being valid
-- ⚠️ Hard purge on delete — irreversible
+**Symptom:** Env SMTP works but admin panel shows "not configured" (or vice versa).
 
-### Organization (master data)
-- ✅ Departments, designations, branches preserved during workforce cleanup
-- ❌ Invalid ID throws generic Error → 500
-
-### Projects
-- ✅ Wizard routes ordered before `/:id`
-- ✅ Auto-generated project codes
-- ❌ Wizard finalize not transactional
-- ❌ Draft index not synced at startup
-- ❌ Frontend wizard state sync bugs
-
-### Recruitment
-- ✅ Interview validation (past dates, rejected candidates)
-- ⚠️ Candidate conversion requires sent offer (422 — correct but strict)
-- ⚠️ Emails queued — need Redis in production
-
-### Attendance / Leave / Payroll
-- ⚠️ Limited automated test coverage
-- ⚠️ Payroll UI mostly stub redirects
-
-### Sales / Communication
-- ⚠️ Dashboard cache invalidation incomplete after mutations
-- ⚠️ Mark-read mutations toast on every action (no debounce)
-
-### Integration
-- ⚠️ Scheduler jobs broken (routed to no-op queue)
-- ⚠️ Connector health endpoint exists; workers don't process scheduled jobs
-
-### Reports / Analytics
-- ❌ Frontend routes not registered — module non-functional in UI
+**Fix:** Single source of truth — env-only for small team, or read DB settings in `EmailService`.
 
 ---
 
-## Database architecture audit
+### 2.8 Workspace env variables — security mismatch
 
-See also: `backend/docs/DATABASE.md`
+| | Admin/enterprise portal | Employee workspace |
+|--|-------------------------|-------------------|
+| `canViewEnv` | Gated by permissions (`project-detail-page.tsx` lines 48–52) | **Hardcoded `true`** (`workspace-project-detail-page.tsx` line 79) |
+| Backend | N/A | `WorkspaceMyProjectsService.getById()` returns full `knowledgeBase` including decrypted env vars to **any assigned member** (`workspace-my-projects.service.ts` lines 154–165) |
 
-### Identity model (correct)
+**Symptom:** UI copy says env restricted to PMs/admins; **all project members receive secrets in API response**.
 
-```
-Super Admin  →  users (no employeeId)
-Employees    →  employees + optional users link
-HR Admins    →  employees with roles
-```
-
-### Collections at risk
-
-| Collection | Risk | Mitigation |
-|------------|------|------------|
-| `employees` | Unique email index | Validated at create; partial index on active rows |
-| `users` | Unique email per company | Checked in `assertEmailAvailableForCreate` |
-| `project_drafts` | Unique (companyId, userId) | Index may not exist on old DBs — run `syncIndexes` |
-| `cache_entries` | TTL cache mirror | Falls back when Redis down |
-
-### Recommended DB maintenance commands
-
-```bash
-# Workforce identity cleanup (never touches org master data)
-npm run db:purge-system-garbage --workspace=@hr-shakya/backend
-
-# Inspect employees/users
-npm run db:diagnose-workforce --workspace=@hr-shakya/backend
-
-# Check if email can be used for new employee
-npm run db:check-email --workspace=@hr-shakya/backend -- someone@example.com
-```
-
-### Missing from DATABASE.md
-
-- `project_drafts` collection
-- Index sync policy (employee-only at startup)
-- `cache_entries` fallback behavior
-- Queue/email dependency on Redis
+**Fix:** Redact `envVariables` on workspace API unless role is PM/admin; align FE `canViewEnv` with backend.
 
 ---
 
-## Frontend architecture audit
+## 3. P1 — High priority issues
 
-### Query cache (recently improved)
+### 3.1 Auth & sessions
 
-**File:** `frontend/src/shared/api/query-config.ts`  
-- Now: `staleTime: 0`, refetch on mount/focus/reconnect  
-- Master data: 60s stale (acceptable)
+| Issue | File | Fix |
+|-------|------|-----|
+| `SessionCacheService.invalidateUser` clears **all company sessions**, ignores `userId` | `session-cache.service.ts` lines 53–60 | Key by user or track session→user map |
+| In-memory session cache not shared across Render instances | `session-cache.service.ts` | Accept extra DB reads or use Mongo cache |
+| Refresh replay key set before DB token update (race if update fails) | `session.service.ts` lines 150–161 | Update hash first, then replay key |
+| `logout-all` backend route exists; frontend never calls it | `auth.routes.ts` | Wire UI or remove route |
 
-**Remaining:** Module-specific invalidation gaps (sales/project dashboards).
+### 3.2 Webhooks
 
-### Error handling matrix
+| Issue | File | Fix |
+|-------|------|-----|
+| `retryPolicy` stored but unused after queue removal | `webhook-platform.service.ts` | Inline retry loop (2–3 attempts) or remove from schema/UI |
+| `retryWebhookDelivery` FE calls test endpoint, not retry | `integration.api.ts` | Add BE retry endpoint or use re-deliver |
 
-| Layer | Status |
-|-------|--------|
-| Root error boundary | ✅ `app-error-boundary.tsx` |
-| Router error fallback | ✅ `route-error-fallback.tsx` |
-| Mutation errors | ✅ `parseMutationError` + toasts |
-| Query errors | ❌ Inconsistent — many pages missing |
-| HTTP 500 redirect | ❌ Never uses `/500` status page |
+### 3.3 Production deployment
 
-### Form / dialog patterns
+| Issue | File | Fix |
+|-------|------|-----|
+| `render.yaml` deploys **API only** — no frontend static site | `render.yaml` | Add Render static site or nginx combined deploy |
+| Docker frontend `VITE_API_BASE_URL=http://localhost:4000` | `frontend/Dockerfile`, `docker-compose.yml` | Use relative `/api` proxy or correct host |
+| Cross-origin cookies require exact `FRONTEND_URL` + `VITE_AUTH_USE_HTTP_ONLY_COOKIES=true` | `RENDER.md`, frontend `.env.example` | Document in frontend env example |
+| Cloudinary defaults `not-configured` — uploads fail | `env.schema.ts`, `server.ts` | Startup warning like SMTP |
 
-- ✅ `FormDialog` now links footer submit to form via `form` attribute + `useId`
-- ⚠️ Double toast when both `runFormMutation` and `useAppMutation.successMessage` set
+### 3.4 Settings / system health API unwired
 
-### Build / TypeScript
+| Issue | File | Fix |
+|-------|------|-----|
+| `getSystemHealth` controller exists but **not mounted** in routes | `settings.controller.ts` vs `settings.routes.ts` | Mount route or remove controller |
+| `system_health` feature flag enabled, **no page/route** | `module-registry/index.ts` | Add page or disable flag |
 
-- ✅ Strict mode enabled
-- ✅ Production build passes
-- ⚠️ Fixed during session: `lazy-route.ts` → `lazy-route.tsx`, broken `ParsedMutationError` interface
+### 3.5 Email blocking on request thread
 
----
+All transactional email is **synchronous SMTP** on the HTTP request (`queue.producer.ts` lines 23–27).
 
-## Backend architecture audit
+**Impact:** Slow SMTP = slow API responses (password reset, interview invite, onboarding).
 
-### Error handling pipeline
-
-```
-Controller → Service → Repository
-     ↓ throw AppError / Mongo error
-error-handler.middleware → ErrorHandlerService
-     ↓
-normalizeDatabaseError (11000 → 409)
-handleAppError / handleUnknownError (→ 500)
-```
-
-**Gap:** Raw `throw new Error()` bypasses operational classification.
-
-### Queue / email pipeline
-
-```
-QueueProducer.addEmailJob
-  ├─ Redis available → BullMQ queue → processEmailJob → SMTP
-  └─ Redis unavailable → deliverEmailPayload (direct SMTP)
-
-Employee welcome email → sendAccountCredentialsNow (direct, bypasses queue)
-```
-
-### Security notes
-
-- ✅ JWT secrets min 32 chars enforced
-- ✅ Field encryption key required
-- ✅ Production cookie flags enforced in env schema
-- ⚠️ Default SMTP placeholder `not-configured` — must override for real email
-- ⚠️ CORS/FRONTEND_URL must match deployment origin for email links
+**Fix for 10 users:** Acceptable; optionally `void deliverEmail(...).catch(log)` for non-critical paths.
 
 ---
 
-## Testing & CI gaps
+## 4. P2 — Medium issues (bugs, inconsistency, dead code)
 
-| Area | Coverage |
+### 4.1 Frontend dead / stub code
+
+| Item | Location |
 |------|----------|
-| Backend unit tests | 1 file (`search.helper.test.ts`) |
-| Frontend tests | None found |
-| E2E tests | None found |
-| Pre-commit | ESLint on staged backend files |
-| Typecheck | Backend + frontend build |
+| `isFeatureEnabled()` always returns `true` | `module-registry/index.ts` line 828 |
+| `fetchSystemStatus` defined, never used | `auth.api.ts` |
+| `VITE_API_PREFIX` / `APP_CONFIG.apiPrefix` unused — all APIs hardcode `/api/v1` | `app.config.ts`, `*.api.ts` |
+| `useVerifyBackup` hook unused in backup page | `use-integration.ts` |
+| `useUpdateApiKey` throws "not supported" | `use-integration.ts` |
+| Reports/analytics nav entries redirect to other modules | `protected-routes.tsx` lines 156–180 |
+| Deprecated layout shims | `navigation.catalog.ts`, `dynamic-sidebar.tsx`, `app-layout.tsx` |
 
-**Recommendation:** Add integration tests for: auth login, employee create, project wizard draft CRUD, email mock.
+### 4.2 Project UI inconsistencies
 
----
+| Issue | Files |
+|-------|-------|
+| Three duplicate role label maps | `project-display.util.ts`, `project-members-tab.tsx`, wizard vs admin |
+| Wizard `MEMBER_ROLE_OPTIONS` missing roles present in admin panel | `project-wizard-steps.ts` vs `project-administration-panel.tsx` |
+| Backend fallback role `'member'` not in assignable enum | `workspace-my-projects.service.ts` line 144 |
+| Admin panel uses `.replace(/_/g, ' ')` instead of shared formatter | `project-administration-panel.tsx` |
 
-## Bug → symptom quick reference
+### 4.3 Backend dead / stub code
 
-| Browser console | Likely cause | Verify |
-|-----------------|--------------|--------|
-| `api/v1/* 500` + `ECONNREFUSED` in Vite terminal | Backend not running | `GET /health` |
-| `api/v1/projects/wizard/draft 500` | Same as above, or Mongo down, or auth | Backend logs `[ERROR] GET ...` |
-| `api/v1/employees 409` | Email already used | `db:check-email` |
-| Page spins forever | Query failed, no error UI | Network tab status code |
-| Email not received | SMTP auth fail, or queued without Redis | Backend logs `Email sent` or `SMTP` |
-| `/reports/*` 404 | Route not registered | `protected-routes.tsx` |
+| Item | Location |
+|------|----------|
+| Notification handlers log-only | `notification.service.ts` |
+| `PermissionCacheService.invalidateCompany` wrong key prefix, never called | `permission-cache.service.ts` |
+| `LOG_DIR` env defined, logger is console-only | `env.schema.ts` |
+| Socket.io initialized, connect/disconnect only, no FE client | `socket.server.ts` |
+| Only 1 backend test file | `tests/search.helper.test.ts` |
+| `queue.constants.ts`, integration queue job constants | unused |
 
----
+### 4.4 Documentation drift
 
-## Recommended fix roadmap
-
-### Phase 1 — Stop the bleeding (1–2 days)
-
-1. Stabilize dev environment: single backend on 4000, document startup order
-2. Add `isError` handling to all detail pages using `PageDataBoundary`
-3. Fix org controller `throw new Error` → proper 400 errors
-4. Fix project wizard `persistDraft` stale closure
-5. Register missing routes OR remove dead nav links
-
-### Phase 2 — Data integrity (3–5 days)
-
-1. Add `syncDomainIndexes` for `project_drafts`, critical recruitment indexes
-2. Wrap wizard `finalizeWizard` in transaction or rollback
-3. Fix `addSchedulerJob` queue routing
-4. Extend mutation invalidation to dashboard/kanban query keys
-
-### Phase 3 — Production hardening (1–2 weeks)
-
-1. Redis required + worker health in `/health`
-2. Integration test suite for core flows
-3. Complete `DATABASE.md` + runbook for Render deploy
-4. Per-widget error boundaries on enterprise dashboard
-5. Unified `parseQueryError` for consistent query failure UX
+| Doc | Problem |
+|-----|---------|
+| `backend/docs/DATABASE.md` | Redis/BullMQ fallback, prod Redis required |
+| `README.md` | Redis in docker instructions, outdated phase description |
+| `docker-compose.yml` | Redis service + `REDIS_URL` |
+| `.ai/*` | Architecture assumes Redis + BullMQ |
+| Previous `docs/SYSTEM-AUDIT.md` (2026-07-07) | References Redis health, queue workers, old file paths |
 
 ---
 
-## Verification checklist (run after fixes)
+## 5. P3 — Low priority / simplification for small team
+
+### 5.1 Over-engineered areas (consider trimming)
+
+| Area | Evidence | Recommendation |
+|------|----------|----------------|
+| 20 backend modules | ~498 TS files | Merge low-traffic modules (portal+workspace, system+settings) |
+| RBAC permission catalog | ~1,291 lines | Keep only permissions used in UI |
+| Settings configuration catalog | ~979 lines | Collapse unused settings |
+| Integration platform | 8+ pages, many broken | Keep SMTP/Cloudinary config only; defer webhooks/scheduler/backups |
+| Module registry | ~1,090 lines FE | Split or simplify nav/routes |
+| Three portals | Enterprise / Manager / Workspace | OK if roles differ; else collapse |
+| 10+ status error pages | `status-pages.tsx` | Keep 2–3 generic pages |
+| Event service pattern | 8× `*-event.service.ts` + no-op queue | Single `DomainEventService` or inline notifications |
+| Socket.io | No realtime features wired | Set `SOCKET_ENABLED=false` until needed |
+| Permission simulator, feature flags | Settings/RBAC | Dev-only or remove |
+
+### 5.2 Naming cleanup (no functional impact)
+
+- Rename `QueueProducer` → `EmailDispatcher`
+- Rename `queueLogger` → `infraLogger`
+- Remove `redis`/`queue` from health JSON
+- Delete empty `infrastructure/redis/`, `infrastructure/queue/processors/`
+
+---
+
+## 6. What works correctly ✅
+
+Verified working paths for a small-team deployment:
+
+| Feature | How it works |
+|---------|--------------|
+| **Login / refresh / logout** | JWT + HttpOnly cookies (when configured) |
+| **Password reset / activation email** | Direct SMTP via `QueueProducer.addEmailJob` → `email-dispatcher` |
+| **Recruitment emails** | Interview invite, offer, rejection, etc. — immediate SMTP |
+| **Onboarding portal email** | `onboarding.service.ts` → direct email |
+| **In-app DB notifications** | Created in DB by event services |
+| **Webhooks publish** | Inline HTTP POST in `WebhookPlatformService.deliver` |
+| **Manual scheduler "Run now"** | Inline `runScheduledJobPayload` (status update only) |
+| **Permission cache** | Mongo `cache_entries` via `CacheService` |
+| **Refresh token replay protection** | Mongo cache (no Redis) |
+| **Project admin UI** | Shared `ProjectDetailView`, KB, deployment tab (admin path) |
+| **Workspace project list/detail** | API aligned; env leak is the main issue |
+| **Health/readiness** | Mongo-only readiness (`GET /health/ready`) |
+| **Build** | Backend typecheck + build pass without bullmq/ioredis |
+
+---
+
+## 7. Recommended fix roadmap (do not implement blindly — prioritize)
+
+### Phase A — Fix what users see as broken (1–2 days)
+
+1. Integration API adapter layer (dashboard, connectors, API keys, scheduler field maps)
+2. Workspace env var redaction + `canViewEnv` alignment
+3. Remove or implement admin test email
+4. Unify SMTP config source (env vs DB)
+
+### Phase B — Remove dead queue-era code (0.5 day)
+
+1. Delete `addNotificationJob` calls or wire to real delivery
+2. Delete `queue.constants.ts`, unused integration queue constants
+3. Rename `QueueProducer`, `queueLogger`
+4. Delete empty infra folders
+5. Update `DATABASE.md`, `README.md`, `docker-compose.yml`
+
+### Phase C — Honest feature scope (1 day)
+
+1. Hide or label scheduler as "manual run only"
+2. Disable/hide broken integration sub-pages until fixed
+3. Set `SOCKET_ENABLED=false` if unused
+4. Fix `SessionCacheService.invalidateUser`
+
+### Phase D — Small-team simplification (ongoing)
+
+1. Trim RBAC/settings catalogs to used permissions
+2. Collapse event services
+3. Add frontend deploy to Render
+4. Add minimal integration tests for auth + email + projects
+
+---
+
+## 8. Verification checklist (post-fix)
+
+Use this after implementing fixes:
 
 ```bash
-# 1. Backend health
-curl http://localhost:4000/health
+# Backend
+cd backend && npm run typecheck && npm run build
+curl http://localhost:4000/health/ready          # mongodb healthy
+curl http://localhost:4000/api/v1/integration/dashboard  # shape matches FE
 
-# 2. Typecheck
-npm run typecheck --workspace=@hr-shakya/backend
-npm run build --workspace=@hr-shakya/frontend
+# No redis/bullmq in deps
+grep -E "bullmq|ioredis" backend/package.json     # should be empty
 
-# 3. DB state
-npm run db:diagnose-workforce --workspace=@hr-shakya/backend
+# Email (with SMTP configured)
+# - Forgot password → email received
+# - Schedule interview → invite email received immediately
 
-# 4. Email config (backend logs on startup should show SMTP host/user)
-# 5. Create employee with NEW email — should 201, list refreshes, email in logs/inbox
-# 6. Open project wizard — GET /api/v1/projects/wizard/draft should 200 (null or draft)
+# Workspace security
+# - Member role API must NOT include env var values
+
+# Integration UI
+# - Dashboard stats non-undefined
+# - Create connector with type=cloudinary succeeds
 ```
 
 ---
 
-## Appendix — files changed during recent stabilization session
+## 9. File reference index (quick lookup)
 
-| Area | Files |
-|------|-------|
-| Employee create | `employee.service.ts`, `employee-validation.service.ts`, `employee.controller.ts`, `employee-account.service.ts` |
-| Email | `recruitment-email.service.ts` (direct send) |
-| Frontend UX | `employee-create-dialog.tsx`, `form-dialog.tsx`, `query-config.ts`, `lazy-route.tsx` |
-| DB scripts | `purge-system-garbage.ts`, `check-email.ts`, `diagnose-workforce.ts` |
+| Topic | Primary files |
+|-------|---------------|
+| Direct email | `infrastructure/email/email-dispatcher.ts`, `infrastructure/queue/queue.producer.ts` |
+| Mongo cache | `infrastructure/cache/cache.service.ts` |
+| Notification stubs | `infrastructure/notification/notification.service.ts` |
+| Scheduler stub | `infrastructure/scheduler/scheduled-job.runner.ts`, `scheduler-platform.service.ts` |
+| Integration mismatch | `frontend/.../integration.api.ts`, `integration-dashboard.service.ts` |
+| Workspace env leak | `workspace-my-projects.service.ts`, `workspace-project-detail-page.tsx` |
+| Session cache bug | `session-cache.service.ts` |
+| Docker Redis leftover | `docker-compose.yml` |
+| Deploy | `render.yaml`, `backend/RENDER.md` |
 
 ---
 
-*This audit should be re-run after Phase 1 fixes and before production deploy.*
+*End of audit — 2026-07-08. Remediation applied same day: direct email, Mongo cache, integration API fixes, workspace env redaction, dead queue code removed.*
+
+## Remediation summary (2026-07-08)
+
+| Phase | Done |
+|-------|------|
+| A | Integration dashboard flat DTO; FE adapters for connectors/API keys/scheduler; workspace env redaction; SMTP env-only health + test email sends |
+| B | Removed `queue.producer.ts`, `queue.constants.ts`, empty `redis/` & `queue/` dirs; renamed logger category to Infrastructure |
+| C | Notifications marked `sent` in DB (removed no-op queue calls); scheduler labeled manual-only; `SOCKET_ENABLED` default false; session cache `invalidateUser` fixed |
+| D | Webhook inline retries + retry API; settings `/system/health` route; Render static frontend service; docker-compose without Redis |

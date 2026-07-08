@@ -7,7 +7,7 @@ const PERMISSIONS_CACHE_ENTITY = 'user-permissions';
 export const PermissionCacheService = {
   buildKey(companyId: string, employeeId: string): string {
     const env = getEnv();
-    return `${env.QUEUE_PREFIX}:${companyId}:${AUTH_CACHE_KEY_PREFIX.PERMISSIONS}:${employeeId}`;
+    return `${env.CACHE_PREFIX}:${companyId}:${AUTH_CACHE_KEY_PREFIX.PERMISSIONS}:${employeeId}`;
   },
 
   async get(companyId: string, employeeId: string): Promise<string[] | null> {
@@ -30,7 +30,11 @@ export const PermissionCacheService = {
     await MasterDataCacheService.invalidateEntity(companyId, PERMISSIONS_CACHE_ENTITY);
   },
 
-  async invalidateRoleAssignees(companyId: string, roleId: string, employeeIds: string[]): Promise<void> {
+  async invalidateRoleAssignees(
+    companyId: string,
+    roleId: string,
+    employeeIds: string[],
+  ): Promise<void> {
     await Promise.all(employeeIds.map((employeeId) => this.invalidate(companyId, employeeId)));
     void roleId;
   },

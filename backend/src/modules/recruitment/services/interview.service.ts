@@ -107,19 +107,6 @@ export const InterviewService = {
       interviewType: interview.interviewType,
     });
 
-    const reminderDelay = scheduledAt.getTime() - Date.now() - 86400000;
-    if (reminderDelay > 0) {
-      await RecruitmentEmailService.sendInterviewReminder(
-        context,
-        candidate.email,
-        {
-          candidateName: `${candidate.firstName} ${candidate.lastName}`,
-          date: scheduledAt.toLocaleString(),
-        },
-        reminderDelay,
-      );
-    }
-
     await RecruitmentAuditService.log({
       companyId: context.companyId,
       userId: context.userId,

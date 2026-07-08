@@ -1,14 +1,19 @@
-import type { Job } from 'bullmq';
 import { getEnv } from '@config/env.js';
 import { EmailService } from '@infrastructure/email/email.service.js';
 import { renderEmailFromJobPayload } from '@infrastructure/email/email-template.renderer.js';
 import { EmailBrandingService } from '@infrastructure/email/email-branding.service.js';
-import type { QueueJobData } from '@infrastructure/queue/queue.producer.js';
 import { ExternalServiceError } from '@shared/errors/app.error.js';
 import { asOptionalUrlString } from '@shared/utils/safe-string.util.js';
-import { queueLogger } from '@logging/winston.logger.js';
+import { logger } from '@logging/winston.logger.js';
 
-export async function deliverEmailPayload(data: QueueJobData, jobName?: string): Promise<void> {
+export interface EmailJobData {
+  correlationId: string;
+  tenantId?: string;
+  userId?: string;
+  payload: Record<string, unknown>;
+}
+
+export async function deliverEmailPayload(data: EmailJobData, jobName?: string): Promise<void> {
   const payload = data.payload;
   const to = typeof payload.to === 'string' ? payload.to.trim() : '';
   if (!to) {
@@ -34,7 +39,7 @@ export async function deliverEmailPayload(data: QueueJobData, jobName?: string):
       );
     }
 
-    queueLogger.warn('SMTP not configured — email content logged to console', {
+    logger.warn('SMTP not configured — email content logged to console', {
       jobName,
       to,
       activationUrl: payload.activationUrl,
@@ -66,7 +71,7 @@ export async function deliverEmailPayload(data: QueueJobData, jobName?: string):
       tenantId: data.tenantId,
     });
   } catch (error) {
-    queueLogger.error('Email delivery failed — link logged for manual follow-up', {
+    logger.error('Email delivery failed — link logged for manual follow-up', {
       jobName,
       to,
       activationUrl: payload.activationUrl,
@@ -87,13 +92,4 @@ export async function deliverEmailPayload(data: QueueJobData, jobName?: string):
     }
     throw error;
   }
-}
-
-export async function processEmailJob(job: Job<QueueJobData>): Promise<void> {
-  queueLogger.info('Processing email job', {
-    jobName: job.name,
-    jobId: job.id,
-    correlationId: job.data.correlationId,
-  });
-  await deliverEmailPayload(job.data, job.name);
 }

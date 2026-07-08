@@ -8,6 +8,7 @@ import { EnterpriseLayout } from '@/app/layouts/enterprise-layout';
 import { ManagerLayout } from '@/app/layouts/manager-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { PageSkeleton } from '@/shared/components/page-skeleton';
 
 const PORTAL_HOME_PATHS = [ROUTES.ENTERPRISE, ROUTES.MANAGER, ROUTES.WORKSPACE] as const;
 
@@ -22,6 +23,14 @@ export function PortalGuard() {
 
   const portal = useResolvedPortal();
   const homeRoute = usePortalHomeRoute();
+
+  if (authStatus === AUTH_STATUS.RESTORING) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <PageSkeleton />
+      </div>
+    );
+  }
 
   if (authStatus === AUTH_STATUS.UNAUTHENTICATED) {
     return <Navigate to={ROUTES.LOGIN} replace state={{ from: location.pathname }} />;
@@ -38,8 +47,10 @@ export function PortalGuard() {
   const superAdmin = isSuperAdmin();
 
   const wrongPortalLanding =
-    (portal === PORTAL.ENTERPRISE && (location.pathname === ROUTES.WORKSPACE || location.pathname === ROUTES.MANAGER)) ||
-    (portal === PORTAL.MANAGER && (location.pathname === ROUTES.WORKSPACE || location.pathname === ROUTES.ENTERPRISE)) ||
+    (portal === PORTAL.ENTERPRISE &&
+      (location.pathname === ROUTES.WORKSPACE || location.pathname === ROUTES.MANAGER)) ||
+    (portal === PORTAL.MANAGER &&
+      (location.pathname === ROUTES.WORKSPACE || location.pathname === ROUTES.ENTERPRISE)) ||
     (portal === PORTAL.WORKSPACE &&
       (location.pathname === ROUTES.ENTERPRISE || location.pathname === ROUTES.MANAGER));
 
@@ -55,7 +66,10 @@ export function PortalGuard() {
     return <Navigate to={homeRoute} replace />;
   }
 
-  if (!superAdmin && !isPathAllowedForPortal(location.pathname, portal, hasPermission, hasAnyPermission)) {
+  if (
+    !superAdmin &&
+    !isPathAllowedForPortal(location.pathname, portal, hasPermission, hasAnyPermission)
+  ) {
     return <Navigate to={ROUTES.FORBIDDEN} replace state={{ from: location.pathname }} />;
   }
 

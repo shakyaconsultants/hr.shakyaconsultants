@@ -23,10 +23,6 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (authStatus === AUTH_STATUS.LOADING) {
-    return null;
-  }
-
   if (authStatus === AUTH_STATUS.AUTHENTICATED) {
     return <Navigate to={portalHome} replace />;
   }
@@ -40,7 +36,9 @@ export function LoginPage() {
       navigate(useAuthStore.getState().homeRoute ?? portalHome, { replace: true });
     } catch (e) {
       const parsed = parseMutationError(e);
-      const message = parsed.description ? `${parsed.message} ${parsed.description}` : parsed.message;
+      const message = parsed.description
+        ? `${parsed.message} ${parsed.description}`
+        : parsed.message;
       setError(message);
       toastError(parsed.title, parsed.description);
     } finally {
@@ -61,18 +59,36 @@ export function LoginPage() {
         </label>
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Email</span>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
         </label>
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Password</span>
-          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+          />
           Remember this device
         </label>
         {error ? (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+          <p
+            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            role="alert"
+          >
             {error}
           </p>
         ) : null}

@@ -1,4 +1,8 @@
-import { AppSettingRepository, SETTING_GROUP, SETTING_VALUE_TYPE } from '@domain/master-data/master-data.schemas.js';
+import {
+  AppSettingRepository,
+  SETTING_GROUP,
+  SETTING_VALUE_TYPE,
+} from '@domain/master-data/master-data.schemas.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { ReportEngineService } from '@modules/reports/services/report-engine.service.js';
 import {
@@ -103,7 +107,7 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
 const REPORT_METADATA: ReportMetadata[] = [
   ...Object.values(HR_REPORT_TYPE).map((type) => ({
     id: `hr:${type}`,
-    domain: REPORT_DOMAIN.HR as typeof REPORT_DOMAIN.HR,
+    domain: REPORT_DOMAIN.HR,
     type,
     title: type.replace(/_/g, ' '),
     description: `HR analytics report: ${type}`,
@@ -140,7 +144,12 @@ async function getSettingValue(companyId: string, key: string): Promise<unknown>
   return setting?.value;
 }
 
-async function upsertSetting(companyId: string, key: string, value: unknown, userId: string): Promise<void> {
+async function upsertSetting(
+  companyId: string,
+  key: string,
+  value: unknown,
+  userId: string,
+): Promise<void> {
   const existing = await AppSettingRepository.findOne({ key }, { companyId });
   if (existing) {
     await AppSettingRepository.update(existing.id, { value, updatedBy: userId }, { companyId });
@@ -169,7 +178,9 @@ async function upsertSetting(companyId: string, key: string, value: unknown, use
 export const WidgetRegistryService = {
   listWidgets(role?: string): WidgetDefinition[] {
     if (!role) return BUILTIN_WIDGETS;
-    return BUILTIN_WIDGETS.filter((w) => w.roles.includes(role as typeof EXECUTIVE_ROLE[keyof typeof EXECUTIVE_ROLE]));
+    return BUILTIN_WIDGETS.filter((w) =>
+      w.roles.includes(role as (typeof EXECUTIVE_ROLE)[keyof typeof EXECUTIVE_ROLE]),
+    );
   },
 
   getWidget(id: string): WidgetDefinition | undefined {
@@ -183,14 +194,16 @@ export const WidgetRegistryService = {
     }
 
     if (widget.id === 'workforce_total') {
-      const { ExecutiveDashboardService } = await import('@modules/reports/services/executive-dashboard.service.js');
+      const { ExecutiveDashboardService } =
+        await import('@modules/reports/services/executive-dashboard.service.js');
       const overview = await ExecutiveDashboardService.getOverview(companyId, filters);
       return { widget, data: overview.workforce };
     }
 
     if (widget.id === 'system_health') {
-      const { ExecutiveDashboardService } = await import('@modules/reports/services/executive-dashboard.service.js');
-      const health = await ExecutiveDashboardService.getSystemHealth();
+      const { ExecutiveDashboardService } =
+        await import('@modules/reports/services/executive-dashboard.service.js');
+      const health = ExecutiveDashboardService.getSystemHealth();
       return { widget, data: health };
     }
 
@@ -206,8 +219,12 @@ export const WidgetRegistryService = {
     return { widget, data: null };
   },
 
-  async getSettings(companyId: string): Promise<{ layout: DashboardLayout; widgets: WidgetDefinition[] }> {
-    const layout = (await getSettingValue(companyId, REPORTS_SETTING_KEYS.DASHBOARD_LAYOUT)) as DashboardLayout | undefined;
+  async getSettings(
+    companyId: string,
+  ): Promise<{ layout: DashboardLayout; widgets: WidgetDefinition[] }> {
+    const layout = (await getSettingValue(companyId, REPORTS_SETTING_KEYS.DASHBOARD_LAYOUT)) as
+      | DashboardLayout
+      | undefined;
     return {
       layout: layout ?? DEFAULT_DASHBOARD_LAYOUT,
       widgets: BUILTIN_WIDGETS,
@@ -226,10 +243,11 @@ export const WidgetRegistryService = {
   searchMetadata(query: string): ReportMetadata[] {
     const term = query.toLowerCase();
     return REPORT_METADATA.filter(
-      (m) => m.title.toLowerCase().includes(term)
-        || m.description.toLowerCase().includes(term)
-        || m.type.toLowerCase().includes(term)
-        || m.domain.toLowerCase().includes(term),
+      (m) =>
+        m.title.toLowerCase().includes(term) ||
+        m.description.toLowerCase().includes(term) ||
+        m.type.toLowerCase().includes(term) ||
+        m.domain.toLowerCase().includes(term),
     );
   },
 

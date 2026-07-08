@@ -1,6 +1,5 @@
 export * from '@shared/constants/error-codes.js';
 export * from '@shared/constants/http.constants.js';
-export * from '@shared/constants/queue.constants.js';
 export * from '@shared/constants/email.constants.js';
 export * from '@shared/constants/notification.constants.js';
 export * from '@shared/constants/roles.constants.js';

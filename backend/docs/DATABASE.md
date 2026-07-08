@@ -55,15 +55,15 @@ npm run db:purge-system-garbage --workspace=@hr-shakya/backend
 
 Synced at startup via `syncDomainIndexes()` (alongside employee index repair).
 
-## Cache & queues
+## Cache & email
 
-| Component | When Redis down |
-|-----------|-----------------|
-| BullMQ queues | Disabled; email and scheduler jobs run inline (direct SMTP / direct scheduler handler) |
-| Permission cache | Falls back to Mongo `cache_entries` collection |
-| Auth replay protection | Disabled without Redis |
+| Component | Behavior |
+|-----------|----------|
+| Application cache | MongoDB `cache_entries` collection (permissions, master data, replay keys) |
+| Transactional email | Direct SMTP on button click — no Redis/BullMQ queue |
+| Webhooks | Inline HTTP delivery with retry |
 
-Production readiness (`GET /health/ready`) requires MongoDB always; Redis required only when `NODE_ENV=production`.
+Production readiness (`GET /health/ready`) requires MongoDB only.
 
 ## Local development
 

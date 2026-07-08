@@ -4,17 +4,26 @@ import { dirname, join } from 'node:path';
 import { getEnv } from '@config/env.js';
 import { MONGODB_HEALTH } from '@shared/constants/health.constants.js';
 import { getMongoConnectionState } from '@infrastructure/database/mongodb.connection.js';
-import { checkRedisHealth } from '@infrastructure/redis/redis.client.js';
-import { getQueueHealthStatus } from '@infrastructure/queue/bullmq.connection.js';
+import { EmailService } from '@infrastructure/email/email.service.js';
 import { SettingsService } from '@modules/settings/services/settings.service.js';
-import { SETTING_GROUP } from '@domain/master-data/master-data.schemas.js';
 import { BadRequestError } from '@shared/errors/app.error.js';
+import { getCorrelationId } from '@shared/context/request.context.js';
 import type { HealthCheckData } from '@shared/types/api.types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function getMongoHealthStatus(): typeof MONGODB_HEALTH.HEALTHY | typeof MONGODB_HEALTH.UNHEALTHY {
   return getMongoConnectionState() === 1 ? MONGODB_HEALTH.HEALTHY : MONGODB_HEALTH.UNHEALTHY;
+}
+
+function isSmtpConfigured(): boolean {
+  const env = getEnv();
+  return (
+    env.SMTP_PASSWORD !== 'not-configured' &&
+    !env.SMTP_HOST.includes('example.com') &&
+    env.SMTP_USER.trim().length > 0 &&
+    env.SMTP_FROM_EMAIL.trim().length > 0
+  );
 }
 
 function readPackageVersion(): string {
@@ -50,18 +59,26 @@ export interface EmailTestResult {
   message: string;
 }
 
-const REQUIRED_SMTP_KEYS = ['email.smtp_host', 'email.from_address'];
+export interface EmailDeliveryStatus {
+  configured: boolean;
+  mode: 'direct';
+}
 
 export const SystemAdminService = {
-  async getSystemHealth(): Promise<SystemHealthResponse> {
+  getEmailDeliveryStatus(): EmailDeliveryStatus {
+    return {
+      configured: isSmtpConfigured(),
+      mode: 'direct',
+    };
+  },
+
+  getSystemHealth(): SystemHealthResponse {
     const mongodb = getMongoHealthStatus();
-    const redis = await checkRedisHealth();
-    const queue = getQueueHealthStatus();
+    const email = isSmtpConfigured() ? 'direct' : 'unconfigured';
 
     return {
       mongodb,
-      redis,
-      queue,
+      email,
       status: mongodb === MONGODB_HEALTH.HEALTHY ? 'healthy' : 'degraded',
     };
   },
@@ -106,37 +123,41 @@ export const SystemAdminService = {
     };
   },
 
-  async getEmailQueueStatus(companyId: string): Promise<{ queue: string; emailSettingsConfigured: boolean }> {
-    const queue = getQueueHealthStatus();
-    const emailSettings = await SettingsService.getByGroup(companyId, SETTING_GROUP.EMAIL);
-    const settingsByKey = new Map(emailSettings.map((s) => [s.key, s]));
-    const emailSettingsConfigured = REQUIRED_SMTP_KEYS.every((key) => {
-      const setting = settingsByKey.get(key);
-      if (!setting?.value) {
-        return false;
-      }
-      return typeof setting.value !== 'string' || setting.value.trim() !== '';
-    });
-
-    return { queue, emailSettingsConfigured };
+  getEmailQueueStatus(_companyId: string): { queue: string; emailSettingsConfigured: boolean } {
+    const configured = isSmtpConfigured();
+    return { queue: 'direct', emailSettingsConfigured: configured };
   },
 
   async testEmail(companyId: string): Promise<EmailTestResult> {
-    const emailSettings = await SettingsService.getByGroup(companyId, SETTING_GROUP.EMAIL);
-    const settingsByKey = new Map(emailSettings.map((s) => [s.key, s]));
-
-    const missing = REQUIRED_SMTP_KEYS.filter((key) => {
-      const setting = settingsByKey.get(key);
-      return !setting?.value || (typeof setting.value === 'string' && setting.value.trim() === '');
-    });
-
-    if (missing.length > 0) {
-      throw new BadRequestError(`Missing required SMTP settings: ${missing.join(', ')}`);
+    if (!isSmtpConfigured()) {
+      throw new BadRequestError(
+        'SMTP is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASSWORD, and SMTP_FROM_EMAIL in backend environment.',
+      );
     }
+
+    let to = getEnv().SMTP_FROM_EMAIL;
+    try {
+      const fromSetting = await SettingsService.getByKey(companyId, 'email.from_address');
+      if (typeof fromSetting.value === 'string' && fromSetting.value.trim()) {
+        to = fromSetting.value.trim();
+      }
+    } catch {
+      // use env default
+    }
+
+    const correlationId = getCorrelationId() ?? 'system';
+    await EmailService.send({
+      to,
+      subject: `${getEnv().APP_NAME} — SMTP test`,
+      html: `<p>This is a test email from ${getEnv().APP_NAME}. SMTP direct delivery is working.</p>`,
+      text: `This is a test email from ${getEnv().APP_NAME}. SMTP direct delivery is working.`,
+      correlationId,
+      tenantId: companyId,
+    });
 
     return {
       success: true,
-      message: 'SMTP settings validated. Email delivery test is not yet implemented.',
+      message: `Test email sent to ${to}`,
     };
   },
 };

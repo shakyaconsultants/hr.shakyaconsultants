@@ -76,7 +76,7 @@ export function WorkspaceProjectDetailPage() {
         permissions={{
           canAdminister: false,
           canManageTasks: false,
-          canViewEnv: true,
+          canViewEnv: data.canViewEnv ?? false,
         }}
         onSubmitTaskForVerification={handleSubmit}
         isSubmittingTask={submitMutation.isPending}

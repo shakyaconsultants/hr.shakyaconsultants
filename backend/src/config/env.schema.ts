@@ -20,15 +20,11 @@ const envSchema = z.object({
   MONGODB_SERVER_SELECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
   MONGODB_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
 
-  REDIS_URL: z.string().optional().default(''),
-
-  QUEUE_PREFIX: z.string().min(1).default('hr-shakya'),
-  QUEUE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
-  QUEUE_BACKOFF_DELAY_MS: z.coerce.number().int().positive().default(5000),
+  CACHE_PREFIX: z.string().min(1).default('hr-shakya'),
 
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
-  JWT_ACCESS_EXPIRES_IN: z.string().min(1).default('15m'),
+  JWT_ACCESS_EXPIRES_IN: z.string().min(1).default('8h'),
   JWT_REFRESH_EXPIRES_IN: z.string().min(1).default('7d'),
   JWT_ISSUER: z.string().min(1).default('hr-shakya'),
   JWT_AUDIENCE: z.string().min(1).default('hr-shakya-api'),
@@ -128,7 +124,7 @@ const envSchema = z.object({
 
   SOCKET_ENABLED: z
     .string()
-    .default('true')
+    .default('false')
     .transform((v) => v === 'true')
     .pipe(z.boolean()),
   SOCKET_PATH: z.string().startsWith('/').default('/socket.io'),
@@ -174,9 +170,6 @@ export function validateEnv(raw: NodeJS.ProcessEnv): EnvConfig {
       throw new Error(
         'Environment validation failed: production must not use default FIELD_ENCRYPTION_KEY',
       );
-    }
-    if (!data.REDIS_URL.trim()) {
-      throw new Error('Environment validation failed: REDIS_URL is required in production');
     }
     if (!data.AUTH_USE_HTTP_ONLY_COOKIES) {
       throw new Error(

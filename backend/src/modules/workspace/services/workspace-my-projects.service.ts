@@ -16,6 +16,26 @@ import type {
 } from '@modules/workspace/types/workspace.types.js';
 import type { ProjectActorContext } from '@modules/project/types/project.types.js';
 
+const ENV_VIEW_ROLES = new Set(['project_manager', 'assistant_project_manager', 'owner']);
+
+function canViewProjectSecrets(role: string, isProjectManager: boolean): boolean {
+  return isProjectManager || ENV_VIEW_ROLES.has(role);
+}
+
+function redactKnowledgeBase<T extends Record<string, unknown> | null>(
+  kb: T,
+  allowSecrets: boolean,
+): T {
+  if (!kb || allowSecrets) {
+    return kb;
+  }
+  return {
+    ...kb,
+    envVariables: undefined,
+    credentials: undefined,
+  };
+}
+
 function toProjectActor(context: WorkspaceActorContext): ProjectActorContext {
   return {
     companyId: context.companyId,
@@ -154,15 +174,19 @@ export const WorkspaceMyProjectsService = {
       KnowledgeBaseService.get(context.companyId, projectId),
     ]);
 
+    const isProjectManager = project.projectManagerId === context.employeeId;
+    const canViewEnv = canViewProjectSecrets(role, isProjectManager);
+
     return {
       project: WorkspaceAuditService.toRecord(project),
       role,
-      canManage: project.projectManagerId === context.employeeId,
+      canManage: isProjectManager,
+      canViewEnv,
       myTasks: myTasks.map(WorkspaceAuditService.toRecord),
       milestones: milestones.map(WorkspaceAuditService.toRecord),
       sprints: sprints.map(WorkspaceAuditService.toRecord),
       members,
-      knowledgeBase,
+      knowledgeBase: redactKnowledgeBase(knowledgeBase, canViewEnv),
     };
   },
 };

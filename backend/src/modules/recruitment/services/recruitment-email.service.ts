@@ -3,7 +3,7 @@ import {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_STATUS,
 } from '@shared/constants/notification.constants.js';
-import { QueueProducer } from '@infrastructure/queue/queue.producer.js';
+import { EmailDispatcher } from '@infrastructure/email/email-outbound.service.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { EmailService } from '@infrastructure/email/email.service.js';
 import {
@@ -210,7 +210,6 @@ export const RecruitmentEmailService = {
     jobName: string,
     template: EmailTemplateData,
     recipientEmail: string,
-    delayMs?: number,
   ): Promise<void> {
     const correlationId = getCorrelationId() ?? 'system';
     const payload = EmailService.buildJobPayload(
@@ -222,15 +221,11 @@ export const RecruitmentEmailService = {
       context.companyId,
     );
 
-    await QueueProducer.addEmailJob(
-      jobName,
-      {
-        ...payload,
-        tenantId: context.companyId,
-        userId: context.userId,
-      },
-      delayMs ? { delay: delayMs } : undefined,
-    );
+    await EmailDispatcher.sendEmail(jobName, {
+      ...payload,
+      tenantId: context.companyId,
+      userId: context.userId,
+    });
   },
 
   async sendInterviewInvite(
@@ -247,7 +242,6 @@ export const RecruitmentEmailService = {
     context: RecruitmentActorContext,
     to: string,
     data: Parameters<typeof RecruitmentEmailTemplates.interviewReminder>[1],
-    delayMs = 86400000,
   ): Promise<void> {
     const branding = await EmailBrandingService.getBranding(context.companyId);
     const template = RecruitmentEmailTemplates.interviewReminder(branding, data);
@@ -256,7 +250,6 @@ export const RecruitmentEmailService = {
       RECRUITMENT_EMAIL_JOB.INTERVIEW_REMINDER,
       { ...template, to },
       to,
-      delayMs,
     );
   },
 
@@ -375,7 +368,7 @@ export const RecruitmentEmailService = {
         title,
         body,
         channel: NOTIFICATION_CHANNELS.DATABASE,
-        status: NOTIFICATION_STATUS.PENDING,
+        status: NOTIFICATION_STATUS.SENT,
         entityType: 'employee',
         entityId,
         createdBy: context.userId,
@@ -383,13 +376,5 @@ export const RecruitmentEmailService = {
       },
       { companyId: context.companyId },
     );
-
-    await QueueProducer.addNotificationJob('recruitment.welcome', {
-      tenantId: context.companyId,
-      recipientId,
-      title,
-      body,
-      entityId,
-    });
   },
 };
