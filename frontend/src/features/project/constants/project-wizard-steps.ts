@@ -9,12 +9,28 @@ export interface ProjectWizardStepDefinition {
 }
 
 export const PROJECT_WIZARD_STEPS: ProjectWizardStepDefinition[] = [
-  { id: 'basic', title: 'Project Basics', description: 'Name, type, status, manager, and optional timeline.' },
-  { id: 'requirements', title: 'Requirements & Docs', description: 'Goals, functionality, UI docs, and reference links.' },
+  {
+    id: 'basic',
+    title: 'Project Basics',
+    description: 'Name, type, status, manager, and optional timeline.',
+  },
+  {
+    id: 'requirements',
+    title: 'Requirements & Docs',
+    description: 'Goals, functionality, UI docs, and reference links.',
+  },
   { id: 'tech', title: 'Scalability & Tags', description: 'Scalability notes and project tags.' },
-  { id: 'deployment', title: 'Repository & Deployment', description: 'GitHub, production/dev deploy URLs, and encrypted environment variables.' },
+  {
+    id: 'deployment',
+    title: 'Repository & Deployment',
+    description: 'GitHub, production/dev deploy URLs, and encrypted environment variables.',
+  },
   { id: 'team', title: 'Initial Team', description: 'Optional team members to add on day one.' },
-  { id: 'review', title: 'Review', description: 'Confirm configuration before creating the project.' },
+  {
+    id: 'review',
+    title: 'Review',
+    description: 'Confirm configuration before creating the project.',
+  },
 ];
 
 export interface WizardTeamMember {
@@ -52,6 +68,9 @@ export interface ProjectWizardDraft {
     developmentDeployUrl: string;
     envVariables: string;
     deploymentGuide: string;
+    cloudflareEmail: string;
+    devHostingPlatform: string;
+    prodHostingPlatform: string;
   };
   teamMembers: WizardTeamMember[];
   updatedAt: string;
@@ -86,6 +105,9 @@ export const EMPTY_PROJECT_WIZARD_DRAFT: ProjectWizardDraft = {
     developmentDeployUrl: '',
     envVariables: '',
     deploymentGuide: '',
+    cloudflareEmail: '',
+    devHostingPlatform: '',
+    prodHostingPlatform: '',
   },
   teamMembers: [],
   updatedAt: new Date().toISOString(),
@@ -96,14 +118,22 @@ export function loadLocalWizardDraft(): ProjectWizardDraft | null {
     const raw = localStorage.getItem(PROJECT_WIZARD_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<ProjectWizardDraft>;
-    return { ...EMPTY_PROJECT_WIZARD_DRAFT, ...parsed, basicInfo: { ...EMPTY_PROJECT_WIZARD_DRAFT.basicInfo, ...parsed.basicInfo } };
+    return {
+      ...EMPTY_PROJECT_WIZARD_DRAFT,
+      ...parsed,
+      basicInfo: { ...EMPTY_PROJECT_WIZARD_DRAFT.basicInfo, ...parsed.basicInfo },
+      deployment: { ...EMPTY_PROJECT_WIZARD_DRAFT.deployment, ...parsed.deployment },
+    };
   } catch {
     return null;
   }
 }
 
 export function saveLocalWizardDraft(state: ProjectWizardDraft): void {
-  localStorage.setItem(PROJECT_WIZARD_STORAGE_KEY, JSON.stringify({ ...state, updatedAt: new Date().toISOString() }));
+  localStorage.setItem(
+    PROJECT_WIZARD_STORAGE_KEY,
+    JSON.stringify({ ...state, updatedAt: new Date().toISOString() }),
+  );
 }
 
 export function clearLocalWizardDraft(): void {

@@ -9,6 +9,9 @@ import {
 } from '@/features/project/hooks/use-projects';
 import { useAllEmployees } from '@/features/employee/hooks/use-employees';
 import type { TaskRecord } from '@/features/project/api/project.api';
+import { DEFAULT_TASK_PRIORITY } from '@/features/project/constants/task-priority';
+import { TaskPriorityBadge } from '@/features/project/components/task-priority-badge';
+import { TaskPrioritySelect } from '@/features/project/components/task-priority-select';
 import { Button } from '@/shared/components/ui/button';
 import { DatePicker } from '@/shared/components/date-picker';
 import { Input } from '@/shared/components/ui/input';
@@ -31,14 +34,23 @@ interface Props {
 }
 
 function formatStatus(slug: string): string {
-  return slug.split('_').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+  return slug
+    .split('_')
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' ');
 }
 
-export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks, canManage }: Props) {
+export function ProjectTaskManagementPanel({
+  projectId,
+  projectManagerId,
+  tasks,
+  canManage,
+}: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [priority, setPriority] = useState(DEFAULT_TASK_PRIORITY);
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [rejectComment, setRejectComment] = useState<Record<string, string>>({});
@@ -69,6 +81,7 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
           description: description.trim() || undefined,
           assigneeId: assigneeId || undefined,
           verifierId: projectManagerId,
+          priority,
           dueDate: dueDate || undefined,
           status: 'todo',
         }),
@@ -77,6 +90,7 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
         setTitle('');
         setDescription('');
         setAssigneeId('');
+        setPriority(DEFAULT_TASK_PRIORITY);
         setDueDate('');
       },
     });
@@ -113,14 +127,28 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
             </label>
             <label className="block space-y-1 text-sm sm:col-span-2">
               <span className="font-medium">Description</span>
-              <textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <textarea
+                className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Priority</span>
+              <TaskPrioritySelect value={priority} onChange={setPriority} />
             </label>
             <label className="block space-y-1 text-sm">
               <span className="font-medium">Assign To</span>
-              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+              >
                 <option value="">Unassigned</option>
                 {(employees ?? []).map((e) => (
-                  <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
+                  <option key={e.id} value={e.id}>
+                    {e.firstName} {e.lastName}
+                  </option>
                 ))}
               </select>
             </label>
@@ -130,8 +158,17 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
             </label>
           </div>
           <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={() => void handleCreateTask()} disabled={createTaskMutation.isPending}>Create & Assign</Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleCreateTask()}
+              disabled={createTaskMutation.isPending}
+            >
+              Create & Assign
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreate(false)}>
+              Cancel
+            </Button>
           </div>
         </div>
       )}
@@ -143,10 +180,14 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
           <TaskRow
             key={task.id}
             task={task}
-            assigneeName={task.assigneeId ? employeeMap.get(task.assigneeId) ?? task.assigneeId : 'Unassigned'}
+            assigneeName={
+              task.assigneeId ? (employeeMap.get(task.assigneeId) ?? task.assigneeId) : 'Unassigned'
+            }
             canManage={canManage}
             rejectComment={rejectComment[task.id] ?? ''}
-            onRejectCommentChange={(value) => setRejectComment((prev) => ({ ...prev, [task.id]: value }))}
+            onRejectCommentChange={(value) =>
+              setRejectComment((prev) => ({ ...prev, [task.id]: value }))
+            }
             onMarkCompleted={() => void markCompleted(task)}
             onApprove={async (verificationId) => {
               await runFormMutation({
@@ -169,7 +210,11 @@ export function ProjectTaskManagementPanel({ projectId, projectManagerId, tasks,
             }}
           />
         ))}
-        {tasks.length === 0 && <p className="text-sm text-muted-foreground">No tasks yet. Assign the first task to get started.</p>}
+        {tasks.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No tasks yet. Assign the first task to get started.
+          </p>
+        )}
       </ul>
     </div>
   );
@@ -203,27 +248,43 @@ function TaskRow({
         <div>
           <p className="font-medium">{task.title}</p>
           {task.description && <p className="mt-1 text-muted-foreground">{task.description}</p>}
-          <p className="mt-2 text-xs text-muted-foreground">
-            {assigneeName} · {formatStatus(task.status)}
-            {task.dueDate && ` · Due ${new Date(task.dueDate).toLocaleDateString()}`}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <TaskPriorityBadge priority={task.priority} />
+            <p className="text-xs text-muted-foreground">
+              {assigneeName} · {formatStatus(task.status)}
+              {task.dueDate && ` · Due ${new Date(task.dueDate).toLocaleDateString()}`}
+            </p>
+          </div>
         </div>
         <span className="rounded bg-muted px-2 py-0.5 text-xs">{formatStatus(task.status)}</span>
       </div>
 
       {canManage && pending && (
         <div className="mt-3 space-y-2 rounded border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
-          <p className="text-xs font-medium text-amber-800 dark:text-amber-200">Pending verification</p>
+          <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+            Pending verification
+          </p>
           <Input
             placeholder="Rejection / revision notes (required to reject)"
             value={rejectComment}
             onChange={(e) => onRejectCommentChange(e.target.value)}
           />
           <div className="flex gap-2">
-            <Button type="button" size="sm" variant="default" onClick={() => void onApprove(pending.id)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              onClick={() => void onApprove(pending.id)}
+            >
               <Check className="mr-1 h-3 w-3" /> Approve
             </Button>
-            <Button type="button" size="sm" variant="outline" className="text-destructive" onClick={() => void onReject(pending.id)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-destructive"
+              onClick={() => void onReject(pending.id)}
+            >
               <RotateCcw className="mr-1 h-3 w-3" /> Reject & Send Back
             </Button>
           </div>

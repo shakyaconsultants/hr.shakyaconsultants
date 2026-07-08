@@ -1,7 +1,13 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse } from '@/shared/types/api.types';
 import type { FeatureFlags } from '@/config/module-registry';
-import type { AuthCompany, AuthEmployeeProfile, AuthRole, AuthUser, SessionNavigationItem } from '@/shared/stores/app.store';
+import type {
+  AuthCompany,
+  AuthEmployeeProfile,
+  AuthRole,
+  AuthUser,
+  SessionNavigationItem,
+} from '@/shared/stores/app.store';
 
 const AUTH_PREFIX = '/api/v1/auth';
 
@@ -37,58 +43,89 @@ async function unwrap<T>(response: { data: ApiSuccessResponse<T> }): Promise<T> 
 }
 
 export async function loginRequest(payload: LoginPayload): Promise<LoginResult> {
-  const response = await apiClient.post<ApiSuccessResponse<LoginResult>>(`${AUTH_PREFIX}/login`, payload, {
-    timeout: 45_000,
-  });
+  const response = await apiClient.post<ApiSuccessResponse<LoginResult>>(
+    `${AUTH_PREFIX}/login`,
+    payload,
+    {
+      timeout: 8_000,
+    },
+  );
   return unwrap(response);
 }
 
 export async function fetchMe(): Promise<MeResult> {
-  const response = await apiClient.get<ApiSuccessResponse<MeResult>>(`${AUTH_PREFIX}/me`);
+  const response = await apiClient.get<ApiSuccessResponse<MeResult>>(`${AUTH_PREFIX}/me`, {
+    timeout: 8_000,
+  });
   return unwrap(response);
 }
 
-export async function refreshTokens(refreshToken?: string): Promise<{ tokens: { accessToken: string; refreshToken: string } }> {
-  const response = await apiClient.post<ApiSuccessResponse<{ tokens: { accessToken: string; refreshToken: string } }>>(
-    `${AUTH_PREFIX}/refresh`,
-    refreshToken ? { refreshToken } : {},
+export async function refreshTokens(
+  refreshToken?: string,
+): Promise<{ tokens: { accessToken: string; refreshToken: string } }> {
+  const response = await apiClient.post<
+    ApiSuccessResponse<{ tokens: { accessToken: string; refreshToken: string } }>
+  >(`${AUTH_PREFIX}/refresh`, refreshToken ? { refreshToken } : {}, { timeout: 5_000 });
+  return unwrap(response);
+}
+
+export async function logoutRequest(
+  refreshToken?: string,
+  options?: { timeout?: number },
+): Promise<void> {
+  await apiClient.post(`${AUTH_PREFIX}/logout`, refreshToken ? { refreshToken } : {}, {
+    timeout: options?.timeout ?? 3_000,
+  });
+}
+
+export async function forgotPasswordRequest(
+  companyCode: string,
+  email: string,
+): Promise<{ message: string }> {
+  const response = await apiClient.post<ApiSuccessResponse<{ message: string }>>(
+    `${AUTH_PREFIX}/forgot-password`,
+    {
+      companyCode,
+      email,
+    },
   );
   return unwrap(response);
 }
 
-export async function logoutRequest(refreshToken?: string): Promise<void> {
-  await apiClient.post(`${AUTH_PREFIX}/logout`, refreshToken ? { refreshToken } : {});
-}
-
-export async function forgotPasswordRequest(companyCode: string, email: string): Promise<{ message: string }> {
-  const response = await apiClient.post<ApiSuccessResponse<{ message: string }>>(`${AUTH_PREFIX}/forgot-password`, {
-    companyCode,
-    email,
-  });
-  return unwrap(response);
-}
-
-export async function resetPasswordRequest(token: string, password: string): Promise<{ message: string }> {
-  const response = await apiClient.post<ApiSuccessResponse<{ message: string }>>(`${AUTH_PREFIX}/reset-password`, {
-    token,
-    password,
-  });
+export async function resetPasswordRequest(
+  token: string,
+  password: string,
+): Promise<{ message: string }> {
+  const response = await apiClient.post<ApiSuccessResponse<{ message: string }>>(
+    `${AUTH_PREFIX}/reset-password`,
+    {
+      token,
+      password,
+    },
+  );
   return unwrap(response);
 }
 
 export async function fetchSystemStatus(): Promise<{ initialized: boolean }> {
-  const response = await apiClient.get<ApiSuccessResponse<{ initialized: boolean }>>(`${AUTH_PREFIX}/system/status`);
-  return unwrap(response);
-}
-
-export async function fetchActivationStatus(token: string): Promise<{ valid: boolean; expired: boolean; email?: string }> {
-  const response = await apiClient.get<ApiSuccessResponse<{ valid: boolean; expired: boolean; email?: string }>>(
-    `/api/v1/portal/account-activation/${token}/status`,
+  const response = await apiClient.get<ApiSuccessResponse<{ initialized: boolean }>>(
+    `${AUTH_PREFIX}/system/status`,
   );
   return unwrap(response);
 }
 
-export async function activateAccountRequest(token: string, password: string): Promise<{ message: string }> {
+export async function fetchActivationStatus(
+  token: string,
+): Promise<{ valid: boolean; expired: boolean; email?: string }> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<{ valid: boolean; expired: boolean; email?: string }>
+  >(`/api/v1/portal/account-activation/${token}/status`);
+  return unwrap(response);
+}
+
+export async function activateAccountRequest(
+  token: string,
+  password: string,
+): Promise<{ message: string }> {
   const response = await apiClient.post<ApiSuccessResponse<{ message: string }>>(
     `/api/v1/portal/account-activation/${token}/activate`,
     { password },
@@ -97,19 +134,30 @@ export async function activateAccountRequest(token: string, password: string): P
 }
 
 export async function fetchOnboardingPortal(token: string) {
-  const response = await apiClient.get<ApiSuccessResponse<Record<string, unknown>>>(`/api/v1/portal/onboarding/${token}`);
+  const response = await apiClient.get<ApiSuccessResponse<Record<string, unknown>>>(
+    `/api/v1/portal/onboarding/${token}`,
+  );
   return unwrap(response);
 }
 
-export async function saveOnboardingDraft(token: string, section: string, data: Record<string, unknown>) {
-  const response = await apiClient.put<ApiSuccessResponse<Record<string, unknown>>>(`/api/v1/portal/onboarding/${token}/draft`, {
-    section,
-    data,
-  });
+export async function saveOnboardingDraft(
+  token: string,
+  section: string,
+  data: Record<string, unknown>,
+) {
+  const response = await apiClient.put<ApiSuccessResponse<Record<string, unknown>>>(
+    `/api/v1/portal/onboarding/${token}/draft`,
+    {
+      section,
+      data,
+    },
+  );
   return unwrap(response);
 }
 
 export async function submitOnboardingPortal(token: string) {
-  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(`/api/v1/portal/onboarding/${token}/submit`);
+  const response = await apiClient.post<ApiSuccessResponse<Record<string, unknown>>>(
+    `/api/v1/portal/onboarding/${token}/submit`,
+  );
   return unwrap(response);
 }

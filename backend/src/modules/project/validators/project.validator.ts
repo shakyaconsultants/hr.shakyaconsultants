@@ -183,6 +183,9 @@ export const knowledgeBaseSchema = z.object({
   envVariables: z.string().optional(),
   deploymentGuide: z.string().optional(),
   architectureNotes: z.string().optional(),
+  cloudflareEmail: z.string().trim().optional(),
+  devHostingPlatform: z.string().optional(),
+  prodHostingPlatform: z.string().optional(),
   documentUrls: z.array(z.string()).optional(),
 });
 

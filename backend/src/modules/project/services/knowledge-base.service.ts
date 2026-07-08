@@ -1,4 +1,7 @@
-import { ProjectKnowledgeBaseRepository, ProjectDocumentFileRepository } from '@domain/project/project-extended.schemas.js';
+import {
+  ProjectKnowledgeBaseRepository,
+  ProjectDocumentFileRepository,
+} from '@domain/project/project-extended.schemas.js';
 import { encryptField, decryptField } from '@shared/utils/field-encryption.util.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { UploadService } from '@infrastructure/storage/cloudinary.service.js';
@@ -22,7 +25,10 @@ export const KnowledgeBaseService = {
   },
 
   async upsert(context: ProjectActorContext, projectId: string, payload: KnowledgeBaseInput) {
-    const existing = await ProjectKnowledgeBaseRepository.findOne({ projectId }, { companyId: context.companyId });
+    const existing = await ProjectKnowledgeBaseRepository.findOne(
+      { projectId },
+      { companyId: context.companyId },
+    );
     const data: Record<string, unknown> = {
       repositoryUrl: payload.repositoryUrl,
       branches: payload.branches,
@@ -30,6 +36,9 @@ export const KnowledgeBaseService = {
       swaggerUrl: payload.swaggerUrl,
       deploymentGuide: payload.deploymentGuide,
       architectureNotes: payload.architectureNotes,
+      cloudflareEmail: payload.cloudflareEmail,
+      devHostingPlatform: payload.devHostingPlatform,
+      prodHostingPlatform: payload.prodHostingPlatform,
       documentUrls: payload.documentUrls,
       updatedBy: context.userId,
     };
@@ -42,7 +51,9 @@ export const KnowledgeBaseService = {
     }
 
     if (existing) {
-      const updated = await ProjectKnowledgeBaseRepository.update(existing.id, data, { companyId: context.companyId });
+      const updated = await ProjectKnowledgeBaseRepository.update(existing.id, data, {
+        companyId: context.companyId,
+      });
       await ProjectAuditService.log({
         companyId: context.companyId,
         userId: context.userId,

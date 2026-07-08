@@ -1,5 +1,6 @@
 import type { ProjectMemberDocument } from '@domain/project/project.schemas.js';
 import { ProjectMemberRepository } from '@domain/project/project.schemas.js';
+import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ProjectMemberHistoryRepository } from '@domain/project/project-extended.schemas.js';
 import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
@@ -7,7 +8,11 @@ import { generateUuid } from '@shared/utils/random-id.util.js';
 import { ProjectAuditService } from '@modules/project/services/project-audit.service.js';
 import { ProjectEventService } from '@modules/project/services/project-event.service.js';
 import { ProjectActivityService } from '@modules/project/services/project-activity.service.js';
-import type { CreateMemberInput, BulkAssignMembersInput, UpdateMemberInput } from '@modules/project/validators/project.validator.js';
+import type {
+  CreateMemberInput,
+  BulkAssignMembersInput,
+  UpdateMemberInput,
+} from '@modules/project/validators/project.validator.js';
 import type { ProjectActorContext } from '@modules/project/types/project.types.js';
 
 const MEMBER_HISTORY_ACTION = {
@@ -50,7 +55,28 @@ async function recordMemberHistory(
 
 export const ProjectMemberService = {
   async list(companyId: string, projectId: string) {
-    return ProjectMemberRepository.findMany({ projectId }, { companyId });
+    const members = await ProjectMemberRepository.findMany({ projectId }, { companyId });
+    const activeMembers = members.filter((member) => !member.leftAt);
+    if (activeMembers.length === 0) {
+      return [];
+    }
+
+    const employeeIds = [...new Set(activeMembers.map((member) => member.employeeId))];
+    const employees = await EmployeeRepository.findMany(
+      { id: { $in: employeeIds } },
+      { companyId },
+    );
+    const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
+
+    return activeMembers.map((member) => {
+      const employee = employeeById.get(member.employeeId);
+      return {
+        ...member,
+        employeeName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : undefined,
+        employeeEmail: employee?.email,
+        employeeNumber: employee?.employeeNumber,
+      };
+    });
   },
 
   async listHistory(companyId: string, projectId: string) {
@@ -58,10 +84,16 @@ export const ProjectMemberService = {
     return history.sort((a, b) => b.performedAt.getTime() - a.performedAt.getTime());
   },
 
-  async assign(context: ProjectActorContext, payload: CreateMemberInput): Promise<ProjectMemberDocument> {
+  async assign(
+    context: ProjectActorContext,
+    payload: CreateMemberInput,
+  ): Promise<ProjectMemberDocument> {
     const { projectId, employeeId } = payload;
 
-    const existing = await ProjectMemberRepository.findOne({ projectId, employeeId }, { companyId: context.companyId });
+    const existing = await ProjectMemberRepository.findOne(
+      { projectId, employeeId },
+      { companyId: context.companyId },
+    );
     if (existing && !existing.leftAt) {
       throw new ConflictError('Employee is already an active project member', ERROR_CODES.CONFLICT);
     }
@@ -132,7 +164,11 @@ export const ProjectMemberService = {
       throw new NotFoundError('Project member not found', ERROR_CODES.NOT_FOUND);
     }
 
-    const updated = await ProjectMemberRepository.update(id, { ...payload, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await ProjectMemberRepository.update(
+      id,
+      { ...payload, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
     if (!updated) {
       throw new NotFoundError('Project member not found', ERROR_CODES.NOT_FOUND);
     }

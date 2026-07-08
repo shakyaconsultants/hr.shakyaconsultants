@@ -14,6 +14,11 @@ import {
 } from '@domain/project/project-extended.schemas.js';
 
 export const TASK_PRIORITY = {
+  P0: 'p0',
+  P1: 'p1',
+  P2: 'p2',
+  P3: 'p3',
+  P4: 'p4',
   LOW: 'low',
   MEDIUM: 'medium',
   HIGH: 'high',
@@ -160,7 +165,11 @@ const projectFields: SchemaDefinition = {
   code: { type: String, required: true, trim: true, uppercase: true },
   description: { type: String, trim: true },
   status: { type: String, enum: Object.values(PROJECT_STATUS), default: PROJECT_STATUS.PLANNING },
-  priority: { type: String, enum: Object.values(PROJECT_PRIORITY), default: PROJECT_PRIORITY.MEDIUM },
+  priority: {
+    type: String,
+    enum: Object.values(PROJECT_PRIORITY),
+    default: PROJECT_PRIORITY.MEDIUM,
+  },
   projectKind: { type: String, enum: Object.values(PROJECT_KIND), default: PROJECT_KIND.INTERNAL },
   categoryId: { type: String, index: true },
   branchId: { type: String, index: true },
@@ -185,8 +194,16 @@ const projectFields: SchemaDefinition = {
   logoPublicId: { type: String },
   tags: { type: [String], default: [] },
   technologyIds: { type: [String], default: [] },
-  riskLevel: { type: String, enum: Object.values(PROJECT_RISK_LEVEL), default: PROJECT_RISK_LEVEL.LOW },
-  visibility: { type: String, enum: Object.values(PROJECT_VISIBILITY), default: PROJECT_VISIBILITY.INTERNAL },
+  riskLevel: {
+    type: String,
+    enum: Object.values(PROJECT_RISK_LEVEL),
+    default: PROJECT_RISK_LEVEL.LOW,
+  },
+  visibility: {
+    type: String,
+    enum: Object.values(PROJECT_VISIBILITY),
+    default: PROJECT_VISIBILITY.INTERNAL,
+  },
   isArchived: { type: Boolean, default: false, index: true },
 };
 
@@ -209,8 +226,12 @@ const taskFields: SchemaDefinition = {
   parentTaskId: { type: String, index: true },
   title: { type: String, required: true, trim: true },
   description: { type: String, trim: true },
-  status: { type: String, enum: Object.values(PROJECT_TASK_STATUS), default: PROJECT_TASK_STATUS.BACKLOG },
-  priority: { type: String, enum: Object.values(TASK_PRIORITY), default: TASK_PRIORITY.MEDIUM },
+  status: {
+    type: String,
+    enum: Object.values(PROJECT_TASK_STATUS),
+    default: PROJECT_TASK_STATUS.BACKLOG,
+  },
+  priority: { type: String, enum: Object.values(TASK_PRIORITY), default: TASK_PRIORITY.P2 },
   taskType: { type: String, enum: Object.values(TASK_TYPE), default: TASK_TYPE.FEATURE },
   assigneeId: { type: String, index: true },
   reporterId: { type: String, required: true, index: true },
@@ -235,7 +256,11 @@ const subTaskFields: SchemaDefinition = {
   taskId: { type: String, required: true, index: true },
   parentSubTaskId: { type: String, index: true },
   title: { type: String, required: true, trim: true },
-  status: { type: String, enum: Object.values(PROJECT_TASK_STATUS), default: PROJECT_TASK_STATUS.TODO },
+  status: {
+    type: String,
+    enum: Object.values(PROJECT_TASK_STATUS),
+    default: PROJECT_TASK_STATUS.TODO,
+  },
   assigneeId: { type: String, index: true },
   isCompleted: { type: Boolean, default: false },
   sortOrder: { type: Number, default: 0 },
@@ -262,7 +287,11 @@ const taskAttachmentFields: SchemaDefinition = {
 const projectMemberFields: SchemaDefinition = {
   projectId: { type: String, required: true, index: true },
   employeeId: { type: String, required: true, index: true },
-  role: { type: String, enum: Object.values(PROJECT_MEMBER_ROLE), default: PROJECT_MEMBER_ROLE.DEVELOPER },
+  role: {
+    type: String,
+    enum: Object.values(PROJECT_MEMBER_ROLE),
+    default: PROJECT_MEMBER_ROLE.DEVELOPER,
+  },
   joinedAt: { type: Date, required: true, default: Date.now },
   leftAt: { type: Date },
   allocationPercent: { type: Number, default: 100, min: 0, max: 100 },
@@ -273,7 +302,11 @@ const milestoneFields: SchemaDefinition = {
   name: { type: String, required: true, trim: true },
   description: { type: String, trim: true },
   dueDate: { type: Date, required: true, index: true },
-  status: { type: String, enum: Object.values(MILESTONE_STATUS), default: MILESTONE_STATUS.PENDING },
+  status: {
+    type: String,
+    enum: Object.values(MILESTONE_STATUS),
+    default: MILESTONE_STATUS.PENDING,
+  },
   completedAt: { type: Date },
   completionPercent: { type: Number, default: 0, min: 0, max: 100 },
   dependencyMilestoneIds: { type: [String], default: [] },
@@ -286,10 +319,19 @@ export const projectModel = defineDomainModel<ProjectDocument>(
   {
     searchFields: ['name', 'code', 'description', 'clientName'],
     indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_projects_company_code' } },
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_projects_company_code' },
+      },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_projects_company_status' } },
-      { fields: { companyId: 1, projectManagerId: 1, status: 1 }, options: { name: 'idx_projects_company_manager_status' } },
-      { fields: { companyId: 1, isArchived: 1 }, options: { name: 'idx_projects_company_archived' } },
+      {
+        fields: { companyId: 1, projectManagerId: 1, status: 1 },
+        options: { name: 'idx_projects_company_manager_status' },
+      },
+      {
+        fields: { companyId: 1, isArchived: 1 },
+        options: { name: 'idx_projects_company_archived' },
+      },
     ],
   },
 );
@@ -300,26 +342,36 @@ export const sprintModel = defineDomainModel<SprintDocument>(
   sprintFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1, startDate: -1 }, options: { name: 'idx_sprints_company_project_date' } },
-      { fields: { companyId: 1, projectId: 1, status: 1 }, options: { name: 'idx_sprints_company_project_status' } },
+      {
+        fields: { companyId: 1, projectId: 1, startDate: -1 },
+        options: { name: 'idx_sprints_company_project_date' },
+      },
+      {
+        fields: { companyId: 1, projectId: 1, status: 1 },
+        options: { name: 'idx_sprints_company_project_status' },
+      },
     ],
   },
 );
 
-export const taskModel = defineDomainModel<TaskDocument>(
-  'Task',
-  COLLECTIONS.TASKS,
-  taskFields,
-  {
-    searchFields: ['title', 'description'],
-    indexes: [
-      { fields: { companyId: 1, projectId: 1, status: 1 }, options: { name: 'idx_tasks_company_project_status' } },
-      { fields: { companyId: 1, assigneeId: 1, status: 1 }, options: { name: 'idx_tasks_company_assignee_status' } },
-      { fields: { companyId: 1, sprintId: 1 }, options: { name: 'idx_tasks_company_sprint', sparse: true } },
-      { fields: { companyId: 1, dueDate: 1 }, options: { name: 'idx_tasks_company_due_date' } },
-    ],
-  },
-);
+export const taskModel = defineDomainModel<TaskDocument>('Task', COLLECTIONS.TASKS, taskFields, {
+  searchFields: ['title', 'description'],
+  indexes: [
+    {
+      fields: { companyId: 1, projectId: 1, status: 1 },
+      options: { name: 'idx_tasks_company_project_status' },
+    },
+    {
+      fields: { companyId: 1, assigneeId: 1, status: 1 },
+      options: { name: 'idx_tasks_company_assignee_status' },
+    },
+    {
+      fields: { companyId: 1, sprintId: 1 },
+      options: { name: 'idx_tasks_company_sprint', sparse: true },
+    },
+    { fields: { companyId: 1, dueDate: 1 }, options: { name: 'idx_tasks_company_due_date' } },
+  ],
+});
 
 export const subTaskModel = defineDomainModel<SubTaskDocument>(
   'SubTask',
@@ -327,7 +379,10 @@ export const subTaskModel = defineDomainModel<SubTaskDocument>(
   subTaskFields,
   {
     indexes: [
-      { fields: { companyId: 1, taskId: 1, sortOrder: 1 }, options: { name: 'idx_sub_tasks_company_task' } },
+      {
+        fields: { companyId: 1, taskId: 1, sortOrder: 1 },
+        options: { name: 'idx_sub_tasks_company_task' },
+      },
     ],
   },
 );
@@ -338,7 +393,10 @@ export const taskCommentModel = defineDomainModel<TaskCommentDocument>(
   taskCommentFields,
   {
     indexes: [
-      { fields: { companyId: 1, taskId: 1, createdAt: -1 }, options: { name: 'idx_task_comments_company_task_date' } },
+      {
+        fields: { companyId: 1, taskId: 1, createdAt: -1 },
+        options: { name: 'idx_task_comments_company_task_date' },
+      },
     ],
   },
 );
@@ -349,7 +407,10 @@ export const taskAttachmentModel = defineDomainModel<TaskAttachmentDocument>(
   taskAttachmentFields,
   {
     indexes: [
-      { fields: { companyId: 1, taskId: 1 }, options: { name: 'idx_task_attachments_company_task' } },
+      {
+        fields: { companyId: 1, taskId: 1 },
+        options: { name: 'idx_task_attachments_company_task' },
+      },
     ],
   },
 );
@@ -360,7 +421,10 @@ export const projectMemberModel = defineDomainModel<ProjectMemberDocument>(
   projectMemberFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1, employeeId: 1 }, options: { unique: true, name: 'uq_project_members' } },
+      {
+        fields: { companyId: 1, projectId: 1, employeeId: 1 },
+        options: { unique: true, name: 'uq_project_members' },
+      },
     ],
   },
 );
@@ -371,8 +435,14 @@ export const milestoneModel = defineDomainModel<MilestoneDocument>(
   milestoneFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1, dueDate: 1 }, options: { name: 'idx_milestones_company_project_due' } },
-      { fields: { companyId: 1, projectId: 1, status: 1 }, options: { name: 'idx_milestones_company_project_status' } },
+      {
+        fields: { companyId: 1, projectId: 1, dueDate: 1 },
+        options: { name: 'idx_milestones_company_project_due' },
+      },
+      {
+        fields: { companyId: 1, projectId: 1, status: 1 },
+        options: { name: 'idx_milestones_company_project_status' },
+      },
     ],
   },
 );

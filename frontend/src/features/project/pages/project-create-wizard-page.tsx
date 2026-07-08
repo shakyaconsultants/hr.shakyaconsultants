@@ -105,6 +105,9 @@ function buildFinalizePayload(draft: ProjectWizardDraft) {
       stagingUrl: draft.deployment.developmentDeployUrl || undefined,
       envVariables: draft.deployment.envVariables || undefined,
       deploymentGuide: draft.deployment.deploymentGuide || undefined,
+      cloudflareEmail: draft.deployment.cloudflareEmail || undefined,
+      devHostingPlatform: draft.deployment.devHostingPlatform || undefined,
+      prodHostingPlatform: draft.deployment.prodHostingPlatform || undefined,
       documentUrls: documentUrls.length > 0 ? documentUrls : undefined,
     },
     documentUrls,
@@ -480,6 +483,30 @@ export function ProjectCreateWizardPage() {
                   placeholder="https://dev.example.com"
                 />
               </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Cloudflare Email">
+                  <Input
+                    type="email"
+                    value={draft.deployment.cloudflareEmail}
+                    onChange={(e) => updateDeployment('cloudflareEmail', e.target.value)}
+                    placeholder="devops@company.com"
+                  />
+                </Field>
+                <Field label="Dev Hosting Platform">
+                  <Input
+                    value={draft.deployment.devHostingPlatform}
+                    onChange={(e) => updateDeployment('devHostingPlatform', e.target.value)}
+                    placeholder="Vercel, Railway, etc."
+                  />
+                </Field>
+                <Field label="Prod Hosting Platform">
+                  <Input
+                    value={draft.deployment.prodHostingPlatform}
+                    onChange={(e) => updateDeployment('prodHostingPlatform', e.target.value)}
+                    placeholder="AWS, Azure, Cloudflare Pages"
+                  />
+                </Field>
+              </div>
               <Field label="Environment Variables (encrypted at rest)">
                 <div className="space-y-2">
                   <div className="flex gap-2">
@@ -597,6 +624,13 @@ export function ProjectCreateWizardPage() {
               <ReviewRow
                 label="Development Deploy"
                 value={draft.deployment.developmentDeployUrl || '—'}
+              />
+              <ReviewRow label="Cloudflare Email" value={draft.deployment.cloudflareEmail || '—'} />
+              <ReviewRow label="Dev Hosting" value={draft.deployment.devHostingPlatform || '—'} />
+              <ReviewRow label="Prod Hosting" value={draft.deployment.prodHostingPlatform || '—'} />
+              <ReviewRow
+                label="Deployment Guide"
+                value={draft.deployment.deploymentGuide ? 'Provided' : '—'}
               />
               <ReviewRow
                 label="Team Members"

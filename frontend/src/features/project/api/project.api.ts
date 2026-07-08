@@ -27,6 +27,9 @@ export interface ProjectRecord {
   isArchived: boolean;
   logoUrl?: string;
   tags: string[];
+  repositoryUrl?: string;
+  productionUrl?: string;
+  stagingUrl?: string;
 }
 
 export interface TaskRecord {
@@ -263,7 +266,22 @@ export interface ProjectKnowledgeBase {
   envVariables?: string;
   deploymentGuide?: string;
   architectureNotes?: string;
+  cloudflareEmail?: string;
+  devHostingPlatform?: string;
+  prodHostingPlatform?: string;
   documentUrls?: string[];
+}
+
+export interface ProjectMemberRecord {
+  id: string;
+  projectId: string;
+  employeeId: string;
+  role: string;
+  allocationPercent?: number;
+  joinedAt?: string;
+  employeeName?: string;
+  employeeEmail?: string;
+  employeeNumber?: string;
 }
 
 export async function fetchProjectKnowledgeBase(
@@ -308,8 +326,8 @@ export async function fetchProjectKanban(
   };
 }
 
-export async function fetchProjectMembers(projectId: string): Promise<Record<string, unknown>[]> {
-  const { data } = await apiClient.get<ApiSuccessResponse<Record<string, unknown>[]>>(
+export async function fetchProjectMembers(projectId: string): Promise<ProjectMemberRecord[]> {
+  const { data } = await apiClient.get<ApiSuccessResponse<ProjectMemberRecord[]>>(
     `${PROJECT_PREFIX}/${projectId}/members`,
   );
   return data.data;

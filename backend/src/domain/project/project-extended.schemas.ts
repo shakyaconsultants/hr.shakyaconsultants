@@ -142,6 +142,9 @@ export interface ProjectKnowledgeBaseDocument extends BaseDocument {
   encryptedEnvVariables?: string;
   deploymentGuide?: string;
   architectureNotes?: string;
+  cloudflareEmail?: string;
+  devHostingPlatform?: string;
+  prodHostingPlatform?: string;
   documentUrls: string[];
 }
 
@@ -211,7 +214,11 @@ const taskVerificationFields: SchemaDefinition = {
   projectId: { type: String, required: true, index: true },
   submittedBy: { type: String, required: true, index: true },
   verifierId: { type: String, required: true, index: true },
-  status: { type: String, enum: Object.values(VERIFICATION_STATUS), default: VERIFICATION_STATUS.PENDING },
+  status: {
+    type: String,
+    enum: Object.values(VERIFICATION_STATUS),
+    default: VERIFICATION_STATUS.PENDING,
+  },
   comment: { type: String, trim: true },
   revisionNotes: { type: String, trim: true },
   verifiedAt: { type: Date },
@@ -240,6 +247,9 @@ const projectKnowledgeBaseFields: SchemaDefinition = {
   encryptedEnvVariables: { type: String },
   deploymentGuide: { type: String, trim: true },
   architectureNotes: { type: String, trim: true },
+  cloudflareEmail: { type: String, trim: true, lowercase: true },
+  devHostingPlatform: { type: String, trim: true },
+  prodHostingPlatform: { type: String, trim: true },
   documentUrls: { type: [String], default: [] },
 };
 
@@ -286,7 +296,10 @@ export const projectModuleModel = defineDomainModel<ProjectModuleDocument>(
   projectModuleFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1, sortOrder: 1 }, options: { name: 'idx_project_modules_company_project' } },
+      {
+        fields: { companyId: 1, projectId: 1, sortOrder: 1 },
+        options: { name: 'idx_project_modules_company_project' },
+      },
     ],
   },
 );
@@ -298,7 +311,10 @@ export const taskAssignmentHistoryModel = defineDomainModel<TaskAssignmentHistor
   {
     withSoftDelete: false,
     indexes: [
-      { fields: { companyId: 1, taskId: 1, assignedAt: -1 }, options: { name: 'idx_task_assignment_history_task' } },
+      {
+        fields: { companyId: 1, taskId: 1, assignedAt: -1 },
+        options: { name: 'idx_task_assignment_history_task' },
+      },
     ],
   },
 );
@@ -309,7 +325,10 @@ export const taskVerificationModel = defineDomainModel<TaskVerificationDocument>
   taskVerificationFields,
   {
     indexes: [
-      { fields: { companyId: 1, taskId: 1, createdAt: -1 }, options: { name: 'idx_task_verifications_task' } },
+      {
+        fields: { companyId: 1, taskId: 1, createdAt: -1 },
+        options: { name: 'idx_task_verifications_task' },
+      },
     ],
   },
 );
@@ -320,8 +339,14 @@ export const dailyWorkLogModel = defineDomainModel<DailyWorkLogDocument>(
   dailyWorkLogFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1, workDate: -1 }, options: { name: 'idx_daily_work_logs_project_date' } },
-      { fields: { companyId: 1, employeeId: 1, workDate: -1 }, options: { name: 'idx_daily_work_logs_employee_date' } },
+      {
+        fields: { companyId: 1, projectId: 1, workDate: -1 },
+        options: { name: 'idx_daily_work_logs_project_date' },
+      },
+      {
+        fields: { companyId: 1, employeeId: 1, workDate: -1 },
+        options: { name: 'idx_daily_work_logs_employee_date' },
+      },
     ],
   },
 );
@@ -332,7 +357,10 @@ export const projectKnowledgeBaseModel = defineDomainModel<ProjectKnowledgeBaseD
   projectKnowledgeBaseFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1 }, options: { unique: true, name: 'uq_project_knowledge_bases' } },
+      {
+        fields: { companyId: 1, projectId: 1 },
+        options: { unique: true, name: 'uq_project_knowledge_bases' },
+      },
     ],
   },
 );
@@ -343,7 +371,10 @@ export const projectDocumentFileModel = defineDomainModel<ProjectDocumentFileDoc
   projectDocumentFileFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1 }, options: { name: 'idx_project_documents_company_project' } },
+      {
+        fields: { companyId: 1, projectId: 1 },
+        options: { name: 'idx_project_documents_company_project' },
+      },
     ],
   },
 );
@@ -354,7 +385,10 @@ export const taskWorkflowConfigModel = defineDomainModel<TaskWorkflowConfigDocum
   taskWorkflowConfigFields,
   {
     indexes: [
-      { fields: { companyId: 1, projectId: 1, slug: 1 }, options: { unique: true, name: 'uq_task_workflow_configs' } },
+      {
+        fields: { companyId: 1, projectId: 1, slug: 1 },
+        options: { unique: true, name: 'uq_task_workflow_configs' },
+      },
     ],
   },
 );
@@ -366,7 +400,10 @@ export const projectDraftModel = defineDomainModel<ProjectDraftDocument>(
   {
     withSoftDelete: false,
     indexes: [
-      { fields: { companyId: 1, userId: 1 }, options: { unique: true, name: 'uq_project_drafts_user' } },
+      {
+        fields: { companyId: 1, userId: 1 },
+        options: { unique: true, name: 'uq_project_drafts_user' },
+      },
     ],
   },
 );
@@ -378,8 +415,14 @@ export const projectMemberHistoryModel = defineDomainModel<ProjectMemberHistoryD
   {
     withSoftDelete: false,
     indexes: [
-      { fields: { companyId: 1, projectId: 1, performedAt: -1 }, options: { name: 'idx_project_member_history_project' } },
-      { fields: { companyId: 1, employeeId: 1, performedAt: -1 }, options: { name: 'idx_project_member_history_employee' } },
+      {
+        fields: { companyId: 1, projectId: 1, performedAt: -1 },
+        options: { name: 'idx_project_member_history_project' },
+      },
+      {
+        fields: { companyId: 1, employeeId: 1, performedAt: -1 },
+        options: { name: 'idx_project_member_history_employee' },
+      },
     ],
   },
 );

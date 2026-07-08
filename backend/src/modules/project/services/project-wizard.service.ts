@@ -138,6 +138,9 @@ export const ProjectWizardService = {
           envVariables: repository.envVariables,
           deploymentGuide: repository.deploymentGuide,
           architectureNotes: repository.architectureNotes,
+          cloudflareEmail: repository.cloudflareEmail,
+          devHostingPlatform: repository.devHostingPlatform,
+          prodHostingPlatform: repository.prodHostingPlatform,
           documentUrls: documentUrls ?? repository.documentUrls,
         });
 

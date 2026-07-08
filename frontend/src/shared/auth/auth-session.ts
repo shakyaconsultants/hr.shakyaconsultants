@@ -15,8 +15,19 @@ let bootstrapActive = false;
 let sessionRestorePromise: Promise<SessionRestoreOutcome> | null = null;
 let refreshInFlight: Promise<boolean> | null = null;
 
+const SERVER_COOKIE_CLEAR_TIMEOUT_MS = 3_000;
+
 export function isAuthBootstrapActive(): boolean {
   return bootstrapActive;
+}
+
+/** Best-effort server-side HttpOnly cookie purge (fixes stale cookie login loops). */
+export async function clearServerAuthCookies(): Promise<void> {
+  try {
+    await logoutRequest(undefined, { timeout: SERVER_COOKIE_CLEAR_TIMEOUT_MS });
+  } catch {
+    // Cookies may already be invalid — clearing client hints is still required.
+  }
 }
 
 export function refreshAccessTokenOnce(): Promise<boolean> {
@@ -48,6 +59,9 @@ export function refreshAccessTokenOnce(): Promise<boolean> {
         reason: failure.reason,
         status: failure.status,
       });
+      if (failure.reason === 'unauthenticated') {
+        await clearServerAuthCookies();
+      }
       return false;
     }
   })().finally(() => {
@@ -71,12 +85,12 @@ export async function restoreSession(): Promise<SessionRestoreOutcome> {
 
 /** Clears client session markers and revokes HttpOnly cookies before a fresh login. */
 export async function clearStaleAuthBeforeLogin(): Promise<void> {
-  clearStoredTokens();
-  try {
-    await logoutRequest();
-  } catch {
-    // Best-effort — stale cookies may already be invalid.
+  if (!shouldAttemptSessionRestore()) {
+    return;
   }
+
+  clearStoredTokens();
+  await clearServerAuthCookies();
 }
 
 async function performSessionRestore(): Promise<SessionRestoreOutcome> {
@@ -103,6 +117,11 @@ async function performSessionRestore(): Promise<SessionRestoreOutcome> {
       message: failure.message,
       retryable: failure.retryable,
     });
+
+    if (failure.reason === 'unauthenticated') {
+      clearStoredTokens();
+      await clearServerAuthCookies();
+    }
 
     return {
       ok: false,

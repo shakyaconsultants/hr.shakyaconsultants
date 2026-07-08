@@ -10,12 +10,18 @@ import { TaskCommentRepository } from '@domain/project/project.schemas.js';
 import { ProjectAuditService } from '@modules/project/services/project-audit.service.js';
 import { ProjectValidationService } from '@modules/project/services/project-validation.service.js';
 import { TaskAssignmentService } from '@modules/project/services/task-assignment.service.js';
-import { ProjectEventService, PROJECT_EVENT } from '@modules/project/services/project-event.service.js';
+import {
+  ProjectEventService,
+  PROJECT_EVENT,
+} from '@modules/project/services/project-event.service.js';
 import { ProjectActivityService } from '@modules/project/services/project-activity.service.js';
 import { resolveNotificationUserId } from '@modules/project/utils/project-notification.util.js';
 import { buildSearchFilter } from '@infrastructure/database/query/search.helper.js';
 import { mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
-import type { CreateTaskInput, UpdateTaskInput } from '@modules/project/validators/project.validator.js';
+import type {
+  CreateTaskInput,
+  UpdateTaskInput,
+} from '@modules/project/validators/project.validator.js';
 import type { ProjectActorContext, TaskListQuery } from '@modules/project/types/project.types.js';
 
 export const TaskService = {
@@ -55,12 +61,16 @@ export const TaskService = {
     }
     const filter = mergeFilters(...filters);
 
-    return TaskRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: query.sortBy ?? 'createdAt',
-      sortOrder: query.sortOrder ?? 'desc',
-    }, { companyId });
+    return TaskRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: query.sortBy ?? 'createdAt',
+        sortOrder: query.sortOrder ?? 'desc',
+      },
+      { companyId },
+    );
   },
 
   async create(context: ProjectActorContext, payload: CreateTaskInput): Promise<TaskDocument> {
@@ -71,7 +81,11 @@ export const TaskService = {
 
     const id = generateUuid();
     if (dependencyTaskIds.length > 0) {
-      await ProjectValidationService.assertNoCircularTaskDependency(context.companyId, id, dependencyTaskIds);
+      await ProjectValidationService.assertNoCircularTaskDependency(
+        context.companyId,
+        id,
+        dependencyTaskIds,
+      );
     }
 
     const reporterId = payload.reporterId ?? context.employeeId ?? context.userId;
@@ -87,7 +101,7 @@ export const TaskService = {
         title: payload.title,
         description: payload.description,
         status: payload.status ?? PROJECT_TASK_STATUS.BACKLOG,
-        priority: payload.priority ?? 'medium',
+        priority: payload.priority ?? 'p2',
         taskType: payload.taskType ?? 'feature',
         assigneeId: payload.assigneeId,
         reporterId,
@@ -149,11 +163,19 @@ export const TaskService = {
     return task;
   },
 
-  async update(context: ProjectActorContext, id: string, payload: UpdateTaskInput): Promise<TaskDocument> {
+  async update(
+    context: ProjectActorContext,
+    id: string,
+    payload: UpdateTaskInput,
+  ): Promise<TaskDocument> {
     const before = await this.getById(context.companyId, id);
 
     if (payload.dependencyTaskIds) {
-      await ProjectValidationService.assertNoCircularTaskDependency(context.companyId, id, payload.dependencyTaskIds);
+      await ProjectValidationService.assertNoCircularTaskDependency(
+        context.companyId,
+        id,
+        payload.dependencyTaskIds,
+      );
     }
 
     if (payload.dueDate) {
@@ -161,7 +183,11 @@ export const TaskService = {
     }
 
     const previousAssignee = before.assigneeId;
-    const updated = await TaskRepository.update(id, { ...payload, updatedBy: context.userId }, { companyId: context.companyId });
+    const updated = await TaskRepository.update(
+      id,
+      { ...payload, updatedBy: context.userId },
+      { companyId: context.companyId },
+    );
     if (!updated) {
       throw new NotFoundError('Task not found', ERROR_CODES.NOT_FOUND);
     }
@@ -176,7 +202,10 @@ export const TaskService = {
         isReassignment: Boolean(previousAssignee),
       });
 
-      const recipientUserId = await resolveNotificationUserId(context.companyId, payload.assigneeId);
+      const recipientUserId = await resolveNotificationUserId(
+        context.companyId,
+        payload.assigneeId,
+      );
       await ProjectEventService.emit(context, {
         activityType: ProjectActivityService.TYPES.TASK_ASSIGNED,
         activityDescription: `Task "${updated.title}" assigned`,
@@ -194,10 +223,16 @@ export const TaskService = {
       });
     }
 
-    if (payload.status === PROJECT_TASK_STATUS.COMPLETED && before.status !== PROJECT_TASK_STATUS.COMPLETED) {
+    if (
+      payload.status === PROJECT_TASK_STATUS.COMPLETED &&
+      before.status !== PROJECT_TASK_STATUS.COMPLETED
+    ) {
       let verifierNotification;
       if (updated.verifierId) {
-        const verifierUserId = await resolveNotificationUserId(context.companyId, updated.verifierId);
+        const verifierUserId = await resolveNotificationUserId(
+          context.companyId,
+          updated.verifierId,
+        );
         verifierNotification = {
           userId: verifierUserId,
           title: 'Task Ready for Verification',
@@ -207,7 +242,8 @@ export const TaskService = {
           jobName: PROJECT_EVENT.TASK_COMPLETED,
         };
 
-        const { TaskVerificationService } = await import('@modules/project/services/task-verification.service.js');
+        const { TaskVerificationService } =
+          await import('@modules/project/services/task-verification.service.js');
         await TaskVerificationService.submit(context, id, updated.verifierId);
       }
       await ProjectEventService.emit(context, {

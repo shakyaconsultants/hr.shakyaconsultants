@@ -102,6 +102,9 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
     envVariables: '',
     deploymentGuide: '',
     architectureNotes: '',
+    cloudflareEmail: '',
+    devHostingPlatform: '',
+    prodHostingPlatform: '',
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -117,22 +120,25 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
       projectManagerId: project.projectManagerId,
       startDate: project.startDate?.slice(0, 10) ?? '',
       targetDate: project.targetDate?.slice(0, 10) ?? '',
-      repositoryUrl: '',
-      productionUrl: '',
-      stagingUrl: '',
+      repositoryUrl: project.repositoryUrl ?? '',
+      productionUrl: project.productionUrl ?? '',
+      stagingUrl: project.stagingUrl ?? '',
     });
   }, [project]);
 
   useEffect(() => {
     if (knowledgeBase) {
       setKbForm({
-        repositoryUrl: knowledgeBase.repositoryUrl ?? '',
+        repositoryUrl: knowledgeBase.repositoryUrl ?? project.repositoryUrl ?? '',
         envVariables: knowledgeBase.envVariables ?? '',
         deploymentGuide: knowledgeBase.deploymentGuide ?? '',
         architectureNotes: knowledgeBase.architectureNotes ?? '',
+        cloudflareEmail: knowledgeBase.cloudflareEmail ?? '',
+        devHostingPlatform: knowledgeBase.devHostingPlatform ?? '',
+        prodHostingPlatform: knowledgeBase.prodHostingPlatform ?? '',
       });
     }
-  }, [knowledgeBase]);
+  }, [knowledgeBase, project.repositoryUrl]);
 
   if (!canUpdate && !canDelete) {
     return null;
@@ -465,7 +471,8 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
                   className="flex items-center justify-between rounded border px-3 py-2 text-sm"
                 >
                   <span>
-                    {String(member.employeeId)} · {String(member.role)}
+                    {member.employeeName ?? member.employeeEmail ?? member.employeeId} ·{' '}
+                    {String(member.role).replace(/_/g, ' ')}
                   </span>
                   <Button
                     variant="ghost"
@@ -627,6 +634,23 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
               value={kbForm.deploymentGuide}
               onChange={(e) => setKbForm((p) => ({ ...p, deploymentGuide: e.target.value }))}
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                placeholder="Cloudflare email"
+                value={kbForm.cloudflareEmail}
+                onChange={(e) => setKbForm((p) => ({ ...p, cloudflareEmail: e.target.value }))}
+              />
+              <Input
+                placeholder="Dev hosting platform"
+                value={kbForm.devHostingPlatform}
+                onChange={(e) => setKbForm((p) => ({ ...p, devHostingPlatform: e.target.value }))}
+              />
+              <Input
+                placeholder="Prod hosting platform"
+                value={kbForm.prodHostingPlatform}
+                onChange={(e) => setKbForm((p) => ({ ...p, prodHostingPlatform: e.target.value }))}
+              />
+            </div>
             <textarea
               className="min-h-20 w-full rounded-md border px-3 py-2 text-sm"
               placeholder="Architecture notes"

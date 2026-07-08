@@ -209,26 +209,6 @@ export const AuthService = {
       sessionId: session.sessionId,
     });
 
-    const authenticatedUser: AuthenticatedUser = {
-      userId: user.id,
-      companyId: company.id,
-      sessionId: session.sessionId,
-      employeeId: user.employeeId,
-      roleIds,
-      tokenVersion: user.tokenVersion,
-      email: user.email,
-    };
-
-    try {
-      response.profile = await this.getCurrentUser(authenticatedUser, user);
-    } catch (error) {
-      logger.warn('Failed to build login session profile — client may retry /auth/me', {
-        companyId: company.id,
-        userId: user.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
     perf.finish({ companyId: company.id, userId: user.id });
     return response;
   },
@@ -482,18 +462,16 @@ export const AuthService = {
     }
 
     if (user.employeeId) {
-      try {
-        await EmployeeProvisioningService.refreshEmployeePortalAccess(
-          user.companyId,
-          user.employeeId,
-        );
-      } catch (error) {
+      void EmployeeProvisioningService.refreshEmployeePortalAccess(
+        user.companyId,
+        user.employeeId,
+      ).catch((error: unknown) => {
         logger.warn('Employee portal permission sync failed during auth/me — continuing', {
           companyId: user.companyId,
           employeeId: user.employeeId,
           error: error instanceof Error ? error.message : String(error),
         });
-      }
+      });
     }
 
     const [company, permissionsResult, employee, navigationItems, featureFlagList] =

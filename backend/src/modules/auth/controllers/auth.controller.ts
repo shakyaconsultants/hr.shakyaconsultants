@@ -38,6 +38,7 @@ function getRequestMeta(req: Request) {
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const input = validateInput(loginSchema, req.body);
   const result = await AuthService.login(input, getRequestMeta(req));
+  clearAuthCookies(res);
   setAuthCookies(res, result.tokens.accessToken, result.tokens.refreshToken);
   ResponseService.success(res, req, sanitizeAuthLoginResponse(result));
 });

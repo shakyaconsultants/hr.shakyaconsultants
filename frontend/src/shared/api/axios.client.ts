@@ -2,7 +2,11 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { APP_CONFIG, ROUTES } from '@/config/app.config';
 import type { ApiErrorResponse } from '@/shared/types/api.types';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
-import { isAuthBootstrapActive, refreshAccessTokenOnce } from '@/shared/auth/auth-session';
+import {
+  isAuthBootstrapActive,
+  refreshAccessTokenOnce,
+  clearServerAuthCookies,
+} from '@/shared/auth/auth-session';
 import {
   clearStoredTokens,
   resolveBearerToken,
@@ -16,6 +20,7 @@ interface RetryableRequestConfig extends InternalAxiosRequestConfig {
 
 const AUTH_REFRESH_SKIP_PATHS = [
   '/auth/login',
+  '/auth/logout',
   '/auth/refresh',
   '/auth/forgot-password',
   '/auth/reset-password',
@@ -72,6 +77,7 @@ apiClient.interceptors.response.use(
         clearStoredTokens();
         authDiag.log('session_cleared', { reason: '401_after_refresh_failed', url: original.url });
         useAuthStore.getState().clearAuth();
+        void clearServerAuthCookies();
 
         if (window.location.pathname !== ROUTES.LOGIN) {
           authDiag.log('redirect_to_login', {
