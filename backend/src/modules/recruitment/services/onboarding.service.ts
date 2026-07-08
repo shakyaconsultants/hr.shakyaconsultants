@@ -22,6 +22,11 @@ import type { RecruitmentActorContext } from '@modules/recruitment/types/recruit
 
 const ALL_SECTIONS = Object.values(ONBOARDING_SECTION);
 
+/** Stable synthetic key so employee onboardings do not collide on uq_onboardings_company_candidate. */
+export function employeeOnboardingCandidateKey(employeeId: string): string {
+  return `employee:${employeeId}`;
+}
+
 export const OnboardingService = {
   SECTIONS: ONBOARDING_SECTION,
 
@@ -251,6 +256,7 @@ export const OnboardingService = {
       {
         id,
         companyId: context.companyId,
+        candidateLeadId: employeeOnboardingCandidateKey(employeeId),
         employeeId,
         startDate,
         formData: {},

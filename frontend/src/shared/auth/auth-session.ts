@@ -7,7 +7,6 @@ import type { SessionRestoreOutcome } from '@/shared/auth/session-restore.types'
 import {
   clearOrphanSessionHint,
   clearStoredTokens,
-  getAccessToken,
   getRefreshToken,
   markCookieSessionActive,
   markSessionHint,
@@ -38,6 +37,9 @@ export function isAuthBootstrapActive(): boolean {
 }
 
 export function applySessionFromMe(me: Awaited<ReturnType<typeof fetchMe>>): void {
+  if (usesHttpOnlyCookies()) {
+    markCookieSessionActive();
+  }
   useAuthStore.getState().setSession({
     user: me.user,
     company: me.company,
@@ -136,6 +138,44 @@ export async function clearStaleAuthBeforeLogin(): Promise<void> {
   await clearServerAuthCookies();
 }
 
+async function tryFetchMeAfterRefresh(): Promise<SessionRestoreOutcome> {
+  const canRefresh = usesHttpOnlyCookies() || Boolean(getRefreshToken());
+  if (!canRefresh) {
+    await clearInvalidSession();
+    return { ok: false, reason: 'unauthenticated', message: 'Session expired or invalid' };
+  }
+
+  const refreshed = await refreshAccessTokenOnce();
+  if (refreshed === 'success') {
+    try {
+      const me = await fetchMe();
+      authDiag.log('session_restored', { userId: me.user.id, sessionId: me.sessionId });
+      return { ok: true, me };
+    } catch (retryError) {
+      const retryFailure = classifySessionRestoreFailure(retryError);
+      if (retryFailure.reason === 'unauthenticated' || retryFailure.reason === 'forbidden') {
+        await clearInvalidSession();
+      }
+      return {
+        ok: false,
+        reason: retryFailure.reason,
+        status: retryFailure.status,
+        message: retryFailure.message,
+      };
+    }
+  }
+
+  if (refreshed === 'invalid') {
+    return { ok: false, reason: 'unauthenticated', message: 'Session expired or invalid' };
+  }
+
+  return {
+    ok: false,
+    reason: 'transient',
+    message: 'Could not reach the server to restore your session',
+  };
+}
+
 async function performSessionRestore(): Promise<SessionRestoreOutcome> {
   clearOrphanSessionHint();
 
@@ -148,17 +188,6 @@ async function performSessionRestore(): Promise<SessionRestoreOutcome> {
   sessionRestoreActive = true;
 
   try {
-    const needsProactiveRefresh =
-      usesHttpOnlyCookies() || (!getAccessToken() && Boolean(getRefreshToken()));
-
-    if (needsProactiveRefresh) {
-      const refreshed = await refreshAccessTokenOnce();
-      if (refreshed === 'invalid' && !usesHttpOnlyCookies() && !getAccessToken()) {
-        await clearInvalidSession();
-        return { ok: false, reason: 'unauthenticated', message: 'Session expired or invalid' };
-      }
-    }
-
     try {
       authDiag.log('fetch_me_attempt', { attempt: 1, maxAttempts: 1 });
       const me = await fetchMe();
@@ -172,30 +201,11 @@ async function performSessionRestore(): Promise<SessionRestoreOutcome> {
         message: failure.message,
       });
 
-      const canRefresh = usesHttpOnlyCookies() || Boolean(getRefreshToken());
-      if (failure.reason === 'unauthenticated' && canRefresh) {
-        const refreshed = await refreshAccessTokenOnce();
-        if (refreshed === 'success') {
-          try {
-            const me = await fetchMe();
-            authDiag.log('session_restored', { userId: me.user.id, sessionId: me.sessionId });
-            return { ok: true, me };
-          } catch (retryError) {
-            const retryFailure = classifySessionRestoreFailure(retryError);
-            if (retryFailure.reason === 'unauthenticated' || retryFailure.reason === 'forbidden') {
-              await clearInvalidSession();
-            }
-            return {
-              ok: false,
-              reason: retryFailure.reason,
-              status: retryFailure.status,
-              message: retryFailure.message,
-            };
-          }
-        }
+      if (failure.reason === 'unauthenticated') {
+        return tryFetchMeAfterRefresh();
       }
 
-      if (failure.reason === 'unauthenticated' || failure.reason === 'forbidden') {
+      if (failure.reason === 'forbidden') {
         await clearInvalidSession();
       }
 

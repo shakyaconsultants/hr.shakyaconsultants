@@ -31,7 +31,7 @@ function buildSuccessMessage(result: {
   if (result.welcomeEmailError) {
     return `Employee created, but welcome email could not be sent: ${result.welcomeEmailError}`;
   }
-  return 'Employee created with active portal account and onboarding form.';
+  return 'Employee created with active portal account. Welcome email is being sent.';
 }
 
 export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialogProps) {

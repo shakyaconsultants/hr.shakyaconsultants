@@ -4,7 +4,6 @@ import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.a
 import {
   applySessionFromMe,
   clearStaleAuthBeforeLogin,
-  refreshAccessTokenOnce,
   restoreSession,
 } from '@/shared/auth/auth-session';
 import {
@@ -55,10 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (outcome.ok) {
         applySessionFromMe(outcome.me);
         setAuthStatus(AUTH_STATUS.AUTHENTICATED);
-        const refreshed = await refreshAccessTokenOnce();
-        if (refreshed !== 'success') {
-          ensureProactiveRefreshScheduled('8h');
-        }
+        ensureProactiveRefreshScheduled('8h');
+        return;
+      }
+
+      if (outcome.reason === 'transient') {
+        authDiag.log('bootstrap_transient_error', { reason: outcome.message });
+        setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
         return;
       }
 

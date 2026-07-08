@@ -226,32 +226,39 @@ export const EmployeeService = {
         userAgent: context.userAgent,
       });
 
-      await OnboardingService.startForEmployee(
-        { companyId: context.companyId, userId: context.userId },
-        id,
-        employee.joinedAt,
-      );
-
-      let welcomeEmailSent = false;
-      let welcomeEmailError: string | undefined;
       try {
-        await EmployeeAccountService.sendWelcomeCredentialsEmail(context, id, temporaryPassword);
-        welcomeEmailSent = true;
-      } catch (emailError) {
-        welcomeEmailError = emailError instanceof Error ? emailError.message : String(emailError);
-        await EmployeeLifecycleService.recordEmailFailure(
-          context.companyId,
+        await OnboardingService.startForEmployee(
+          { companyId: context.companyId, userId: context.userId },
           id,
-          EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
-          context.userId,
-          emailError,
+          employee.joinedAt,
         );
-        logger.error('Failed to send welcome credentials email', {
+      } catch (onboardingError) {
+        logger.warn('Employee onboarding record could not be started', {
           employeeId: id,
           email,
-          message: welcomeEmailError,
+          message:
+            onboardingError instanceof Error ? onboardingError.message : String(onboardingError),
         });
       }
+
+      const welcomeEmailSent = false;
+      const welcomeEmailError: string | undefined = undefined;
+      void EmployeeAccountService.sendWelcomeCredentialsEmail(context, id, temporaryPassword).catch(
+        async (emailError: unknown) => {
+          await EmployeeLifecycleService.recordEmailFailure(
+            context.companyId,
+            id,
+            EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
+            context.userId,
+            emailError,
+          );
+          logger.error('Failed to send welcome credentials email', {
+            employeeId: id,
+            email,
+            message: emailError instanceof Error ? emailError.message : String(emailError),
+          });
+        },
+      );
 
       return { employee, welcomeEmailSent, welcomeEmailError };
     } catch (postCreateError) {
