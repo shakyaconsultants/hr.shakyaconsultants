@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import type { AuthenticatedRequest } from '@modules/auth/interfaces/auth-request.interface.js';
 import { ResponseService } from '@shared/services/response.service.js';
+import type { Response } from 'express';
 import { validateInput } from '@modules/auth/validators/validate.util.js';
 import { EmployeeService } from '@modules/employee/services/employee.service.js';
 import { EmployeeExportService } from '@modules/employee/services/employee-export.service.js';
@@ -51,6 +52,58 @@ function buildActor(req: AuthenticatedRequest): EmployeeActorContext {
   };
 }
 
+async function tryReturnExistingEmployeeOnEmailConflict(
+  authReq: AuthenticatedRequest,
+  res: Response,
+  email: string,
+  error: ConflictError,
+): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return false;
+  }
+
+  try {
+    const metadata = error.metadata;
+    const metadataEmployeeId =
+      typeof metadata.employeeId === 'string' ? metadata.employeeId : undefined;
+
+    const availability = await EmployeeValidationService.prepareEmailForCreate(
+      authReq.user.companyId,
+      normalizedEmail,
+      authReq.user.userId,
+    );
+
+    const resolvedId =
+      metadataEmployeeId ??
+      availability.employeeId ??
+      (
+        await EmployeeValidationService.findActiveEmployeeByEmail(
+          authReq.user.companyId,
+          normalizedEmail,
+        )
+      )?.id;
+
+    if (resolvedId) {
+      const employee = await EmployeeService.getById(authReq.user.companyId, resolvedId);
+      ResponseService.success(res, authReq, {
+        ...employee,
+        alreadyExists: true,
+        welcomeEmailSent: false,
+        message: availability.message || error.message,
+      });
+      return true;
+    }
+  } catch (recoveryError) {
+    logger.warn('Employee create conflict recovery failed', {
+      email: normalizedEmail,
+      error: recoveryError instanceof Error ? recoveryError.message : String(recoveryError),
+    });
+  }
+
+  return false;
+}
+
 export const listEmployees: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -84,9 +137,10 @@ export const checkEmployeeEmail: RequestHandler = async (req, res, next) => {
         code: ERROR_CODES.VALIDATION_FAILED,
       });
     }
-    const result = await EmployeeValidationService.checkEmailAvailability(
+    const result = await EmployeeValidationService.prepareEmailForCreate(
       authReq.user.companyId,
       email,
+      authReq.user.userId,
     );
     return ResponseService.success(res, authReq, result);
   } catch (error) {
@@ -135,35 +189,11 @@ export const createEmployee: RequestHandler = async (req, res, next) => {
         typeof req.body === 'object' && req.body !== null
           ? (req.body as Record<string, unknown>)
           : {};
-      try {
-        const authReq = req as AuthenticatedRequest;
-        const email =
-          typeof bodyRecord.email === 'string' ? bodyRecord.email.trim().toLowerCase() : '';
-        const metadata = error.metadata;
-        const employeeId =
-          typeof metadata.employeeId === 'string' ? metadata.employeeId : undefined;
-
-        if (email) {
-          const availability = await EmployeeValidationService.checkEmailAvailability(
-            authReq.user.companyId,
-            email,
-          );
-          const resolvedId = employeeId ?? availability.employeeId;
-          if (!availability.available && resolvedId) {
-            const employee = await EmployeeService.getById(authReq.user.companyId, resolvedId);
-            return ResponseService.success(res, authReq, {
-              ...employee,
-              alreadyExists: true,
-              welcomeEmailSent: false,
-              message: availability.message,
-            });
-          }
-        }
-      } catch (recoveryError) {
-        logger.warn('Employee create conflict recovery failed', {
-          email: typeof bodyRecord.email === 'string' ? bodyRecord.email : undefined,
-          error: recoveryError instanceof Error ? recoveryError.message : String(recoveryError),
-        });
+      const email = typeof bodyRecord.email === 'string' ? bodyRecord.email : '';
+      const authReq = req as AuthenticatedRequest;
+      const recovered = await tryReturnExistingEmployeeOnEmailConflict(authReq, res, email, error);
+      if (recovered) {
+        return;
       }
     }
     next(error);

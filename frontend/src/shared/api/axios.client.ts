@@ -2,6 +2,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { APP_CONFIG, ROUTES } from '@/config/app.config';
 import type { ApiErrorResponse } from '@/shared/types/api.types';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
+import { stopProactiveTokenRefresh } from '@/shared/auth/auth-token-refresh-scheduler';
 import {
   isSessionRestoreActive,
   refreshAccessTokenOnce,
@@ -75,6 +76,7 @@ apiClient.interceptors.response.use(
 
       // Only logout when the server confirms the session is dead — not when the API is briefly down (tsx watch restart).
       if (refreshed === 'invalid' && !isSessionRestoreActive()) {
+        stopProactiveTokenRefresh();
         clearStoredTokens();
         authDiag.log('session_cleared', { reason: '401_after_refresh_failed', url: original.url });
         useAuthStore.getState().clearAuth();

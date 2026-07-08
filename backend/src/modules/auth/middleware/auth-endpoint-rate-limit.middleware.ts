@@ -36,6 +36,6 @@ export const resetPasswordRateLimitMiddleware = createAuthEndpointRateLimitMiddl
 
 export const refreshRateLimitMiddleware = createAuthEndpointRateLimitMiddleware({
   windowMs: 15 * 60 * 1000,
-  max: 60,
+  max: 120,
   message: 'Too many token refresh attempts, please try again later',
 });

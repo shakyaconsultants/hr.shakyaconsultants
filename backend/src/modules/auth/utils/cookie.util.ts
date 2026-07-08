@@ -16,11 +16,7 @@ function getBaseCookieOptions(): CookieOptions {
   return options;
 }
 
-export function setAuthCookies(
-  res: Response,
-  accessToken: string,
-  refreshToken: string,
-): void {
+export function setAuthCookies(res: Response, accessToken: string, refreshToken: string): void {
   const env = getEnv();
   if (!env.AUTH_USE_HTTP_ONLY_COOKIES) {
     return;
@@ -36,7 +32,7 @@ export function setAuthCookies(
 
   res.cookie(AUTH_COOKIE_NAMES.REFRESH, refreshToken, {
     ...baseOptions,
-    path: '/api/v1/auth',
+    path: '/',
     maxAge: TokenService.getRefreshTokenMaxAgeMs(),
   });
 }
@@ -50,6 +46,8 @@ export function clearAuthCookies(res: Response): void {
   const baseOptions = getBaseCookieOptions();
 
   res.clearCookie(AUTH_COOKIE_NAMES.ACCESS, { ...baseOptions, path: '/' });
+  res.clearCookie(AUTH_COOKIE_NAMES.REFRESH, { ...baseOptions, path: '/' });
+  // Legacy path from earlier deploys
   res.clearCookie(AUTH_COOKIE_NAMES.REFRESH, { ...baseOptions, path: '/api/v1/auth' });
 }
 

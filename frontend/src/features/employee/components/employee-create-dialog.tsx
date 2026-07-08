@@ -111,6 +111,12 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
       return;
     }
 
+    const trimmedEmail = form.email.trim();
+    if (!trimmedEmail.includes('@')) {
+      setError('Enter a valid work email address.');
+      return;
+    }
+
     if (emailAvailable === false) {
       setError(emailHint ?? 'This email cannot be used for a new employee.');
       return;
@@ -120,23 +126,38 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
     setIsSubmitting(true);
     setError(null);
 
-    const payload: Record<string, unknown> = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim(),
-      departmentId: form.departmentId,
-      designationId: form.designationId,
-      joinedAt: new Date(form.joinedAt),
-      temporaryPassword: form.temporaryPassword.trim() || DEFAULT_TEMP_PASSWORD,
-    };
-    if (form.phone.trim()) {
-      payload.phone = form.phone.trim();
-    }
-    if (form.branchId.trim()) {
-      payload.branchId = form.branchId;
-    }
-
     try {
+      let latestAvailability;
+      try {
+        latestAvailability = await checkEmployeeEmailAvailability(trimmedEmail);
+      } catch {
+        setError('Could not verify email availability. Check your connection and try again.');
+        return;
+      }
+
+      setEmailAvailable(latestAvailability.available);
+      setEmailHint(latestAvailability.message);
+      if (!latestAvailability.available) {
+        setError(latestAvailability.message);
+        return;
+      }
+
+      const payload: Record<string, unknown> = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: trimmedEmail,
+        departmentId: form.departmentId,
+        designationId: form.designationId,
+        joinedAt: new Date(form.joinedAt),
+        temporaryPassword: form.temporaryPassword.trim() || DEFAULT_TEMP_PASSWORD,
+      };
+      if (form.phone.trim()) {
+        payload.phone = form.phone.trim();
+      }
+      if (form.branchId.trim()) {
+        payload.branchId = form.branchId;
+      }
+
       const employee = await createMutation.mutateAsync(payload);
       await refreshEmployeeQueries(queryClient, employee.id);
 
@@ -161,7 +182,8 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
         parsed.isConflict &&
         parsed.conflictEmployeeId &&
         (parsed.conflictReason === 'DUPLICATE_EMAIL' ||
-          parsed.conflictReason === 'PORTAL_USER_LINKED')
+          parsed.conflictReason === 'PORTAL_USER_LINKED' ||
+          parsed.conflictReason === 'DUPLICATE_KEY')
       ) {
         toastInfo('Employee already exists', 'Opening their profile.');
         onOpenChange(false);
@@ -192,7 +214,15 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
       submitLabel="Create Employee"
       pendingLabel="Creating employee…"
       isSubmitting={isBusy}
-      submitDisabled={emailAvailable === false || isCheckingEmail}
+      submitDisabled={
+        emailAvailable !== true ||
+        isCheckingEmail ||
+        !form.firstName.trim() ||
+        !form.lastName.trim() ||
+        !form.email.trim() ||
+        !form.departmentId ||
+        !form.designationId
+      }
       onSubmit={handleSubmit}
       size="lg"
     >

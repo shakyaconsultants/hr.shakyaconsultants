@@ -13,6 +13,8 @@ import { ConflictError, NotFoundError, ValidationError } from '@shared/errors/ap
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
+import { WorkforceCleanupService } from '@modules/employee/services/workforce-cleanup.service.js';
+import type { EmployeeDocument } from '@domain/employee/employee.schemas.js';
 
 export type EmailAvailabilityReason =
   | 'AVAILABLE'
@@ -39,7 +41,115 @@ function isSuperAdminPortalUser(
   return Boolean(superAdminRoleId && user.roleIds.includes(superAdminRoleId) && !user.employeeId);
 }
 
+function employeeDisplayName(employee: {
+  firstName: string;
+  lastName: string;
+  employeeNumber: string;
+}): string {
+  return `${employee.firstName} ${employee.lastName}`.trim() || employee.employeeNumber;
+}
+
+function isActiveWorkforceEmployee(employee: { status: string; isDeleted: boolean }): boolean {
+  return employee.status === ENTITY_STATUS.ACTIVE && !employee.isDeleted;
+}
+
+async function findActiveEmployeeByEmail(
+  companyId: string,
+  email: string,
+  excludeEmployeeId?: string,
+): Promise<EmployeeDocument | undefined> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const matches = await EmployeeRepository.findMany(
+    { email: normalizedEmail },
+    { companyId, includeDeleted: true },
+  );
+  return matches.find(
+    (employee) => employee.id !== excludeEmployeeId && isActiveWorkforceEmployee(employee),
+  );
+}
+
+async function findPortalUserConflict(
+  companyId: string,
+  normalizedEmail: string,
+  excludeEmployeeId?: string,
+): Promise<EmailAvailabilityResult | null> {
+  const portalUser = await UserRepository.findOne({ email: normalizedEmail }, { companyId });
+  if (!portalUser) {
+    return null;
+  }
+
+  const superAdminRole = await findSuperAdminRole(companyId);
+  if (isSuperAdminPortalUser(portalUser, superAdminRole?.id)) {
+    return {
+      available: false,
+      reason: 'SYSTEM_ADMIN_EMAIL',
+      message:
+        'This email is reserved for the company administrator login. Use a different work email for the employee.',
+    };
+  }
+
+  if (!portalUser.employeeId || portalUser.employeeId === excludeEmployeeId) {
+    return {
+      available: true,
+      reason: 'AVAILABLE',
+      message: 'Email is available. An existing portal account will be linked to this employee.',
+    };
+  }
+
+  const linkedEmployee = await EmployeeRepository.findById(portalUser.employeeId, {
+    companyId,
+    includeDeleted: true,
+  });
+  if (!linkedEmployee || !isActiveWorkforceEmployee(linkedEmployee)) {
+    return {
+      available: true,
+      reason: 'AVAILABLE',
+      message: 'Email is available. An existing portal account will be linked to this employee.',
+    };
+  }
+
+  const employeeName = employeeDisplayName(linkedEmployee);
+  return {
+    available: false,
+    reason: 'PORTAL_USER_LINKED',
+    message: `Email "${normalizedEmail}" is already linked to ${employeeName}`,
+    employeeId: linkedEmployee.id,
+    employeeName,
+  };
+}
+
 export const EmployeeValidationService = {
+  async prepareEmailForCreate(
+    companyId: string,
+    email: string,
+    actorUserId: string,
+    excludeEmployeeId?: string,
+  ): Promise<EmailAvailabilityResult> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return {
+        available: false,
+        reason: 'DUPLICATE_EMAIL',
+        message: 'Email is required',
+      };
+    }
+
+    await WorkforceCleanupService.reclaimGhostRecordsForEmail(
+      companyId,
+      normalizedEmail,
+      actorUserId,
+    );
+    return this.checkEmailAvailability(companyId, normalizedEmail, excludeEmployeeId);
+  },
+
+  async findActiveEmployeeByEmail(
+    companyId: string,
+    email: string,
+    excludeEmployeeId?: string,
+  ): Promise<EmployeeDocument | undefined> {
+    return findActiveEmployeeByEmail(companyId, email, excludeEmployeeId);
+  },
+
   async checkEmailAvailability(
     companyId: string,
     email: string,
@@ -54,23 +164,13 @@ export const EmployeeValidationService = {
       };
     }
 
-    const matches = await EmployeeRepository.findMany(
-      { email: normalizedEmail },
-      {
-        companyId,
-        includeDeleted: true,
-      },
-    );
-    const activeEmployee = matches.find(
-      (employee) =>
-        employee.id !== excludeEmployeeId &&
-        employee.status === ENTITY_STATUS.ACTIVE &&
-        !employee.isDeleted,
+    const activeEmployee = await findActiveEmployeeByEmail(
+      companyId,
+      normalizedEmail,
+      excludeEmployeeId,
     );
     if (activeEmployee) {
-      const employeeName =
-        `${activeEmployee.firstName} ${activeEmployee.lastName}`.trim() ||
-        activeEmployee.employeeNumber;
+      const employeeName = employeeDisplayName(activeEmployee);
       return {
         available: false,
         reason: 'DUPLICATE_EMAIL',
@@ -80,41 +180,13 @@ export const EmployeeValidationService = {
       };
     }
 
-    const portalUser = await UserRepository.findOne({ email: normalizedEmail }, { companyId });
-    if (portalUser) {
-      const superAdminRole = await findSuperAdminRole(companyId);
-      if (isSuperAdminPortalUser(portalUser, superAdminRole?.id)) {
-        return {
-          available: false,
-          reason: 'SYSTEM_ADMIN_EMAIL',
-          message:
-            'This email is reserved for the company administrator login. Use a different work email for the employee.',
-        };
-      }
-
-      if (portalUser.employeeId && portalUser.employeeId !== excludeEmployeeId) {
-        const linkedEmployee = await EmployeeRepository.findById(portalUser.employeeId, {
-          companyId,
-          includeDeleted: true,
-        });
-        if (
-          linkedEmployee &&
-          linkedEmployee.status === ENTITY_STATUS.ACTIVE &&
-          !linkedEmployee.isDeleted &&
-          linkedEmployee.email.toLowerCase() === normalizedEmail
-        ) {
-          const employeeName =
-            `${linkedEmployee.firstName} ${linkedEmployee.lastName}`.trim() ||
-            linkedEmployee.employeeNumber;
-          return {
-            available: false,
-            reason: 'PORTAL_USER_LINKED',
-            message: `Email "${normalizedEmail}" is already assigned to ${employeeName}`,
-            employeeId: linkedEmployee.id,
-            employeeName,
-          };
-        }
-      }
+    const portalConflict = await findPortalUserConflict(
+      companyId,
+      normalizedEmail,
+      excludeEmployeeId,
+    );
+    if (portalConflict) {
+      return portalConflict;
     }
 
     return {

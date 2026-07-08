@@ -20,7 +20,12 @@ export interface LoginPayload {
 
 export interface LoginResult {
   user: AuthUser;
-  tokens: { accessToken: string; refreshToken: string; expiresIn: number; tokenType: string };
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: string | number;
+    tokenType: string;
+  };
   sessionId: string;
   profile?: MeResult;
 }
@@ -62,9 +67,11 @@ export async function fetchMe(): Promise<MeResult> {
 
 export async function refreshTokens(
   refreshToken?: string,
-): Promise<{ tokens: { accessToken: string; refreshToken: string } }> {
+): Promise<{ tokens: { accessToken: string; refreshToken: string; expiresIn: string | number } }> {
   const response = await apiClient.post<
-    ApiSuccessResponse<{ tokens: { accessToken: string; refreshToken: string } }>
+    ApiSuccessResponse<{
+      tokens: { accessToken: string; refreshToken: string; expiresIn: string | number };
+    }>
   >(`${AUTH_PREFIX}/refresh`, refreshToken ? { refreshToken } : {}, { timeout: 5_000 });
   return unwrap(response);
 }

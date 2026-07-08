@@ -8,6 +8,8 @@ Set these in **Render → Environment** (Dashboard). All other vars use safe def
 | `MONGODB_URI` | Yes | `mongodb+srv://...` |
 | `JWT_ACCESS_SECRET` | Yes | 32+ random chars (`openssl rand -base64 32`) |
 | `JWT_REFRESH_SECRET` | Yes | different 32+ random chars |
+| `JWT_ACCESS_EXPIRES_IN` | Recommended | `8h` (avoid 15m auto-logout in production) |
+| `JWT_REFRESH_EXPIRES_IN` | Recommended | `30d` |
 | `FIELD_ENCRYPTION_KEY` | Yes | different 32+ random chars |
 | `AUTH_USE_HTTP_ONLY_COOKIES` | Yes | `true` |
 | `AUTH_COOKIE_SECURE` | Yes | `true` |
@@ -18,7 +20,9 @@ Set these in **Render → Environment** (Dashboard). All other vars use safe def
 - Set `VITE_AUTH_USE_HTTP_ONLY_COOKIES=true` on the frontend build
 - `FRONTEND_URL` must exactly match the frontend origin (no trailing slash)
 
-Optional but recommended: `CLOUDINARY_*`, `SMTP_*`, `LOG_LEVEL=info`
+Optional but recommended: `CLOUDINARY_*`, `LOG_LEVEL=info`
+
+**Employee welcome emails** require SMTP on the backend (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`). Without SMTP, employees are still created but credentials are not emailed — use the employee profile to resend activation email after configuring SMTP.
 
 Do **not** set `SEED_*` or `SUPER_ADMIN_*` on Render unless running seed locally.
 

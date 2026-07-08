@@ -3,7 +3,7 @@ import {
   EmployeeRepository,
   EMPLOYEE_EMPLOYMENT_STATUS,
 } from '@domain/employee/employee.schemas.js';
-import { NotFoundError } from '@shared/errors/app.error.js';
+import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
@@ -25,7 +25,6 @@ import { EmployeeAccountService } from '@modules/employee/services/employee-acco
 import { OnboardingService } from '@modules/recruitment/services/onboarding.service.js';
 import { EmployeePurgeService } from '@modules/employee/services/employee-purge.service.js';
 import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
-import { WorkforceCleanupService } from '@modules/employee/services/workforce-cleanup.service.js';
 import { UserRepository } from '@domain/auth/user.schema.js';
 import { SystemAdminProfileService } from '@modules/auth/services/system-admin-profile.service.js';
 import { logger } from '@logging/winston.logger.js';
@@ -131,12 +130,19 @@ export const EmployeeService = {
       branchId,
     });
 
-    await WorkforceCleanupService.reclaimGhostRecordsForEmail(
+    const emailAvailability = await EmployeeValidationService.prepareEmailForCreate(
       context.companyId,
       email,
       context.userId,
     );
-    await EmployeeValidationService.assertEmailAvailableForCreate(context.companyId, email);
+    if (!emailAvailability.available) {
+      throw new ConflictError(emailAvailability.message, ERROR_CODES.EMAIL_ALREADY_EXISTS, {
+        field: 'email',
+        value: email,
+        reason: emailAvailability.reason,
+        employeeId: emailAvailability.employeeId,
+      });
+    }
 
     if (typeof payload.reportingManagerId === 'string') {
       await EmployeeValidationService.assertManagerExists(

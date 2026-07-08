@@ -15,6 +15,11 @@ import {
   shouldAttemptSessionRestore,
   usesHttpOnlyCookies,
 } from '@/shared/auth/token-storage';
+import { rememberAccessTokenExpiry } from '@/shared/auth/auth-token-lifetime';
+import {
+  scheduleProactiveTokenRefresh,
+  stopProactiveTokenRefresh,
+} from '@/shared/auth/auth-token-refresh-scheduler';
 import { useAuthStore } from '@/shared/stores/app.store';
 
 let sessionRestoreActive = false;
@@ -58,6 +63,7 @@ export async function clearServerAuthCookies(): Promise<void> {
 }
 
 async function clearInvalidSession(): Promise<void> {
+  stopProactiveTokenRefresh();
   clearStoredTokens();
   await clearServerAuthCookies();
 }
@@ -81,6 +87,10 @@ export function refreshAccessTokenOnce(): Promise<RefreshAccessTokenResult> {
     try {
       const result = await refreshTokens(refreshToken ?? undefined);
       setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
+      if (result.tokens.expiresIn) {
+        rememberAccessTokenExpiry(result.tokens.expiresIn);
+        scheduleProactiveTokenRefresh(result.tokens.expiresIn);
+      }
       if (usesHttpOnlyCookies()) {
         markCookieSessionActive();
       }
@@ -120,6 +130,7 @@ export async function restoreSession(): Promise<SessionRestoreOutcome> {
 
 /** Clears client session markers before a fresh login. */
 export async function clearStaleAuthBeforeLogin(): Promise<void> {
+  stopProactiveTokenRefresh();
   clearOrphanSessionHint();
   clearStoredTokens();
   await clearServerAuthCookies();

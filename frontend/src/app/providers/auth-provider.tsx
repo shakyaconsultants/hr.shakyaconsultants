@@ -4,8 +4,14 @@ import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.a
 import {
   applySessionFromMe,
   clearStaleAuthBeforeLogin,
+  refreshAccessTokenOnce,
   restoreSession,
 } from '@/shared/auth/auth-session';
+import {
+  ensureProactiveRefreshScheduled,
+  scheduleProactiveTokenRefresh,
+  stopProactiveTokenRefresh,
+} from '@/shared/auth/auth-token-refresh-scheduler';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
 import { getRefreshToken, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
@@ -49,6 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (outcome.ok) {
         applySessionFromMe(outcome.me);
         setAuthStatus(AUTH_STATUS.AUTHENTICATED);
+        const refreshed = await refreshAccessTokenOnce();
+        if (refreshed !== 'success') {
+          ensureProactiveRefreshScheduled('8h');
+        }
         return;
       }
 
@@ -77,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const me = result.profile ?? (await fetchMe());
           applySessionFromMe(me);
           setAuthStatus(AUTH_STATUS.AUTHENTICATED);
+          scheduleProactiveTokenRefresh(result.tokens.expiresIn ?? '8h');
           authDiag.log('login_success', { userId: me.user.id });
         } catch (error) {
           authDiag.log('login_failed', {
@@ -93,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
           queryClient.clear();
           authDiag.log('session_cleared', { reason: 'logout' });
+          stopProactiveTokenRefresh();
           clearAuth();
         }
       },

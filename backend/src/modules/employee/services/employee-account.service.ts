@@ -5,6 +5,7 @@ import { NotFoundError, ConflictError, ValidationError } from '@shared/errors/ap
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { SYSTEM_ROLE_SLUG } from '@modules/rbac/constants/rbac.constants.js';
+import { MongoServerError } from 'mongodb';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { PasswordService } from '@modules/auth/services/password.service.js';
 import { RecruitmentEmailService } from '@modules/recruitment/services/recruitment-email.service.js';
@@ -40,17 +41,16 @@ export const EmployeeAccountService = {
     const temporaryPassword = this.resolveTemporaryPassword(input.temporaryPassword);
     const passwordHash = await PasswordService.hashPassword(temporaryPassword);
 
-    const existingUser = await UserRepository.findOne({ email }, { companyId: input.companyId });
+    let existingUser = await UserRepository.findOne({ email }, { companyId: input.companyId });
     let userId: string;
 
-    if (existingUser) {
+    const linkExistingUser = async (user: NonNullable<typeof existingUser>): Promise<string> => {
       const superAdminRole = await RoleRepository.findOne(
         { slug: SYSTEM_ROLE_SLUG.SUPER_ADMIN },
         { companyId: input.companyId },
       );
       const isSystemAdmin =
-        Boolean(superAdminRole && existingUser.roleIds.includes(superAdminRole.id)) &&
-        !existingUser.employeeId;
+        Boolean(superAdminRole && user.roleIds.includes(superAdminRole.id)) && !user.employeeId;
 
       if (isSystemAdmin) {
         throw new ConflictError(
@@ -60,26 +60,26 @@ export const EmployeeAccountService = {
         );
       }
 
-      if (existingUser.employeeId) {
-        const linkedEmployee = await EmployeeRepository.findById(existingUser.employeeId, {
+      if (user.employeeId) {
+        const linkedEmployee = await EmployeeRepository.findById(user.employeeId, {
           companyId: input.companyId,
+          includeDeleted: true,
         });
         if (
           linkedEmployee &&
           linkedEmployee.status === ENTITY_STATUS.ACTIVE &&
-          !linkedEmployee.isDeleted &&
-          linkedEmployee.email.toLowerCase() === email
+          !linkedEmployee.isDeleted
         ) {
           const employeeLabel =
             `${linkedEmployee.firstName} ${linkedEmployee.lastName}`.trim() ||
             linkedEmployee.employeeNumber;
           throw new ConflictError(
-            `Email "${email}" is already assigned to ${employeeLabel}`,
+            `Email "${email}" is already linked to ${employeeLabel}`,
             ERROR_CODES.EMAIL_ALREADY_EXISTS,
             {
               field: 'email',
               value: email,
-              reason: 'DUPLICATE_EMAIL',
+              reason: 'PORTAL_USER_LINKED',
               employeeId: linkedEmployee.id,
             },
           );
@@ -87,7 +87,7 @@ export const EmployeeAccountService = {
       }
 
       await UserRepository.update(
-        existingUser.id,
+        user.id,
         {
           employeeId: input.employeeId,
           passwordHash,
@@ -97,23 +97,39 @@ export const EmployeeAccountService = {
         },
         { companyId: input.companyId },
       );
-      userId = existingUser.id;
+      return user.id;
+    };
+
+    if (existingUser) {
+      userId = await linkExistingUser(existingUser);
     } else {
       userId = generateUuid();
-      await UserRepository.create(
-        {
-          id: userId,
-          companyId: input.companyId,
-          email,
-          passwordHash,
-          employeeId: input.employeeId,
-          mustChangePassword: false,
-          status: USER_STATUS.ACTIVE,
-          createdBy: input.userId,
-          updatedBy: input.userId,
-        },
-        { companyId: input.companyId },
-      );
+      try {
+        await UserRepository.create(
+          {
+            id: userId,
+            companyId: input.companyId,
+            email,
+            passwordHash,
+            employeeId: input.employeeId,
+            mustChangePassword: false,
+            status: USER_STATUS.ACTIVE,
+            createdBy: input.userId,
+            updatedBy: input.userId,
+          },
+          { companyId: input.companyId },
+        );
+      } catch (error) {
+        if (error instanceof MongoServerError && error.code === 11000) {
+          existingUser = await UserRepository.findOne({ email }, { companyId: input.companyId });
+          if (!existingUser) {
+            throw error;
+          }
+          userId = await linkExistingUser(existingUser);
+        } else {
+          throw error;
+        }
+      }
     }
 
     return { userId, temporaryPassword, accountStatus: USER_STATUS.ACTIVE };
