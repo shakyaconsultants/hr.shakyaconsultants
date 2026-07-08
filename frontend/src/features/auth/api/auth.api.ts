@@ -47,7 +47,7 @@ export async function loginRequest(payload: LoginPayload): Promise<LoginResult> 
     `${AUTH_PREFIX}/login`,
     payload,
     {
-      timeout: 8_000,
+      timeout: 25_000,
     },
   );
   return unwrap(response);
@@ -55,7 +55,7 @@ export async function loginRequest(payload: LoginPayload): Promise<LoginResult> 
 
 export async function fetchMe(): Promise<MeResult> {
   const response = await apiClient.get<ApiSuccessResponse<MeResult>>(`${AUTH_PREFIX}/me`, {
-    timeout: 8_000,
+    timeout: 20_000,
   });
   return unwrap(response);
 }

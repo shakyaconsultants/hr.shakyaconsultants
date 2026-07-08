@@ -99,6 +99,8 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
   const [sprintForm, setSprintForm] = useState({ name: '', startDate: '', endDate: '', goal: '' });
   const [kbForm, setKbForm] = useState({
     repositoryUrl: '',
+    productionUrl: '',
+    stagingUrl: '',
     envVariables: '',
     deploymentGuide: '',
     architectureNotes: '',
@@ -127,18 +129,19 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
   }, [project]);
 
   useEffect(() => {
-    if (knowledgeBase) {
-      setKbForm({
-        repositoryUrl: knowledgeBase.repositoryUrl ?? project.repositoryUrl ?? '',
-        envVariables: knowledgeBase.envVariables ?? '',
-        deploymentGuide: knowledgeBase.deploymentGuide ?? '',
-        architectureNotes: knowledgeBase.architectureNotes ?? '',
-        cloudflareEmail: knowledgeBase.cloudflareEmail ?? '',
-        devHostingPlatform: knowledgeBase.devHostingPlatform ?? '',
-        prodHostingPlatform: knowledgeBase.prodHostingPlatform ?? '',
-      });
-    }
-  }, [knowledgeBase, project.repositoryUrl]);
+    setKbForm((prev) => ({
+      ...prev,
+      repositoryUrl: knowledgeBase?.repositoryUrl ?? project.repositoryUrl ?? prev.repositoryUrl,
+      productionUrl: project.productionUrl ?? prev.productionUrl,
+      stagingUrl: project.stagingUrl ?? prev.stagingUrl,
+      envVariables: knowledgeBase?.envVariables ?? prev.envVariables,
+      deploymentGuide: knowledgeBase?.deploymentGuide ?? prev.deploymentGuide,
+      architectureNotes: knowledgeBase?.architectureNotes ?? prev.architectureNotes,
+      cloudflareEmail: knowledgeBase?.cloudflareEmail ?? prev.cloudflareEmail,
+      devHostingPlatform: knowledgeBase?.devHostingPlatform ?? prev.devHostingPlatform,
+      prodHostingPlatform: knowledgeBase?.prodHostingPlatform ?? prev.prodHostingPlatform,
+    }));
+  }, [knowledgeBase, project.repositoryUrl, project.productionUrl, project.stagingUrl]);
 
   if (!canUpdate && !canDelete) {
     return null;
@@ -290,13 +293,34 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
   }
 
   async function saveKnowledgeBase() {
-    if (upsertKbMutation.isPending) {
+    if (upsertKbMutation.isPending || updateMutation.isPending) {
       return;
     }
     await runFormMutation({
       setError,
-      successMessage: 'Repository and environment saved successfully.',
-      mutation: () => upsertKbMutation.mutateAsync({ projectId: project.id, payload: kbForm }),
+      successMessage: 'Deployment settings saved successfully.',
+      mutation: async () => {
+        await upsertKbMutation.mutateAsync({
+          projectId: project.id,
+          payload: {
+            repositoryUrl: kbForm.repositoryUrl || undefined,
+            deploymentGuide: kbForm.deploymentGuide || undefined,
+            architectureNotes: kbForm.architectureNotes || undefined,
+            cloudflareEmail: kbForm.cloudflareEmail || undefined,
+            devHostingPlatform: kbForm.devHostingPlatform || undefined,
+            prodHostingPlatform: kbForm.prodHostingPlatform || undefined,
+            envVariables: kbForm.envVariables || undefined,
+          },
+        });
+        await updateMutation.mutateAsync({
+          id: project.id,
+          payload: {
+            repositoryUrl: kbForm.repositoryUrl || undefined,
+            productionUrl: kbForm.productionUrl || undefined,
+            stagingUrl: kbForm.stagingUrl || undefined,
+          },
+        });
+      },
     });
   }
 
@@ -616,12 +640,28 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
           </section>
 
           <section className="rounded-lg border bg-card p-4 space-y-3">
-            <h3 className="font-medium">Repository & Environment</h3>
+            <h3 className="font-medium">Repository & Deployment</h3>
+            <p className="text-xs text-muted-foreground">
+              Save here to update the Deployment tab. URLs sync to both project settings and the
+              knowledge base.
+            </p>
             <Input
               placeholder="Repository URL"
               value={kbForm.repositoryUrl}
               onChange={(e) => setKbForm((p) => ({ ...p, repositoryUrl: e.target.value }))}
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                placeholder="Production deploy URL"
+                value={kbForm.productionUrl}
+                onChange={(e) => setKbForm((p) => ({ ...p, productionUrl: e.target.value }))}
+              />
+              <Input
+                placeholder="Development deploy URL"
+                value={kbForm.stagingUrl}
+                onChange={(e) => setKbForm((p) => ({ ...p, stagingUrl: e.target.value }))}
+              />
+            </div>
             <textarea
               className="min-h-24 w-full rounded-md border px-3 py-2 font-mono text-sm"
               placeholder="Environment variables (KEY=value per line)"
@@ -660,9 +700,9 @@ export function ProjectAdministrationPanel({ project }: ProjectAdministrationPan
             <Button
               size="sm"
               onClick={() => void saveKnowledgeBase()}
-              disabled={upsertKbMutation.isPending}
+              disabled={upsertKbMutation.isPending || updateMutation.isPending}
             >
-              Save Repository & Environment
+              Save Deployment Settings
             </Button>
           </section>
         </>

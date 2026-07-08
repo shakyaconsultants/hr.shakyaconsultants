@@ -1,13 +1,37 @@
+import type { ProjectKnowledgeBaseDocument } from '@domain/project/project-extended.schemas.js';
 import {
   ProjectKnowledgeBaseRepository,
   ProjectDocumentFileRepository,
 } from '@domain/project/project-extended.schemas.js';
-import { encryptField, decryptField } from '@shared/utils/field-encryption.util.js';
+import { encryptField, readEncryptedField } from '@shared/utils/field-encryption.util.js';
+import { documentToRecord } from '@shared/utils/document.util.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
+import { NotFoundError } from '@shared/errors/app.error.js';
+import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { UploadService } from '@infrastructure/storage/cloudinary.service.js';
 import { ProjectAuditService } from '@modules/project/services/project-audit.service.js';
 import type { KnowledgeBaseInput } from '@modules/project/validators/project.validator.js';
 import type { ProjectActorContext } from '@modules/project/types/project.types.js';
+
+function serializeKnowledgeBase(kb: ProjectKnowledgeBaseDocument) {
+  return {
+    ...documentToRecord(kb),
+    id: kb.id,
+    projectId: kb.projectId,
+    repositoryUrl: kb.repositoryUrl,
+    branches: kb.branches,
+    apiDocsUrl: kb.apiDocsUrl,
+    swaggerUrl: kb.swaggerUrl,
+    deploymentGuide: kb.deploymentGuide,
+    architectureNotes: kb.architectureNotes,
+    cloudflareEmail: kb.cloudflareEmail,
+    devHostingPlatform: kb.devHostingPlatform,
+    prodHostingPlatform: kb.prodHostingPlatform,
+    documentUrls: kb.documentUrls,
+    credentials: readEncryptedField(kb.encryptedCredentials),
+    envVariables: readEncryptedField(kb.encryptedEnvVariables),
+  };
+}
 
 export const KnowledgeBaseService = {
   async get(companyId: string, projectId: string) {
@@ -15,13 +39,7 @@ export const KnowledgeBaseService = {
     if (!kb) {
       return null;
     }
-    return {
-      ...kb,
-      credentials: kb.encryptedCredentials ? decryptField(kb.encryptedCredentials) : undefined,
-      envVariables: kb.encryptedEnvVariables ? decryptField(kb.encryptedEnvVariables) : undefined,
-      encryptedCredentials: undefined,
-      encryptedEnvVariables: undefined,
-    };
+    return serializeKnowledgeBase(kb);
   },
 
   async upsert(context: ProjectActorContext, projectId: string, payload: KnowledgeBaseInput) {
@@ -54,6 +72,9 @@ export const KnowledgeBaseService = {
       const updated = await ProjectKnowledgeBaseRepository.update(existing.id, data, {
         companyId: context.companyId,
       });
+      if (!updated) {
+        throw new NotFoundError('Knowledge base not found', ERROR_CODES.NOT_FOUND);
+      }
       await ProjectAuditService.log({
         companyId: context.companyId,
         userId: context.userId,
@@ -65,7 +86,7 @@ export const KnowledgeBaseService = {
         ip: context.ip,
         userAgent: context.userAgent,
       });
-      return updated;
+      return serializeKnowledgeBase(updated);
     }
 
     const id = generateUuid();
@@ -93,7 +114,7 @@ export const KnowledgeBaseService = {
       userAgent: context.userAgent,
     });
 
-    return kb;
+    return serializeKnowledgeBase(kb);
   },
 
   async uploadDocument(context: ProjectActorContext, projectId: string, file: Express.Multer.File) {

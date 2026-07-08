@@ -123,6 +123,7 @@ export function toLoginResponse(params: {
   refreshToken: string;
   expiresIn: string;
   sessionId: string;
+  profile?: CurrentUserResponse;
 }): LoginResponse {
   return {
     user: params.user,
@@ -133,6 +134,7 @@ export function toLoginResponse(params: {
       tokenType: 'Bearer',
     },
     sessionId: params.sessionId,
+    profile: params.profile,
   };
 }
 

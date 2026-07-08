@@ -1,4 +1,5 @@
 import apiClient from '@/shared/api/axios.client';
+import type { ProjectKnowledgeBase, ProjectMemberRecord } from '@/features/project/api/project.api';
 import type {
   ApiSuccessResponse,
   ApiSuccessResponseWithPagination,
@@ -194,13 +195,8 @@ export interface MyProjectDetail {
   myTasks: TaskRecord[];
   milestones: Record<string, unknown>[];
   sprints: Record<string, unknown>[];
-  members: Record<string, unknown>[];
-  deployment: {
-    repositoryUrl?: string;
-    productionUrl?: string;
-    deploymentGuide?: string;
-    documentUrls?: string[];
-  };
+  members: ProjectMemberRecord[];
+  knowledgeBase: ProjectKnowledgeBase | null;
 }
 
 export async function fetchMyProject(id: string): Promise<MyProjectDetail> {

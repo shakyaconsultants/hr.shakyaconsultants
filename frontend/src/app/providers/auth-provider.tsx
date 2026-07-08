@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const result = await loginRequest(payload);
           setStoredTokens(result.tokens.accessToken, result.tokens.refreshToken);
 
-          const me = await fetchMe();
+          const me = result.profile ?? (await fetchMe());
           applyLoginSession(me);
           setAuthStatus(AUTH_STATUS.AUTHENTICATED);
           authDiag.log('login_success', { userId: me.user.id });

@@ -201,12 +201,27 @@ export const AuthService = {
     });
     perf.mark('audit_log');
 
+    const profile = await this.getCurrentUser(
+      {
+        userId: activeUser.id,
+        companyId: company.id,
+        sessionId: session.sessionId,
+        employeeId: activeUser.employeeId,
+        roleIds,
+        tokenVersion: activeUser.tokenVersion,
+        email: activeUser.email,
+      },
+      activeUser,
+    );
+    perf.mark('profile_build');
+
     const response = toLoginResponse({
       user: toAuthUserResponse(activeUser),
       accessToken,
       refreshToken,
       expiresIn: getJwtConfig().accessExpiresIn,
       sessionId: session.sessionId,
+      profile,
     });
 
     perf.finish({ companyId: company.id, userId: user.id });

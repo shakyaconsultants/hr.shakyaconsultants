@@ -60,6 +60,10 @@ function EmptyValue() {
   return <span className="text-muted-foreground">Not configured</span>;
 }
 
+function hasText(value?: string | null): value is string {
+  return Boolean(value?.trim());
+}
+
 export function ProjectDeploymentTab({
   project,
   knowledgeBase,
@@ -89,7 +93,7 @@ export function ProjectDeploymentTab({
       </DeploymentCard>
 
       <DeploymentCard title="Cloudflare Email" icon={Mail}>
-        {knowledgeBase?.cloudflareEmail ? (
+        {hasText(knowledgeBase?.cloudflareEmail) ? (
           <a
             href={`mailto:${knowledgeBase.cloudflareEmail}`}
             className="text-primary hover:underline"
@@ -102,15 +106,23 @@ export function ProjectDeploymentTab({
       </DeploymentCard>
 
       <DeploymentCard title="Dev Hosting Platform" icon={Server}>
-        {knowledgeBase?.devHostingPlatform ?? <EmptyValue />}
+        {hasText(knowledgeBase?.devHostingPlatform) ? (
+          knowledgeBase.devHostingPlatform
+        ) : (
+          <EmptyValue />
+        )}
       </DeploymentCard>
 
       <DeploymentCard title="Prod Hosting Platform" icon={Cloud}>
-        {knowledgeBase?.prodHostingPlatform ?? <EmptyValue />}
+        {hasText(knowledgeBase?.prodHostingPlatform) ? (
+          knowledgeBase.prodHostingPlatform
+        ) : (
+          <EmptyValue />
+        )}
       </DeploymentCard>
 
       <DeploymentCard title="Deployment Guide" icon={FileText}>
-        {deploymentGuide ? (
+        {hasText(deploymentGuide) ? (
           <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">
             {deploymentGuide}
           </p>

@@ -83,13 +83,19 @@ export async function restoreSession(): Promise<SessionRestoreOutcome> {
   return sessionRestorePromise;
 }
 
-/** Clears client session markers and revokes HttpOnly cookies before a fresh login. */
+/** Clears client session markers before a fresh login. */
 export async function clearStaleAuthBeforeLogin(): Promise<void> {
   if (!shouldAttemptSessionRestore()) {
     return;
   }
 
   clearStoredTokens();
+  // Login already clears HttpOnly cookies server-side — do not block on logout here.
+  if (usesHttpOnlyCookies()) {
+    void clearServerAuthCookies();
+    return;
+  }
+
   await clearServerAuthCookies();
 }
 

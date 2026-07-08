@@ -10,15 +10,15 @@ export const PermissionEngineService = {
     }
 
     const result = await EffectivePermissionService.calculateForEmployee(companyId, employeeId);
-    try {
-      await PermissionCacheService.set(companyId, employeeId, result.permissions);
-    } catch (error) {
-      logger.warn('Permission cache write failed — continuing with computed permissions', {
-        companyId,
-        employeeId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    void PermissionCacheService.set(companyId, employeeId, result.permissions).catch(
+      (error: unknown) => {
+        logger.warn('Permission cache write failed — continuing with computed permissions', {
+          companyId,
+          employeeId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    );
     return result.permissions;
   },
 
