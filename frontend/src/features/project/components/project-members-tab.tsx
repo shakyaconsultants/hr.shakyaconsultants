@@ -15,7 +15,8 @@ const ROLE_LABELS: Record<string, string> = {
   viewer: 'Viewer',
 };
 
-function formatRole(role: string): string {
+function formatRole(role?: string | null): string {
+  if (!role) return 'Team Member';
   return (
     ROLE_LABELS[role] ??
     role
@@ -77,7 +78,7 @@ export function ProjectMembersTab({ members }: ProjectMembersTabProps) {
                   )}
                 </div>
                 <span className="shrink-0 rounded-full border bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
-                  {formatRole(String(member.role))}
+                  {formatRole(member.role)}
                 </span>
               </div>
               {member.employeeEmail && (

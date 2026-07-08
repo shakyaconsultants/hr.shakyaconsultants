@@ -5,6 +5,7 @@ import { ProjectMemberHistoryRepository } from '@domain/project/project-extended
 import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
+import { documentToRecord } from '@shared/utils/document.util.js';
 import { ProjectAuditService } from '@modules/project/services/project-audit.service.js';
 import { ProjectEventService } from '@modules/project/services/project-event.service.js';
 import { ProjectActivityService } from '@modules/project/services/project-activity.service.js';
@@ -71,7 +72,8 @@ export const ProjectMemberService = {
     return activeMembers.map((member) => {
       const employee = employeeById.get(member.employeeId);
       return {
-        ...member,
+        ...documentToRecord(member),
+        role: member.role,
         employeeName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : undefined,
         employeeEmail: employee?.email,
         employeeNumber: employee?.employeeNumber,
