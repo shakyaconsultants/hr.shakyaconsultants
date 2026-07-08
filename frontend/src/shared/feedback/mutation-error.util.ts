@@ -170,9 +170,14 @@ export function parseMutationError(error: unknown): ParsedMutationError {
     title = backendMessage || 'Invalid email, password, or company code.';
     preferInline = true;
   } else if (statusCode === 429) {
-    title = 'Too many login attempts';
-    description = backendMessage || 'Please wait a minute before trying again.';
-    preferInline = true;
+    const loginLimited = /login attempt/i.test(backendMessageRaw);
+    title = loginLimited ? 'Too many login attempts' : 'Too many requests';
+    description =
+      backendMessageRaw ||
+      (loginLimited
+        ? 'Please wait a few minutes before trying again.'
+        : 'Please wait a moment before trying again.');
+    preferInline = loginLimited;
   } else if (statusCode === 0 && axios.isAxiosError(error)) {
     preferInline = false;
     if (error.code === 'ECONNABORTED') {

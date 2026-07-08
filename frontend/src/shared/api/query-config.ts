@@ -1,3 +1,22 @@
+import axios from 'axios';
+
+function isRateLimited(error: unknown): boolean {
+  if (axios.isAxiosError(error)) {
+    return error.response?.status === 429;
+  }
+  if (error && typeof error === 'object' && 'status' in error) {
+    return (error as { status?: number }).status === 429;
+  }
+  return false;
+}
+
+function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (isRateLimited(error)) {
+    return false;
+  }
+  return failureCount < 1;
+}
+
 /** Live data defaults — refetch when screens mount or after mutations invalidate cache. */
 export const ON_DEMAND_QUERY_OPTIONS = {
   staleTime: 0,
@@ -5,7 +24,7 @@ export const ON_DEMAND_QUERY_OPTIONS = {
   refetchOnMount: true,
   refetchOnWindowFocus: true,
   refetchOnReconnect: true,
-  retry: 1,
+  retry: shouldRetryQuery,
 } as const;
 
 /** Master data (org entities, settings lists) — short cache, still refreshes on mount. */

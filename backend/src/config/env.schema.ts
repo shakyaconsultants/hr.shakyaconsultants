@@ -52,7 +52,7 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true')
     .pipe(z.boolean()),
-  AUTH_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  AUTH_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
   AUTH_LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
   AUTH_PERMISSION_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(900),
 
@@ -103,7 +103,7 @@ const envSchema = z.object({
   SMTP_FROM_EMAIL: z.email().default('noreply@example.com'),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(2000),
   REQUEST_BODY_LIMIT: z.string().default('10mb'),
 
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),

@@ -57,7 +57,19 @@ export function useEnterpriseDashboard() {
 }
 
 export function useProjectWizardDraft() {
-  return useQuery({ queryKey: ['projects', 'wizard', 'draft'], queryFn: fetchWizardDraft });
+  return useQuery({
+    queryKey: ['projects', 'wizard', 'draft'],
+    queryFn: fetchWizardDraft,
+    staleTime: 30_000,
+    retry: (failureCount, error) => {
+      if (failureCount >= 1) return false;
+      const status =
+        error && typeof error === 'object' && 'status' in error
+          ? (error as { status?: number }).status
+          : undefined;
+      return status !== 429;
+    },
+  });
 }
 
 export function useSaveProjectWizardDraft() {
@@ -66,7 +78,9 @@ export function useSaveProjectWizardDraft() {
     mutationFn: saveWizardDraft,
     errorToast: false,
     successMessage: false,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects', 'wizard', 'draft'] }),
+    onSuccess: (data) => {
+      qc.setQueryData(['projects', 'wizard', 'draft'], data);
+    },
   });
 }
 
