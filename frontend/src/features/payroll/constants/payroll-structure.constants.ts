@@ -131,15 +131,53 @@ export function buildTemplateComponents(): PayrollTemplateComponent[] {
   return INDIA_STANDARD_PAYROLL_TEMPLATE.components.map((component) => ({ ...component }));
 }
 
+const TEMPLATE_COMPONENT_BY_CODE = new Map(
+  INDIA_STANDARD_PAYROLL_TEMPLATE.components.map((component) => [component.code, component]),
+);
+
+/** Core earnings always included — cannot be toggled off per employee. */
+const REQUIRED_COMPONENT_CODES = new Set(['HRA', 'SPECIAL_ALLOW']);
+
+function resolveTemplateComponent(
+  component: SalaryComponent,
+): PayrollTemplateComponent | undefined {
+  return TEMPLATE_COMPONENT_BY_CODE.get(component.code);
+}
+
+/** True when HR can include or exclude this component for an employee. */
+export function isOptionalComponent(component: SalaryComponent): boolean {
+  if (REQUIRED_COMPONENT_CODES.has(component.code)) {
+    return false;
+  }
+
+  const extended = component as PayrollTemplateComponent;
+  if (extended.isOptional === true) {
+    return true;
+  }
+  if (extended.isVariable === true) {
+    return true;
+  }
+
+  const template = resolveTemplateComponent(component);
+  if (template) {
+    return Boolean(template.isOptional ?? template.isVariable ?? true);
+  }
+
+  return true;
+}
+
+export function isVariableComponent(component: SalaryComponent): boolean {
+  const extended = component as PayrollTemplateComponent;
+  if (extended.isVariable === true) {
+    return true;
+  }
+  return Boolean(resolveTemplateComponent(component)?.isVariable);
+}
+
 /** Suggest monthly basic from annual CTC using ~40% basic share of gross. */
 export function suggestBasicFromAnnualCtc(annualCtc: number): number {
   const monthlyCtc = annualCtc / 12;
   return Math.round(monthlyCtc * 0.4);
-}
-
-export function isOptionalComponent(component: SalaryComponent): boolean {
-  const extended = component as PayrollTemplateComponent;
-  return Boolean(extended.isOptional ?? extended.isVariable);
 }
 
 export function buildDefaultComponentEnabled(
@@ -148,7 +186,7 @@ export function buildDefaultComponentEnabled(
   const enabled: Record<string, boolean> = {};
   for (const component of components) {
     if (isOptionalComponent(component)) {
-      enabled[component.code] = !component.isVariable && component.amount > 0;
+      enabled[component.code] = !isVariableComponent(component) && component.amount > 0;
     } else {
       enabled[component.code] = true;
     }

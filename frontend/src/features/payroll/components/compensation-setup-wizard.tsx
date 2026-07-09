@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { AnnexureASalaryTable } from '@/features/payroll/components/annexure-a-salary-table';
 import {
   useAssignCompensation,
@@ -57,12 +57,14 @@ export function CompensationSetupWizard({ employeeId, onSuccess }: CompensationS
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [structureReady, setStructureReady] = useState(false);
+  const hydratedFromExisting = useRef(false);
+  const initializedStructure = useRef(false);
 
   const selectedStructure = structures?.items.find((item) => item.id === salaryStructureId);
   const structureComponents = selectedStructure?.components ?? buildTemplateComponents();
 
   useEffect(() => {
-    if (structuresLoading || structureReady) return;
+    if (structuresLoading || initializedStructure.current) return;
 
     const standard =
       structures?.items.find((item) => item.code === INDIA_STANDARD_PAYROLL_TEMPLATE.code) ??
@@ -70,10 +72,13 @@ export function CompensationSetupWizard({ employeeId, onSuccess }: CompensationS
 
     if (standard) {
       setSalaryStructureId(standard.id);
-      setEnabledComponents(buildDefaultComponentEnabled(standard.components));
+      if (!hydratedFromExisting.current) {
+        setEnabledComponents(buildDefaultComponentEnabled(standard.components));
+      }
       if (!existing?.baseSalary && standard.baseSalary > 0) {
         setBaseSalary(standard.baseSalary);
       }
+      initializedStructure.current = true;
       setStructureReady(true);
       return;
     }
@@ -89,15 +94,22 @@ export function CompensationSetupWizard({ employeeId, onSuccess }: CompensationS
         })
         .then((created) => {
           setSalaryStructureId(created.id);
-          setEnabledComponents(buildDefaultComponentEnabled(created.components));
+          if (!hydratedFromExisting.current) {
+            setEnabledComponents(buildDefaultComponentEnabled(created.components));
+          }
+          initializedStructure.current = true;
           setStructureReady(true);
         })
-        .catch(() => setStructureReady(true));
+        .catch(() => {
+          initializedStructure.current = true;
+          setStructureReady(true);
+        });
     }
-  }, [structures, structuresLoading, structureReady, createStructure, existing?.baseSalary]);
+  }, [structures, structuresLoading, createStructure, existing?.baseSalary]);
 
   useEffect(() => {
-    if (!existing) return;
+    if (!existing || hydratedFromExisting.current) return;
+    hydratedFromExisting.current = true;
 
     if (existing.salaryStructureId) {
       setSalaryStructureId(existing.salaryStructureId);
