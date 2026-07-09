@@ -26,7 +26,10 @@ export const InboxService = {
     );
 
     const unread = notifications.filter((n) => !n.readAt);
-    const categories: Record<string, { total: number; unread: number; items: typeof notifications }> = {};
+    const categories: Record<
+      string,
+      { total: number; unread: number; items: typeof notifications }
+    > = {};
 
     for (const key of INBOX_CATEGORIES) {
       const categoryValue = CATEGORY_MAP[key] ?? key;

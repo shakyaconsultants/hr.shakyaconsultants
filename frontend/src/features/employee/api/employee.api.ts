@@ -13,6 +13,7 @@ const EMPLOYEE_CREATE_TIMEOUT_MS = 30_000;
 
 export interface EmployeeRecord {
   id: string;
+  userId?: string;
   employeeNumber: string;
   firstName: string;
   lastName: string;

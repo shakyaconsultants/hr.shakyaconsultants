@@ -3,7 +3,10 @@ import { NOTIFICATION_STATUS } from '@shared/constants/notification.constants.js
 import { NotFoundError, ForbiddenError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { mergeFilters } from '@infrastructure/database/query/filtering.helper.js';
-import { BROADCAST_PERMISSIONS, NOTIFICATION_PERMISSIONS } from '@modules/communication/constants/communication-permissions.constants.js';
+import {
+  BROADCAST_PERMISSIONS,
+  NOTIFICATION_PERMISSIONS,
+} from '@modules/communication/constants/communication-permissions.constants.js';
 import { CommunicationAuditService } from '@modules/communication/services/communication-audit.service.js';
 import { CommunicationPolicyService } from '@modules/communication/services/communication-policy.service.js';
 import type { CommunicationActorContext } from '@modules/approval/types/approval.types.js';
@@ -39,12 +42,16 @@ export const NotificationCenterService = {
     }
 
     const filter = mergeFilters(...filters);
-    const result = await NotificationRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: query.sortBy ?? 'createdAt',
-      sortOrder: query.sortOrder ?? 'desc',
-    }, { companyId: context.companyId });
+    const result = await NotificationRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: query.sortBy ?? 'createdAt',
+        sortOrder: query.sortOrder ?? 'desc',
+      },
+      { companyId: context.companyId },
+    );
 
     const grouped = result.items.reduce<Record<string, typeof result.items>>((acc, item) => {
       const key = item.category ?? 'general';
@@ -56,7 +63,9 @@ export const NotificationCenterService = {
   },
 
   async markRead(context: CommunicationActorContext, notificationId: string) {
-    const notification = await NotificationRepository.findById(notificationId, { companyId: context.companyId });
+    const notification = await NotificationRepository.findById(notificationId, {
+      companyId: context.companyId,
+    });
     if (!notification || notification.recipientId !== context.userId) {
       throw new NotFoundError('Notification not found', ERROR_CODES.NOT_FOUND);
     }
@@ -100,7 +109,9 @@ export const NotificationCenterService = {
   },
 
   async archive(context: CommunicationActorContext, notificationId: string) {
-    const notification = await NotificationRepository.findById(notificationId, { companyId: context.companyId });
+    const notification = await NotificationRepository.findById(notificationId, {
+      companyId: context.companyId,
+    });
     if (!notification || notification.recipientId !== context.userId) {
       throw new NotFoundError('Notification not found', ERROR_CODES.NOT_FOUND);
     }
@@ -129,12 +140,24 @@ export const NotificationCenterService = {
     return CommunicationPolicyService.getPreferencesForUser(companyId);
   },
 
-  async adminDelete(context: CommunicationActorContext, permissions: string[], notificationId: string) {
-    if (!permissions.includes(NOTIFICATION_PERMISSIONS.DELETE) && !permissions.includes(BROADCAST_PERMISSIONS.BROADCAST)) {
-      throw new ForbiddenError('Notification delete permission required', ERROR_CODES.AUTH_FORBIDDEN);
+  async adminDelete(
+    context: CommunicationActorContext,
+    permissions: string[],
+    notificationId: string,
+  ) {
+    if (
+      !permissions.includes(NOTIFICATION_PERMISSIONS.DELETE) &&
+      !permissions.includes(BROADCAST_PERMISSIONS.BROADCAST)
+    ) {
+      throw new ForbiddenError(
+        'Notification delete permission required',
+        ERROR_CODES.AUTH_FORBIDDEN,
+      );
     }
 
-    const notification = await NotificationRepository.findById(notificationId, { companyId: context.companyId });
+    const notification = await NotificationRepository.findById(notificationId, {
+      companyId: context.companyId,
+    });
     if (!notification) {
       throw new NotFoundError('Notification not found', ERROR_CODES.NOT_FOUND);
     }
@@ -148,20 +171,34 @@ export const NotificationCenterService = {
     return { id: notificationId, deleted: true };
   },
 
-  async adminList(context: CommunicationActorContext, permissions: string[], query: NotificationListQuery) {
-    if (!permissions.includes(NOTIFICATION_PERMISSIONS.MANAGE) && !permissions.includes(BROADCAST_PERMISSIONS.BROADCAST)) {
-      throw new ForbiddenError('Notification manage permission required', ERROR_CODES.AUTH_FORBIDDEN);
+  async adminList(
+    context: CommunicationActorContext,
+    permissions: string[],
+    query: NotificationListQuery,
+  ) {
+    if (
+      !permissions.includes(NOTIFICATION_PERMISSIONS.MANAGE) &&
+      !permissions.includes(BROADCAST_PERMISSIONS.BROADCAST)
+    ) {
+      throw new ForbiddenError(
+        'Notification manage permission required',
+        ERROR_CODES.AUTH_FORBIDDEN,
+      );
     }
 
     const filter: Record<string, unknown> = {};
     if (query.category) filter.category = query.category;
     if (query.isArchived !== undefined) filter.isArchived = query.isArchived;
 
-    return NotificationRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: query.sortBy ?? 'createdAt',
-      sortOrder: query.sortOrder ?? 'desc',
-    }, { companyId: context.companyId });
+    return NotificationRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: query.sortBy ?? 'createdAt',
+        sortOrder: query.sortOrder ?? 'desc',
+      },
+      { companyId: context.companyId },
+    );
   },
 };

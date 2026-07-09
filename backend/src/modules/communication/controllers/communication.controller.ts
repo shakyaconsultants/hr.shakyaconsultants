@@ -42,7 +42,10 @@ function actor(req: AuthenticatedRequest) {
 async function permissions(req: AuthenticatedRequest): Promise<string[]> {
   if (req.auth?.permissions) return req.auth.permissions;
   if (!req.user.employeeId) return [];
-  const perms = await PermissionEngineService.getPermissionsForUser(req.user.companyId, req.user.employeeId);
+  const perms = await PermissionEngineService.getPermissionsForUser(
+    req.user.companyId,
+    req.user.employeeId,
+  );
   req.auth = { permissions: perms };
   return perms;
 }
@@ -51,7 +54,10 @@ export const getEnterpriseDashboard: RequestHandler = async (req, res, next) => 
   try {
     const authReq = req as AuthenticatedRequest;
     const query = validateInput(dashboardQuerySchema, req.query);
-    const data = await CommunicationDashboardService.getEnterpriseDashboard(authReq.user.companyId, query);
+    const data = await CommunicationDashboardService.getEnterpriseDashboard(
+      authReq.user.companyId,
+      query,
+    );
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -333,12 +339,27 @@ export const listDirectConversations: RequestHandler = async (req, res, next) =>
   }
 };
 
+export const getCompanyChat: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const data = await ChannelService.getOrCreateCompanyChat(actor(authReq));
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const listEmployeeDirectConversations: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const { id: employeeId } = validateInput(idParamSchema, req.params);
     const query = validateInput(listQuerySchema, req.query);
-    const data = await DirectMessageService.listForEmployee(authReq.user.companyId, employeeId, query);
+    const data = await DirectMessageService.listForEmployee(
+      authReq.user.companyId,
+      employeeId,
+      query,
+    );
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);

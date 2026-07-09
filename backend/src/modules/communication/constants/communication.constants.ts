@@ -46,10 +46,30 @@ export const DEFAULT_COMMUNICATION_POLICIES = {
 } as const;
 
 export const DEFAULT_ANNOUNCEMENT_TEMPLATES = [
-  { slug: 'general', name: 'General Update', subject: 'Company Update', body: 'Please review the following announcement.' },
-  { slug: 'policy', name: 'Policy Change', subject: 'Policy Update', body: 'An important policy change requires your attention.' },
-  { slug: 'emergency', name: 'Emergency Alert', subject: 'Emergency Notice', body: 'Immediate action may be required.' },
-  { slug: 'holiday', name: 'Holiday Notice', subject: 'Holiday Announcement', body: 'Please note the upcoming holiday schedule.' },
+  {
+    slug: 'general',
+    name: 'General Update',
+    subject: 'Company Update',
+    body: 'Please review the following announcement.',
+  },
+  {
+    slug: 'policy',
+    name: 'Policy Change',
+    subject: 'Policy Update',
+    body: 'An important policy change requires your attention.',
+  },
+  {
+    slug: 'emergency',
+    name: 'Emergency Alert',
+    subject: 'Emergency Notice',
+    body: 'Immediate action may be required.',
+  },
+  {
+    slug: 'holiday',
+    name: 'Holiday Notice',
+    subject: 'Holiday Announcement',
+    body: 'Please note the upcoming holiday schedule.',
+  },
 ] as const;
 
 export const DEFAULT_NOTIFICATION_PREFERENCES = {

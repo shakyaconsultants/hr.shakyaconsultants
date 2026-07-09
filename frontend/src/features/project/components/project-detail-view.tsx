@@ -44,7 +44,7 @@ export interface ProjectDetailViewProps {
 const ADMIN_TABS = [
   'Overview',
   'Tasks',
-  'Kanban',
+  'Task Board',
   'Deployment',
   'Members',
   'Administration',
@@ -128,7 +128,7 @@ export function ProjectDetailView({
           />
         )}
 
-        {activeTab === 'Kanban' && !isMemberPortal && kanban && (
+        {activeTab === 'Task Board' && !isMemberPortal && kanban && (
           <div className="flex gap-4 overflow-x-auto pb-4">
             {Object.entries(kanban.columns ?? {}).map(([status, cards]) => (
               <div

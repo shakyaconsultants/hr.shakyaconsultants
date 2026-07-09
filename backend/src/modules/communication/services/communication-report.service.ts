@@ -19,7 +19,10 @@ interface ReportQuery {
   employeeId?: string;
 }
 
-function dateRangeFilter(startDate?: string, endDate?: string): Record<string, unknown> | undefined {
+function dateRangeFilter(
+  startDate?: string,
+  endDate?: string,
+): Record<string, unknown> | undefined {
   if (!startDate && !endDate) return undefined;
   const filter: Record<string, unknown> = {};
   if (startDate) filter.$gte = new Date(startDate);
@@ -47,7 +50,10 @@ export const CommunicationReportService = {
 
   async reachReport(companyId: string, query: ReportQuery) {
     const createdAt = dateRangeFilter(query.startDate, query.endDate);
-    const filter: Record<string, unknown> = { status: ENTITY_STATUS.ACTIVE, publishedAt: { $exists: true } };
+    const filter: Record<string, unknown> = {
+      status: ENTITY_STATUS.ACTIVE,
+      publishedAt: { $exists: true },
+    };
     if (createdAt) filter.publishedAt = createdAt;
 
     const announcements = await AnnouncementRepository.findMany(filter, { companyId });
@@ -76,7 +82,8 @@ export const CommunicationReportService = {
       type: COMMUNICATION_REPORT_TYPE.READ_STATS,
       totalReads: receipts.length,
       totalAcknowledged: acknowledged.length,
-      acknowledgementRate: receipts.length > 0 ? Math.round((acknowledged.length / receipts.length) * 100) : 0,
+      acknowledgementRate:
+        receipts.length > 0 ? Math.round((acknowledged.length / receipts.length) * 100) : 0,
     };
   },
 
@@ -128,7 +135,10 @@ export const CommunicationReportService = {
   },
 
   async unreadSummaryReport(companyId: string, query: ReportQuery) {
-    const notificationFilter: Record<string, unknown> = { readAt: { $exists: false }, isArchived: false };
+    const notificationFilter: Record<string, unknown> = {
+      readAt: { $exists: false },
+      isArchived: false,
+    };
     const messageFilter: Record<string, unknown> = { readAt: { $exists: false } };
 
     if (query.employeeId) {
@@ -165,7 +175,13 @@ export const CommunicationReportService = {
       return [
         'channelId,title,messageCount,participantCount,lastMessageAt',
         ...report.channels.map((c) =>
-          [c.channelId, `"${c.title ?? ''}"`, c.messageCount, c.participantCount, c.lastMessageAt?.toISOString() ?? ''].join(','),
+          [
+            c.channelId,
+            `"${c.title ?? ''}"`,
+            c.messageCount,
+            c.participantCount,
+            c.lastMessageAt?.toISOString() ?? '',
+          ].join(','),
         ),
       ].join('\n');
     } else {

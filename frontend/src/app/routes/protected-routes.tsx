@@ -72,17 +72,11 @@ export const protectedAppRoutes: RouteObject[] = [
   },
   {
     path: ROUTES.WORKSPACE_NOTIFICATIONS.slice(1),
-    ...lazyRoute(
-      () => import('@/features/workspace/pages/workspace-notifications-page'),
-      'WorkspaceNotificationsPage',
-    ),
+    element: <Navigate to={`${ROUTES.COMMUNICATION}?tab=notifications`} replace />,
   },
   {
     path: ROUTES.WORKSPACE_ANNOUNCEMENTS.slice(1),
-    ...lazyRoute(
-      () => import('@/features/workspace/pages/workspace-announcements-page'),
-      'WorkspaceAnnouncementsPage',
-    ),
+    element: <Navigate to={`${ROUTES.COMMUNICATION}?tab=announcements`} replace />,
   },
   {
     path: ROUTES.WORKSPACE_CALENDAR.slice(1),
@@ -100,10 +94,7 @@ export const protectedAppRoutes: RouteObject[] = [
   },
   {
     path: ROUTES.WORKSPACE_MESSAGES.slice(1),
-    ...lazyRoute(
-      () => import('@/features/communication/pages/communication-workspace-page'),
-      'CommunicationWorkspacePage',
-    ),
+    element: <Navigate to={`${ROUTES.COMMUNICATION}?tab=chat`} replace />,
   },
   {
     path: ROUTES.WORKSPACE_LEAVE_APPLY.slice(1),
@@ -455,10 +446,7 @@ export const protectedAppRoutes: RouteObject[] = [
   },
   {
     path: ROUTES.COMMUNICATION_REPORTS.slice(1),
-    ...lazyRoute(
-      () => import('@/features/communication/pages/communication-reports-page'),
-      'CommunicationReportsPage',
-    ),
+    element: <Navigate to={ROUTES.COMMUNICATION} replace />,
   },
   {
     path: ROUTES.SALES.slice(1),
@@ -486,8 +474,8 @@ export const protectedAppRoutes: RouteObject[] = [
   {
     path: ROUTES.COMMUNICATION.slice(1),
     ...lazyRoute(
-      () => import('@/features/communication/pages/communication-enterprise-page'),
-      'CommunicationEnterprisePage',
+      () => import('@/features/communication/pages/communication-hub-page'),
+      'CommunicationHubPage',
     ),
   },
   {
@@ -496,24 +484,15 @@ export const protectedAppRoutes: RouteObject[] = [
   },
   {
     path: ROUTES.COMMUNICATION_MANAGER.slice(1),
-    ...lazyRoute(
-      () => import('@/features/communication/pages/communication-manager-page'),
-      'CommunicationManagerPage',
-    ),
+    element: <Navigate to={ROUTES.COMMUNICATION} replace />,
   },
   {
     path: ROUTES.COMMUNICATION_INBOX.slice(1),
-    ...lazyRoute(
-      () => import('@/features/communication/pages/communication-inbox-page'),
-      'CommunicationInboxPage',
-    ),
+    element: <Navigate to={`${ROUTES.COMMUNICATION}?tab=notifications`} replace />,
   },
   {
     path: ROUTES.COMMUNICATION_SEARCH.slice(1),
-    ...lazyRoute(
-      () => import('@/features/communication/pages/communication-search-page'),
-      'CommunicationSearchPage',
-    ),
+    element: <Navigate to={ROUTES.COMMUNICATION} replace />,
   },
   {
     path: ROUTES.INTEGRATIONS.slice(1),

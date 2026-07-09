@@ -18,9 +18,11 @@ function clearRefreshTimer(): void {
 
 async function runProactiveRefresh(): Promise<void> {
   const { refreshAccessTokenOnce } = await import('@/shared/auth/auth-session');
+  const { useAuthStore } = await import('@/shared/stores/app.store');
   const result = await refreshAccessTokenOnce();
   if (result === 'invalid') {
     stopProactiveTokenRefresh();
+    useAuthStore.getState().clearAuth();
     return;
   }
   if (result === 'unavailable') {

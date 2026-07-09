@@ -1,5 +1,6 @@
 import apiClient from '@/shared/api/axios.client';
 import type { ApiSuccessResponse, PaginatedResult, PaginationMeta } from '@/shared/types/api.types';
+import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 
 const COMMUNICATION_PREFIX = '/api/v1/communication';
 
@@ -147,6 +148,9 @@ export interface Conversation {
   isPrivate?: boolean;
   pinnedMessageIds?: string[];
   lastMessageAt?: string;
+  peerDisplayName?: string;
+  peerParticipantId?: string;
+  lastMessagePreview?: string;
   description?: string;
   createdAt?: string;
 }
@@ -155,6 +159,7 @@ export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
+  senderName?: string;
   content: string;
   isEdited?: boolean;
   editedAt?: string;
@@ -524,6 +529,13 @@ export async function fetchDirectConversations(
   return unwrapList(response);
 }
 
+export async function fetchCompanyChat(): Promise<Conversation> {
+  const response = await apiClient.get<ApiSuccessResponse<Conversation>>(
+    `${COMMUNICATION_PREFIX}/conversations/company`,
+  );
+  return unwrap(response);
+}
+
 export async function fetchEmployeeDirectConversations(
   employeeId: string,
   params: ListParams = {},
@@ -546,11 +558,18 @@ export async function fetchMessages(
   conversationId: string,
   params: ListParams = {},
 ): Promise<ListResponse<Message>> {
-  const response = await apiClient.get<ApiSuccessResponse<Message[] | ListResponse<Message>>>(
-    `${COMMUNICATION_PREFIX}/conversations/${conversationId}/messages`,
-    { params },
-  );
-  return unwrapList(response);
+  const response = await apiClient.get<
+    ApiSuccessResponse<Message[]> & { pagination?: PaginationMeta }
+  >(`${COMMUNICATION_PREFIX}/conversations/${conversationId}/messages`, {
+    params: { ...params, pageSize: params.pageSize ?? 100 },
+  });
+  const paginated = unwrapApiPaginated(response.data, params.pageSize ?? 100);
+  return {
+    items: paginated.items,
+    total: paginated.pagination.total,
+    page: paginated.pagination.page,
+    pageSize: paginated.pagination.pageSize,
+  };
 }
 
 export async function sendMessage(

@@ -14,6 +14,20 @@ const PROJECT_ROLE_LABELS: Record<string, string> = {
 
 export function formatProjectStatus(slug: string): string {
   if (!slug) return '';
+  const TASK_STATUS_LABELS: Record<string, string> = {
+    backlog: 'Backlog',
+    todo: 'To Do',
+    assigned: 'Assigned',
+    in_progress: 'In Progress',
+    blocked: 'Blocked',
+    waiting_verification: 'Waiting Verification',
+    completed: 'Completed',
+    rejected: 'Rejected',
+    cancelled: 'Cancelled',
+  };
+  if (TASK_STATUS_LABELS[slug]) {
+    return TASK_STATUS_LABELS[slug];
+  }
   return slug
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

@@ -3,10 +3,14 @@ import { Server as SocketIOServer } from 'socket.io';
 import { getEnv } from '@config/env.js';
 import { createSocketCorsOptions } from '@config/cors.config.js';
 import { logger } from '@logging/winston.logger.js';
+import {
+  COMMUNICATION_SOCKET_EVENTS,
+  CommunicationSocketService,
+} from '@modules/communication/services/communication-socket.service.js';
 
 let io: SocketIOServer | null = null;
 
-/** Socket.io initialization only — no business events in Phase 0 */
+/** Socket.io initialization — communication rooms when enabled */
 export function initializeSocket(httpServer: HttpServer): SocketIOServer | null {
   const env = getEnv();
 
@@ -22,6 +26,18 @@ export function initializeSocket(httpServer: HttpServer): SocketIOServer | null 
 
   io.on('connection', (socket) => {
     logger.debug('Socket client connected', { socketId: socket.id });
+
+    socket.on(COMMUNICATION_SOCKET_EVENTS.JOIN_CONVERSATION, (conversationId: string) => {
+      if (typeof conversationId === 'string' && conversationId.length > 0) {
+        CommunicationSocketService.joinConversation(socket.id, conversationId);
+      }
+    });
+
+    socket.on(COMMUNICATION_SOCKET_EVENTS.LEAVE_CONVERSATION, (conversationId: string) => {
+      if (typeof conversationId === 'string' && conversationId.length > 0) {
+        CommunicationSocketService.leaveConversation(socket.id, conversationId);
+      }
+    });
 
     socket.on('disconnect', () => {
       logger.debug('Socket client disconnected', { socketId: socket.id });

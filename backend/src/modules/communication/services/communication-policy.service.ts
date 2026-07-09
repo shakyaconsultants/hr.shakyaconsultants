@@ -1,4 +1,8 @@
-import { AppSettingRepository, SETTING_GROUP, SETTING_VALUE_TYPE } from '@domain/master-data/master-data.schemas.js';
+import {
+  AppSettingRepository,
+  SETTING_GROUP,
+  SETTING_VALUE_TYPE,
+} from '@domain/master-data/master-data.schemas.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import {
   COMMUNICATION_POLICY_KEYS,
@@ -102,7 +106,10 @@ function mergePreferences(raw: unknown): NotificationPreferenceSettings {
         : [...DEFAULT_NOTIFICATION_PREFERENCES.mutedCategories],
     };
   }
-  return { ...DEFAULT_NOTIFICATION_PREFERENCES, mutedCategories: [...DEFAULT_NOTIFICATION_PREFERENCES.mutedCategories] };
+  return {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    mutedCategories: [...DEFAULT_NOTIFICATION_PREFERENCES.mutedCategories],
+  };
 }
 
 export const CommunicationPolicyService = {
@@ -125,7 +132,10 @@ export const CommunicationPolicyService = {
     };
   },
 
-  async updatePolicies(context: CommunicationActorContext, payload: Partial<CommunicationPolicySettings>): Promise<CommunicationPolicySettings> {
+  async updatePolicies(
+    context: CommunicationActorContext,
+    payload: Partial<CommunicationPolicySettings>,
+  ): Promise<CommunicationPolicySettings> {
     const before = await this.getPolicies(context.companyId);
     const after = { ...before, ...payload };
 
@@ -145,7 +155,7 @@ export const CommunicationPolicyService = {
       entityId: context.companyId,
       action: 'update',
       before: before as unknown as Record<string, unknown>,
-      after: after as unknown as Record<string, unknown>,
+      after: after,
       ip: context.ip,
       userAgent: context.userAgent,
     });
@@ -153,23 +163,47 @@ export const CommunicationPolicyService = {
     return after;
   },
 
-  async updateSettings(context: CommunicationActorContext, payload: {
-    policies?: Partial<CommunicationPolicySettings>;
-    templates?: AnnouncementTemplate[];
-    preferences?: Partial<NotificationPreferenceSettings>;
-  }): Promise<CommunicationSettings> {
+  async updateSettings(
+    context: CommunicationActorContext,
+    payload: {
+      policies?: Partial<CommunicationPolicySettings>;
+      templates?: AnnouncementTemplate[];
+      preferences?: Partial<NotificationPreferenceSettings>;
+    },
+  ): Promise<CommunicationSettings> {
     const current = await this.getSettings(context.companyId);
 
     if (payload.policies !== undefined) {
       const merged = { ...current.policies, ...payload.policies };
-      await upsertSetting(context.companyId, COMMUNICATION_POLICY_KEYS.POLICIES, merged, SETTING_VALUE_TYPE.JSON, 'Communication policies', context.userId);
+      await upsertSetting(
+        context.companyId,
+        COMMUNICATION_POLICY_KEYS.POLICIES,
+        merged,
+        SETTING_VALUE_TYPE.JSON,
+        'Communication policies',
+        context.userId,
+      );
     }
     if (payload.templates !== undefined) {
-      await upsertSetting(context.companyId, COMMUNICATION_POLICY_KEYS.TEMPLATES, payload.templates, SETTING_VALUE_TYPE.JSON, 'Announcement templates', context.userId);
+      await upsertSetting(
+        context.companyId,
+        COMMUNICATION_POLICY_KEYS.TEMPLATES,
+        payload.templates,
+        SETTING_VALUE_TYPE.JSON,
+        'Announcement templates',
+        context.userId,
+      );
     }
     if (payload.preferences !== undefined) {
       const merged = { ...current.preferences, ...payload.preferences };
-      await upsertSetting(context.companyId, COMMUNICATION_POLICY_KEYS.PREFERENCES, merged, SETTING_VALUE_TYPE.JSON, 'Notification preferences', context.userId);
+      await upsertSetting(
+        context.companyId,
+        COMMUNICATION_POLICY_KEYS.PREFERENCES,
+        merged,
+        SETTING_VALUE_TYPE.JSON,
+        'Notification preferences',
+        context.userId,
+      );
     }
 
     return this.getSettings(context.companyId);

@@ -53,7 +53,10 @@ export const CommunicationDashboardService = {
         { type: CONVERSATION_TYPE.CHANNEL, participantIds: { $in: teamIds } },
         { companyId: context.companyId },
       ),
-      AnnouncementRepository.findMany({ authorUserId: context.userId }, { companyId: context.companyId }),
+      AnnouncementRepository.findMany(
+        { authorUserId: context.userId },
+        { companyId: context.companyId },
+      ),
       NotificationRepository.findMany(
         { recipientId: context.userId, readAt: { $exists: false }, isArchived: false },
         { companyId: context.companyId },
@@ -75,13 +78,16 @@ export const CommunicationDashboardService = {
         { companyId: context.companyId },
       ),
       context.employeeId
-        ? ConversationRepository.findMany({ participantIds: context.employeeId }, { companyId: context.companyId })
+        ? ConversationRepository.findMany(
+            { participantIds: context.employeeId },
+            { companyId: context.companyId },
+          )
         : Promise.resolve([]),
       context.employeeId
         ? MessageReceiptRepository.findMany(
-          { recipientId: context.employeeId, readAt: { $exists: false } },
-          { companyId: context.companyId },
-        ).then((r) => r.length)
+            { recipientId: context.employeeId, readAt: { $exists: false } },
+            { companyId: context.companyId },
+          ).then((r) => r.length)
         : Promise.resolve(0),
     ]);
 

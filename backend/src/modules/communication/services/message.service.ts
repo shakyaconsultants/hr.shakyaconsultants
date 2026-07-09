@@ -10,10 +10,19 @@ import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ForbiddenError, NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
-import { BROADCAST_PERMISSIONS } from '@modules/communication/constants/communication-permissions.constants.js';
 import { COMMUNICATION_NOTIFICATION_JOB } from '@modules/communication/constants/communication.constants.js';
 import { CommunicationAuditService } from '@modules/communication/services/communication-audit.service.js';
 import { CommunicationEventService } from '@modules/communication/services/communication-event.service.js';
+import { CommunicationSocketService } from '@modules/communication/services/communication-socket.service.js';
+import {
+  enrichMessageRecord,
+  enrichMessageRecords,
+} from '@modules/communication/services/message-display.service.js';
+import {
+  canSendInConversation,
+  isConversationParticipant,
+  primaryActorParticipantId,
+} from '@modules/communication/utils/participant.util.js';
 import type { CommunicationActorContext } from '@modules/approval/types/approval.types.js';
 
 interface MessageListQuery {
@@ -33,33 +42,6 @@ interface UpdateMessageInput {
   content: string;
 }
 
-function canAccessConversation(
-  context: CommunicationActorContext,
-  participantIds: string[],
-): boolean {
-  if (context.isSuperAdmin) {
-    return true;
-  }
-
-  const permissions = context.permissions ?? [];
-  if (
-    permissions.includes(BROADCAST_PERMISSIONS.BROADCAST) ||
-    permissions.includes('employee.read')
-  ) {
-    return true;
-  }
-
-  const actorId = context.employeeId ?? context.userId;
-  return participantIds.includes(actorId);
-}
-
-function actorParticipantId(context: CommunicationActorContext): string | undefined {
-  const permissions = context.permissions ?? [];
-  const canUseUserId =
-    context.isSuperAdmin || permissions.includes(BROADCAST_PERMISSIONS.BROADCAST);
-  return context.employeeId ?? (canUseUserId ? context.userId : undefined);
-}
-
 export const MessageService = {
   async list(context: CommunicationActorContext, conversationId: string, query: MessageListQuery) {
     const conversation = await ConversationRepository.findById(conversationId, {
@@ -69,11 +51,11 @@ export const MessageService = {
       throw new NotFoundError('Conversation not found', ERROR_CODES.NOT_FOUND);
     }
 
-    if (!canAccessConversation(context, conversation.participantIds)) {
+    if (!isConversationParticipant(context, conversation.participantIds)) {
       throw new ForbiddenError('Not a conversation participant', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
-    return MessageRepository.paginate(
+    const result = await MessageRepository.paginate(
       { conversationId, isDeleted: false },
       {
         page: query.page,
@@ -83,10 +65,17 @@ export const MessageService = {
       },
       { companyId: context.companyId },
     );
+
+    const items = await enrichMessageRecords(
+      context.companyId,
+      result.items.map((item) => CommunicationAuditService.toRecord(item)),
+    );
+
+    return { ...result, items };
   },
 
   async send(context: CommunicationActorContext, conversationId: string, input: SendMessageInput) {
-    const senderId = actorParticipantId(context);
+    const senderId = primaryActorParticipantId(context);
     if (!senderId) {
       throw new ForbiddenError('Employee profile required', ERROR_CODES.AUTH_FORBIDDEN);
     }
@@ -98,7 +87,7 @@ export const MessageService = {
       throw new NotFoundError('Conversation not found', ERROR_CODES.NOT_FOUND);
     }
 
-    if (!conversation.participantIds.includes(senderId)) {
+    if (!canSendInConversation(context, conversation.participantIds)) {
       throw new ForbiddenError('Not a conversation participant', ERROR_CODES.AUTH_FORBIDDEN);
     }
 
@@ -140,7 +129,7 @@ export const MessageService = {
       }
     }
 
-    const otherParticipants = conversation.participantIds.filter((id) => id !== context.employeeId);
+    const otherParticipants = conversation.participantIds.filter((id) => id !== senderId);
     for (const recipientId of otherParticipants) {
       await MessageReceiptRepository.create(
         {
@@ -191,7 +180,12 @@ export const MessageService = {
       userAgent: context.userAgent,
     });
 
-    return CommunicationAuditService.toRecord(message);
+    const record = await enrichMessageRecord(
+      context.companyId,
+      CommunicationAuditService.toRecord(message),
+    );
+    CommunicationSocketService.emitNewMessage(conversationId, record);
+    return record;
   },
 
   async update(context: CommunicationActorContext, messageId: string, input: UpdateMessageInput) {

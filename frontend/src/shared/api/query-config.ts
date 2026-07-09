@@ -17,12 +17,12 @@ function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   return failureCount < 1;
 }
 
-/** Live data defaults — refetch when screens mount or after mutations invalidate cache. */
+/** Live data defaults — cache briefly; avoid refetch storms on login/refresh. */
 export const ON_DEMAND_QUERY_OPTIONS = {
-  staleTime: 0,
+  staleTime: 30_000,
   gcTime: 10 * 60_000,
   refetchOnMount: true,
-  refetchOnWindowFocus: true,
+  refetchOnWindowFocus: false,
   refetchOnReconnect: true,
   retry: shouldRetryQuery,
 } as const;

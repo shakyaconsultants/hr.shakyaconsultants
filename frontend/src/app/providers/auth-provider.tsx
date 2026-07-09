@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.api';
 import {
@@ -32,17 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const setAuthStatus = useAuthStore((s) => s.setAuthStatus);
-  const restoreStartedRef = useRef(false);
 
   useEffect(() => {
-    if (restoreStartedRef.current) {
-      return;
-    }
     if (useAuthStore.getState().authStatus !== AUTH_STATUS.RESTORING) {
       return;
     }
 
-    restoreStartedRef.current = true;
     let cancelled = false;
 
     void (async () => {

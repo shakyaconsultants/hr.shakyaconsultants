@@ -65,25 +65,17 @@ export function resolveSalesHubRoute(portal: PortalType, hasPermission: Permissi
 
 /** Resolve communication landing route from authenticated portal. */
 export function resolveCommunicationHubRoute(
-  portal: PortalType,
+  _portal: PortalType,
   hasPermission: PermissionCheck,
 ): string {
-  if (portal === PORTAL.ENTERPRISE) {
-    if (hasPermission('notification.read') || hasPermission('notifications.broadcast')) {
-      return ROUTES.COMMUNICATION;
-    }
-    return ROUTES.FORBIDDEN;
-  }
-
-  if (portal === PORTAL.MANAGER) {
-    if (hasPermission('conversation.read')) {
-      return ROUTES.COMMUNICATION_MANAGER;
-    }
-    return ROUTES.FORBIDDEN;
-  }
-
-  if (hasPermission('chat.message.send') || hasPermission('conversation.read')) {
-    return ROUTES.WORKSPACE_MESSAGES;
+  if (
+    hasPermission('conversation.read') ||
+    hasPermission('chat.message.send') ||
+    hasPermission('announcement.read') ||
+    hasPermission('notification.read') ||
+    hasPermission('notifications.broadcast')
+  ) {
+    return ROUTES.COMMUNICATION;
   }
   return ROUTES.FORBIDDEN;
 }

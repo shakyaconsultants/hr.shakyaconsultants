@@ -36,7 +36,8 @@ export function useAllEmployees(params: Omit<ListEmployeesParams, 'page' | 'page
   return useQuery({
     queryKey: [...employeeQueryKeys.all, 'all', params] as const,
     queryFn: () => fetchAllEmployees(params),
-    refetchOnMount: true,
+    staleTime: 5 * 60_000,
+    refetchOnMount: false,
   });
 }
 

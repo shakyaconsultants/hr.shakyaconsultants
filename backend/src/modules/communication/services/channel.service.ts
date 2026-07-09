@@ -7,6 +7,7 @@ import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { ProjectMemberRepository } from '@domain/project/project.schemas.js';
 import { ForbiddenError, NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { BROADCAST_PERMISSIONS } from '@modules/communication/constants/communication-permissions.constants.js';
 import { CommunicationAuditService } from '@modules/communication/services/communication-audit.service.js';
@@ -275,5 +276,65 @@ export const ChannelService = {
     });
 
     return { id, deleted: true };
+  },
+
+  async getOrCreateCompanyChat(context: CommunicationActorContext) {
+    const COMPANY_CHAT_ENTITY_ID = 'company-wide';
+    const authorEmployeeId = context.employeeId ?? context.userId;
+
+    const existing = await ConversationRepository.findOne(
+      {
+        type: CONVERSATION_TYPE.CHANNEL,
+        relatedEntityId: COMPANY_CHAT_ENTITY_ID,
+      },
+      { companyId: context.companyId },
+    );
+
+    if (existing) {
+      if (context.employeeId && !existing.participantIds.includes(context.employeeId)) {
+        const updated = await ConversationRepository.update(
+          existing.id,
+          {
+            participantIds: [...new Set([...existing.participantIds, context.employeeId])],
+            updatedBy: context.userId,
+          },
+          { companyId: context.companyId },
+        );
+        return CommunicationAuditService.toRecord(updated ?? existing);
+      }
+      return CommunicationAuditService.toRecord(existing);
+    }
+
+    const employees = await EmployeeRepository.findMany(
+      { status: ENTITY_STATUS.ACTIVE },
+      { companyId: context.companyId },
+    );
+    const participantIds = [...new Set(employees.map((employee) => employee.id))];
+    if (authorEmployeeId && !participantIds.includes(authorEmployeeId)) {
+      participantIds.push(authorEmployeeId);
+    }
+
+    const channel = await ConversationRepository.create(
+      {
+        id: generateUuid(),
+        companyId: context.companyId,
+        title: 'Everyone',
+        description: 'Company-wide chat — visible to all employees',
+        type: CONVERSATION_TYPE.CHANNEL,
+        channelSubtype: CHANNEL_SUBTYPE.TEAM,
+        participantIds,
+        adminIds: authorEmployeeId ? [authorEmployeeId] : [],
+        relatedEntityId: COMPANY_CHAT_ENTITY_ID,
+        isReadOnly: false,
+        isPrivate: false,
+        pinnedMessageIds: [],
+        createdByParticipantId: authorEmployeeId,
+        createdBy: context.userId,
+        updatedBy: context.userId,
+      },
+      { companyId: context.companyId },
+    );
+
+    return CommunicationAuditService.toRecord(channel);
   },
 };

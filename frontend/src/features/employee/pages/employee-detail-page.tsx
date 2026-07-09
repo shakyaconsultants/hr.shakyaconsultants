@@ -19,7 +19,6 @@ import { ROUTES } from '@/config/app.config';
 import { isValidEntityId } from '@/shared/utils/entity-id.util';
 import { EmployeeEditDialog } from '@/features/employee/components/employee-edit-dialog';
 import { EmployeeRolesPanel } from '@/features/employee/components/employee-roles-panel';
-import { EmployeeMessagesPanel } from '@/features/employee/components/employee-messages-panel';
 import { EmployeeReportingPanel } from '@/features/employee/components/employee-reporting-panel';
 import { EmployeePayrollPanel } from '@/features/payroll/components/employee-payroll-panel';
 
@@ -34,7 +33,6 @@ const TABS = [
   'Assets',
   'Reporting',
   'Roles & Access',
-  'Messages',
 ] as const;
 
 export function EmployeeDetailPage() {
@@ -374,8 +372,6 @@ export function EmployeeDetailPage() {
         )}
 
         {activeTab === 'Roles & Access' && <EmployeeRolesPanel employeeId={id} />}
-
-        {activeTab === 'Messages' && <EmployeeMessagesPanel employeeId={id} />}
       </div>
 
       <EmployeeEditDialog employee={employee} open={editOpen} onOpenChange={setEditOpen} />
