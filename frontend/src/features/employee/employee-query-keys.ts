@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { invalidateAndRefetch } from '@/shared/api/query-config';
 import type { ListEmployeesParams } from '@/features/employee/api/employee.api';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 
 export const employeeQueryKeys = {
   all: ['employees'] as const,
@@ -16,7 +17,7 @@ export async function refreshEmployeeQueries(
   employeeId?: string,
 ): Promise<void> {
   await invalidateAndRefetch(queryClient, employeeQueryKeys.all);
-  if (employeeId) {
+  if (isValidEntityId(employeeId)) {
     await invalidateAndRefetch(queryClient, employeeQueryKeys.detail(employeeId));
     await invalidateAndRefetch(queryClient, employeeQueryKeys.dashboard(employeeId));
   }

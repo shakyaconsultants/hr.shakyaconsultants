@@ -16,6 +16,7 @@ import { EmployeeLifecyclePanel } from '@/features/employee/components/employee-
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 import { EmployeeEditDialog } from '@/features/employee/components/employee-edit-dialog';
 import { EmployeeRolesPanel } from '@/features/employee/components/employee-roles-panel';
 import { EmployeeMessagesPanel } from '@/features/employee/components/employee-messages-panel';
@@ -51,6 +52,10 @@ export function EmployeeDetailPage() {
   const sendActivationMutation = useSendEmployeeActivationEmail(id);
   const sendOnboardingMutation = useSendEmployeeOnboardingEmail(id);
   const sendPasswordResetMutation = useSendEmployeePasswordResetEmail(id);
+
+  if (!isValidEntityId(id)) {
+    return <p className="text-destructive">Invalid employee link.</p>;
+  }
 
   if (isLoading) {
     return <Loading message="Loading employee profile..." />;

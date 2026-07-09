@@ -6,8 +6,10 @@ import type {
 } from '@/shared/types/api.types';
 import { unwrapApiPaginated } from '@/shared/utils/api-normalize.util';
 import { API_MAX_PAGE_SIZE } from '@/shared/constants/pagination.constants';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 
 const EMPLOYEE_PREFIX = '/api/v1/employees';
+const EMPLOYEE_CREATE_TIMEOUT_MS = 30_000;
 
 export interface EmployeeRecord {
   id: string;
@@ -30,6 +32,12 @@ export interface EmployeeRecord {
   welcomeEmailError?: string;
   alreadyExists?: boolean;
   message?: string;
+}
+
+/** Ensure API payloads always expose a usable `id` (Mongoose spread responses may omit it). */
+export function normalizeEmployeeRecord(raw: EmployeeRecord & { _id?: string }): EmployeeRecord {
+  const id = isValidEntityId(raw.id) ? raw.id : isValidEntityId(raw._id) ? raw._id : raw.id;
+  return { ...raw, id };
 }
 
 export interface EmployeeEmailDeliveryView {
@@ -150,8 +158,9 @@ export async function createEmployee(payload: Record<string, unknown>): Promise<
   const { data } = await apiClient.post<ApiSuccessResponse<EmployeeRecord>>(
     EMPLOYEE_PREFIX,
     payload,
+    { timeout: EMPLOYEE_CREATE_TIMEOUT_MS },
   );
-  return data.data;
+  return normalizeEmployeeRecord(data.data);
 }
 
 export async function updateEmployee(

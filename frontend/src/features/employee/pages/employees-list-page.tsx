@@ -12,6 +12,7 @@ import { ROUTES } from '@/config/app.config';
 import type { EmployeeRecord } from '@/features/employee/api/employee.api';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/shared/stores/app.store';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 
 export function EmployeesListPage() {
   const [search, setSearch] = useState('');
@@ -21,7 +22,10 @@ export function EmployeesListPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canCreate = hasPermission('employee.create');
   const canExport = hasPermission('employee.read');
-  const { data, isLoading, isError, error, refetch } = useEmployees({ search: search || undefined, pageSize: 50 });
+  const { data, isLoading, isError, error, refetch } = useEmployees({
+    search: search || undefined,
+    pageSize: 50,
+  });
   const exportMutation = useExportEmployees();
 
   useEffect(() => {
@@ -106,7 +110,11 @@ export function EmployeesListPage() {
               </Button>
             ) : undefined
           }
-          onRowClick={(row) => navigate(ROUTES.employeeDetail(row.id))}
+          onRowClick={(row) => {
+            if (isValidEntityId(row.id)) {
+              navigate(ROUTES.employeeDetail(row.id));
+            }
+          }}
         />
       </PageDataBoundary>
 

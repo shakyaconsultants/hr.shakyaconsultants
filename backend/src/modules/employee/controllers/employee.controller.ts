@@ -17,6 +17,7 @@ import { EmployeeValidationService } from '@modules/employee/services/employee-v
 import { EmployeeLifecycleService } from '@modules/employee/services/employee-lifecycle.service.js';
 import { ValidationError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
+import { toPlainDocument } from '@infrastructure/database/document.util.js';
 import { logger } from '@logging/winston.logger.js';
 import type { z } from 'zod';
 import {
@@ -87,7 +88,7 @@ async function tryReturnExistingEmployeeOnEmailConflict(
     if (resolvedId) {
       const employee = await EmployeeService.getById(authReq.user.companyId, resolvedId);
       ResponseService.success(res, authReq, {
-        ...employee,
+        ...toPlainDocument(employee),
         alreadyExists: true,
         welcomeEmailSent: false,
         message: availability.message || error.message,
@@ -179,7 +180,7 @@ export const createEmployee: RequestHandler = async (req, res, next) => {
     const payload = validateInput(adminCreateEmployeeSchema, req.body);
     const result = await EmployeeService.create(buildActor(authReq), payload);
     return ResponseService.created(res, authReq, {
-      ...result.employee,
+      ...toPlainDocument(result.employee),
       welcomeEmailSent: result.welcomeEmailSent,
       welcomeEmailError: result.welcomeEmailError,
     });

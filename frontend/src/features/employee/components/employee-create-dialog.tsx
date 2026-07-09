@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCreateEmployee } from '@/features/employee/hooks/use-employees';
 import { checkEmployeeEmailAvailability } from '@/features/employee/api/employee.api';
 import { refreshEmployeeQueries } from '@/features/employee/employee-query-keys';
+import { isValidEntityId } from '@/shared/utils/entity-id.util';
 import { FormDialog } from '@/shared/components/form-dialog';
 import { FormSection, FORM_SECTIONS } from '@/shared/components/form-section';
 import { SelectField } from '@/shared/components/select-field';
@@ -159,7 +160,8 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
       }
 
       const employee = await createMutation.mutateAsync(payload);
-      await refreshEmployeeQueries(queryClient, employee.id);
+      const employeeId = isValidEntityId(employee.id) ? employee.id : undefined;
+      await refreshEmployeeQueries(queryClient, employeeId);
 
       if (employee.alreadyExists) {
         toastInfo('Employee already exists', employee.message ?? 'Opening their profile.');
@@ -175,9 +177,31 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
       }
 
       onOpenChange(false);
-      navigate(ROUTES.employeeDetail(employee.id));
+      if (employeeId) {
+        navigate(ROUTES.employeeDetail(employeeId));
+      }
     } catch (mutationError) {
       const parsed = parseMutationError(mutationError);
+      if (parsed.statusCode === 0 && trimmedEmail && !parsed.isForbidden && !parsed.isNotFound) {
+        try {
+          const recovery = await checkEmployeeEmailAvailability(trimmedEmail);
+          if (
+            !recovery.available &&
+            isValidEntityId(recovery.employeeId) &&
+            recovery.reason === 'DUPLICATE_EMAIL'
+          ) {
+            toastInfo(
+              'Employee was created',
+              'The connection dropped after save, but the employee record exists. Opening their profile.',
+            );
+            onOpenChange(false);
+            navigate(ROUTES.employeeDetail(recovery.employeeId));
+            return;
+          }
+        } catch {
+          // Fall through to default error handling.
+        }
+      }
       if (
         parsed.isConflict &&
         parsed.conflictEmployeeId &&
