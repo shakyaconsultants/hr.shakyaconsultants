@@ -97,8 +97,8 @@ export function buildComponentOverrides(
       continue;
     }
     const customAmount = customAmounts[component.code];
-    if (customAmount !== undefined && customAmount !== component.amount) {
-      overrides.push({ code: component.code, amount: customAmount, type: component.type });
+    if (customAmount !== undefined) {
+      overrides.push({ code: component.code, amount: customAmount, type: 'fixed' });
     }
   }
 

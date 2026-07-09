@@ -1,5 +1,4 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Sparkles } from 'lucide-react';
 import { AnnexureASalaryTable } from '@/features/payroll/components/annexure-a-salary-table';
 import {
   useAssignCompensation,
@@ -13,7 +12,6 @@ import {
   buildTemplateComponents,
   INDIA_STANDARD_PAYROLL_TEMPLATE,
   isOptionalComponent,
-  suggestBasicFromAnnualCtc,
 } from '@/features/payroll/constants/payroll-structure.constants';
 import {
   buildComponentOverrides,
@@ -21,7 +19,6 @@ import {
   resolveEffectiveComponents,
 } from '@/features/payroll/utils/ctc-breakdown.util';
 import { runFormMutation } from '@/shared/feedback/run-form-mutation';
-import { DatePicker } from '@/shared/components/date-picker';
 import { Loading } from '@/shared/components/loading';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -38,6 +35,13 @@ function resolveComponentAmount(component: SalaryComponent, basicSalary: number)
   return component.amount;
 }
 
+function formatComponentType(component: SalaryComponent): string {
+  if (component.type === 'percentage') {
+    return `${component.amount}% of basic`;
+  }
+  return 'Fixed';
+}
+
 export function CompensationSetupWizard({ employeeId, onSuccess }: CompensationSetupWizardProps) {
   const { data: existing, isLoading: existingLoading } = useEmployeeCompensation(employeeId);
   const { data: structures, isLoading: structuresLoading } = useSalaryStructures({
@@ -48,38 +52,74 @@ export function CompensationSetupWizard({ employeeId, onSuccess }: CompensationS
   const createStructure = useCreateSalaryStructure();
 
   const [salaryStructureId, setSalaryStructureId] = useState('');
-  const [baseSalary, setBaseSalary] = useState(0);
-  const [annualCtc, setAnnualCtc] = useState('');
-  const [effectiveFrom, setEffectiveFrom] = useState('');
+  const [baseSalary, setBaseSalary] = useState(25_000);
   const [enabledComponents, setEnabledComponents] = useState<Record<string, boolean>>({});
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
+  const [structureReady, setStructureReady] = useState(false);
 
   const selectedStructure = structures?.items.find((item) => item.id === salaryStructureId);
-  const structureComponents = selectedStructure?.components ?? [];
+  const structureComponents = selectedStructure?.components ?? buildTemplateComponents();
 
   useEffect(() => {
-    if (!selectedStructure) return;
-    setEnabledComponents(buildDefaultComponentEnabled(selectedStructure.components));
-    setCustomAmounts({});
-    if (!baseSalary && selectedStructure.baseSalary > 0) {
-      setBaseSalary(selectedStructure.baseSalary);
-    }
-  }, [selectedStructure?.id]);
+    if (structuresLoading || structureReady) return;
 
-  useEffect(() => {
-    if (existing?.salaryStructureId && !salaryStructureId) {
-      setSalaryStructureId(existing.salaryStructureId);
-      setBaseSalary(existing.baseSalary);
-      const enabled = buildDefaultComponentEnabled(existing.salaryStructure?.components ?? []);
-      for (const override of existing.componentOverrides ?? []) {
-        if (override.amount === 0) {
-          enabled[override.code] = false;
-        }
+    const standard =
+      structures?.items.find((item) => item.code === INDIA_STANDARD_PAYROLL_TEMPLATE.code) ??
+      structures?.items[0];
+
+    if (standard) {
+      setSalaryStructureId(standard.id);
+      setEnabledComponents(buildDefaultComponentEnabled(standard.components));
+      if (!existing?.baseSalary && standard.baseSalary > 0) {
+        setBaseSalary(standard.baseSalary);
       }
-      setEnabledComponents(enabled);
+      setStructureReady(true);
+      return;
     }
-  }, [existing, salaryStructureId]);
+
+    if ((structures?.items.length ?? 0) === 0 && !createStructure.isPending) {
+      void createStructure
+        .mutateAsync({
+          name: INDIA_STANDARD_PAYROLL_TEMPLATE.name,
+          code: INDIA_STANDARD_PAYROLL_TEMPLATE.code,
+          baseSalary: 25_000,
+          currency: INDIA_STANDARD_PAYROLL_TEMPLATE.currency,
+          components: buildTemplateComponents(),
+        })
+        .then((created) => {
+          setSalaryStructureId(created.id);
+          setEnabledComponents(buildDefaultComponentEnabled(created.components));
+          setStructureReady(true);
+        })
+        .catch(() => setStructureReady(true));
+    }
+  }, [structures, structuresLoading, structureReady, createStructure, existing?.baseSalary]);
+
+  useEffect(() => {
+    if (!existing) return;
+
+    if (existing.salaryStructureId) {
+      setSalaryStructureId(existing.salaryStructureId);
+    }
+    if (existing.baseSalary > 0) {
+      setBaseSalary(existing.baseSalary);
+    }
+
+    const enabled = buildDefaultComponentEnabled(existing.salaryStructure?.components ?? []);
+    const amounts: Record<string, number> = {};
+
+    for (const override of existing.componentOverrides ?? []) {
+      if (override.amount === 0) {
+        enabled[override.code] = false;
+        continue;
+      }
+      amounts[override.code] = override.amount;
+    }
+
+    setEnabledComponents(enabled);
+    setCustomAmounts(amounts);
+  }, [existing]);
 
   const componentOverrides = useMemo(
     () => buildComponentOverrides(structureComponents, enabledComponents, customAmounts),
@@ -87,77 +127,42 @@ export function CompensationSetupWizard({ employeeId, onSuccess }: CompensationS
   );
 
   const breakdown = useMemo(() => {
-    if (!baseSalary || !selectedStructure) return null;
+    if (!baseSalary) return null;
     return computeCtcBreakdown({
       baseSalary,
-      components: selectedStructure.components,
+      components: structureComponents,
       componentOverrides,
-      currency: selectedStructure.currency,
+      currency: selectedStructure?.currency ?? 'INR',
     });
-  }, [baseSalary, selectedStructure, componentOverrides]);
+  }, [baseSalary, structureComponents, componentOverrides, selectedStructure?.currency]);
 
-  if (existingLoading || structuresLoading) {
-    return <Loading message="Loading compensation setup..." />;
-  }
-
-  if (existing?.isLocked) {
-    return (
-      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <div>
-          <p className="font-medium">Compensation is locked</p>
-          <p className="mt-1 text-amber-800">
-            Use the salary revision wizard to schedule a future change.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const createCompanyStandardStructure = async () => {
-    const basic = annualCtc ? suggestBasicFromAnnualCtc(Number(annualCtc)) : 25000;
-    const created = await createStructure.mutateAsync({
-      name: INDIA_STANDARD_PAYROLL_TEMPLATE.name,
-      code: INDIA_STANDARD_PAYROLL_TEMPLATE.code,
-      baseSalary: basic,
-      currency: INDIA_STANDARD_PAYROLL_TEMPLATE.currency,
-      components: buildTemplateComponents(),
-    });
-    setSalaryStructureId(created.id);
-    setBaseSalary(basic);
-  };
-
-  const onStructureChange = (structureId: string) => {
-    setSalaryStructureId(structureId);
-    const structure = structures?.items.find((item) => item.id === structureId);
-    if (structure) {
-      setBaseSalary(structure.baseSalary);
+  const getRowAmount = (component: SalaryComponent): number => {
+    if (customAmounts[component.code] !== undefined) {
+      return customAmounts[component.code];
     }
-  };
-
-  const applyAnnualCtc = () => {
-    const annual = Number(annualCtc);
-    if (!Number.isFinite(annual) || annual <= 0) return;
-    setBaseSalary(suggestBasicFromAnnualCtc(annual));
+    return resolveComponentAmount(component, baseSalary);
   };
 
   const toggleComponent = (code: string, checked: boolean) => {
     setEnabledComponents((prev) => ({ ...prev, [code]: checked }));
   };
 
+  const setComponentAmount = (code: string, amount: number) => {
+    setCustomAmounts((prev) => ({ ...prev, [code]: amount }));
+  };
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (assignCompensation.isPending) return;
-    if (!salaryStructureId || !effectiveFrom || baseSalary <= 0) {
-      setError('Select a company salary structure, enter basic salary, and set effective date.');
+    if (assignCompensation.isPending || !salaryStructureId || baseSalary <= 0) {
+      setError('Enter a valid basic salary before saving.');
       return;
     }
 
+    const effectiveFrom = existing?.effectiveFrom ?? new Date().toISOString().slice(0, 10);
+
     await runFormMutation({
       setError,
-      successMessage: existing
-        ? 'Compensation updated successfully.'
-        : 'Compensation assigned successfully.',
+      successMessage: existing ? 'Salary structure updated.' : 'Salary structure saved.',
       mutation: () =>
         assignCompensation.mutateAsync({
           employeeId,
@@ -170,205 +175,108 @@ export function CompensationSetupWizard({ employeeId, onSuccess }: CompensationS
     });
   };
 
-  const hasStructures = (structures?.items.length ?? 0) > 0;
+  if (existingLoading || structuresLoading || !structureReady) {
+    return <Loading message="Loading salary components..." />;
+  }
 
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="space-y-8">
-      <section className="rounded-xl border bg-gradient-to-br from-primary/5 via-card to-card p-5">
-        <h4 className="font-semibold">Step 1 — Company salary structure</h4>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Salary is built from a company-wide structure (Annexure A template). Create the standard
-          structure once, then assign it to each employee with optional components toggled on or
-          off.
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <h4 className="font-semibold">Step 3 — Salary components</h4>
+        <p className="text-sm text-muted-foreground">
+          Toggle optional allowances on or off. Edit monthly amounts directly. Core components
+          (Basic, HRA, Special Allowance) are always included.
         </p>
+        <div className="overflow-hidden rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30 text-left">
+                <th className="px-4 py-2.5 font-medium">Include</th>
+                <th className="px-4 py-2.5 font-medium">Component</th>
+                <th className="px-4 py-2.5 font-medium">Type</th>
+                <th className="px-4 py-2.5 text-right font-medium">Monthly amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b bg-muted/10">
+                <td className="px-4 py-2.5">
+                  <input type="checkbox" checked disabled aria-label="Basic always included" />
+                </td>
+                <td className="px-4 py-2.5 font-medium">Basic Salary</td>
+                <td className="px-4 py-2.5 text-muted-foreground">Fixed</td>
+                <td className="px-4 py-2.5 text-right">
+                  <Input
+                    type="number"
+                    min={0}
+                    className="ml-auto w-32 text-right"
+                    value={baseSalary || ''}
+                    onChange={(e) => setBaseSalary(Number(e.target.value))}
+                    required
+                  />
+                </td>
+              </tr>
+              {structureComponents.map((component) => {
+                const optional = isOptionalComponent(component);
+                const enabled = enabledComponents[component.code] !== false;
+                const amount = getRowAmount(component);
 
-        {!hasStructures ? (
-          <div className="mt-4 rounded-lg border border-dashed bg-background p-4">
-            <p className="text-sm text-muted-foreground">No company salary structures yet.</p>
-            <Button
-              type="button"
-              className="mt-3"
-              size="sm"
-              onClick={() => void createCompanyStandardStructure()}
-              disabled={createStructure.isPending}
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {createStructure.isPending ? 'Creating...' : 'Create India Standard CTC structure'}
-            </Button>
-          </div>
-        ) : (
-          <label className="mt-4 block space-y-1 text-sm">
-            <span className="font-medium">Select structure</span>
-            <select
-              className="w-full max-w-xl rounded-md border bg-background p-2"
-              value={salaryStructureId}
-              onChange={(e) => onStructureChange(e.target.value)}
-              required
-            >
-              <option value="">Choose company salary structure...</option>
-              {(structures?.items ?? []).map((structure) => (
-                <option key={structure.id} value={structure.id}>
-                  {structure.name} ({structure.code}) — {structure.components.length} components
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+                return (
+                  <tr key={component.code} className="border-b last:border-b-0">
+                    <td className="px-4 py-2.5">
+                      {optional ? (
+                        <input
+                          type="checkbox"
+                          checked={enabled}
+                          onChange={(e) => toggleComponent(component.code, e.target.checked)}
+                          aria-label={`Include ${component.name}`}
+                        />
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked
+                          disabled
+                          aria-label={`${component.name} required`}
+                        />
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 font-medium">{component.name}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {formatComponentType(component)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      {enabled ? (
+                        <Input
+                          type="number"
+                          min={0}
+                          className="ml-auto w-32 text-right"
+                          value={amount}
+                          onChange={(e) =>
+                            setComponentAmount(component.code, Number(e.target.value))
+                          }
+                        />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      {selectedStructure ? (
-        <>
-          <section className="space-y-4 rounded-xl border bg-card p-5">
-            <h4 className="font-semibold">Step 2 — Basic salary & CTC</h4>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Basic salary (monthly)</span>
-                <Input
-                  type="number"
-                  min={0}
-                  value={baseSalary || ''}
-                  onChange={(e) => setBaseSalary(Number(e.target.value))}
-                  required
-                />
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Target annual CTC (optional)</span>
-                <Input
-                  type="number"
-                  value={annualCtc}
-                  onChange={(e) => setAnnualCtc(e.target.value)}
-                  placeholder="e.g. 1200000"
-                />
-              </label>
-              <div className="flex items-end">
-                <Button type="button" variant="outline" size="sm" onClick={applyAnnualCtc}>
-                  Suggest basic from CTC
-                </Button>
-              </div>
-            </div>
-            <label className="block max-w-xs space-y-1 text-sm">
-              <span className="font-medium">Effective from</span>
-              <DatePicker value={effectiveFrom} onChange={setEffectiveFrom} required />
-            </label>
-          </section>
-
-          <section className="space-y-4 rounded-xl border bg-card p-5">
-            <h4 className="font-semibold">Step 3 — Salary components</h4>
-            <p className="text-sm text-muted-foreground">
-              Toggle optional allowances on or off. Core components (Basic, HRA, Special Allowance)
-              are always included.
-            </p>
-            <div className="overflow-hidden rounded-lg border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30 text-left">
-                    <th className="px-4 py-2.5 font-medium">Include</th>
-                    <th className="px-4 py-2.5 font-medium">Component</th>
-                    <th className="px-4 py-2.5 font-medium">Type</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Monthly amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b bg-muted/10">
-                    <td className="px-4 py-2.5">
-                      <input type="checkbox" checked disabled aria-label="Basic always included" />
-                    </td>
-                    <td className="px-4 py-2.5 font-medium">Basic Salary</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">Fixed</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      ₹{baseSalary.toLocaleString('en-IN')}
-                    </td>
-                  </tr>
-                  {structureComponents.map((component) => {
-                    const optional = isOptionalComponent(component);
-                    const enabled = enabledComponents[component.code] !== false;
-                    const amount =
-                      customAmounts[component.code] ??
-                      resolveComponentAmount(component, baseSalary);
-
-                    return (
-                      <tr key={component.code} className="border-b last:border-b-0">
-                        <td className="px-4 py-2.5">
-                          {optional ? (
-                            <input
-                              type="checkbox"
-                              checked={enabled}
-                              onChange={(e) => toggleComponent(component.code, e.target.checked)}
-                              aria-label={`Include ${component.name}`}
-                            />
-                          ) : (
-                            <input
-                              type="checkbox"
-                              checked
-                              disabled
-                              aria-label={`${component.name} required`}
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className="font-medium">{component.name}</span>
-                          {component.isVariable ? (
-                            <span className="ml-1 text-xs text-amber-600">*</span>
-                          ) : null}
-                          {(component as SalaryComponent & { description?: string }).description ? (
-                            <p className="text-xs text-muted-foreground">
-                              {
-                                (component as SalaryComponent & { description?: string })
-                                  .description
-                              }
-                            </p>
-                          ) : null}
-                        </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">
-                          {component.type === 'percentage'
-                            ? `${component.amount}% of basic`
-                            : 'Fixed'}
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          {enabled && optional && component.isVariable ? (
-                            <Input
-                              type="number"
-                              min={0}
-                              className="ml-auto w-28 text-right"
-                              value={amount}
-                              onChange={(e) =>
-                                setCustomAmounts((prev) => ({
-                                  ...prev,
-                                  [component.code]: Number(e.target.value),
-                                }))
-                              }
-                            />
-                          ) : (
-                            <span className="tabular-nums text-muted-foreground">
-                              {enabled ? `₹${amount.toLocaleString('en-IN')}` : '—'}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {breakdown ? (
-            <section className="space-y-3">
-              <h4 className="font-semibold">Step 4 — Preview (Annexure A)</h4>
-              <AnnexureASalaryTable breakdown={breakdown} />
-            </section>
-          ) : null}
-        </>
+      {breakdown ? (
+        <section className="space-y-3">
+          <h4 className="font-semibold">Step 4 — Preview (Annexure A)</h4>
+          <AnnexureASalaryTable breakdown={breakdown} />
+        </section>
       ) : null}
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <Button type="submit" disabled={assignCompensation.isPending || !salaryStructureId}>
-        {assignCompensation.isPending
-          ? 'Saving...'
-          : existing
-            ? 'Update compensation'
-            : 'Assign compensation'}
+        {assignCompensation.isPending ? 'Saving...' : existing ? 'Update salary' : 'Save salary'}
       </Button>
     </form>
   );
