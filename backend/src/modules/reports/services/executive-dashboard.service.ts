@@ -114,11 +114,11 @@ export const ExecutiveDashboardService = {
         openPositions,
       },
       attendanceToday: {
-        present: attendanceToday.present,
-        absent: attendanceToday.absent,
-        onLeave: attendanceToday.onLeave,
+        present: attendanceToday.presentToday,
+        absent: attendanceToday.absentToday,
+        onLeave: attendanceToday.onLeaveToday,
         attendanceRate: attendanceToday.attendanceRate,
-        employeesOnLeave: attendanceToday.onLeave,
+        employeesOnLeave: attendanceToday.onLeaveToday,
       },
       payrollStatus: {
         pendingApproval: payrollStatus.pendingApproval,

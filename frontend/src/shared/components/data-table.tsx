@@ -73,12 +73,17 @@ export function DataTable<T extends { id?: string }>({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-auto rounded-lg border border-border bg-card">
-        <table className="w-full min-w-[640px] text-sm text-foreground">
-          <thead className={cn('border-b bg-muted/50 text-muted-foreground', stickyHeader && 'sticky top-0 z-10')}>
+      <div className="overflow-auto rounded-md border border-border bg-card">
+        <table className="w-full min-w-[640px] text-body-sm text-foreground">
+          <thead
+            className={cn(
+              'border-b border-border bg-muted/40 text-muted-foreground',
+              stickyHeader && 'sticky top-0 z-10',
+            )}
+          >
             <tr>
               {safeColumns.map((column) => (
-                <th key={column.key} className={cn('px-4 py-3 text-left font-medium', column.className)}>
+                <th key={column.key} className={cn('px-4 py-2.5 text-left', column.className)}>
                   {column.header}
                 </th>
               ))}
@@ -90,11 +95,17 @@ export function DataTable<T extends { id?: string }>({
               return (
                 <tr
                   key={rowId}
-                  className={cn('border-b last:border-0', onRowClick && 'cursor-pointer hover:bg-muted/30')}
+                  className={cn(
+                    'border-b border-border/80 last:border-0',
+                    onRowClick && 'cursor-pointer hover:bg-accent/60',
+                  )}
                   onClick={() => onRowClick?.(row)}
                 >
                   {safeColumns.map((column) => (
-                    <td key={column.key} className={cn('px-4 py-3 text-foreground', column.className)}>
+                    <td
+                      key={column.key}
+                      className={cn('px-4 py-2.5 text-foreground', column.className)}
+                    >
                       {column.render
                         ? column.render(row)
                         : formatCellValue((row as Record<string, unknown>)[column.key])}
@@ -108,9 +119,9 @@ export function DataTable<T extends { id?: string }>({
       </div>
 
       {pagination ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span className="text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+        <div className="flex flex-wrap items-center justify-between gap-2 text-data text-muted-foreground">
+          <span>
+            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
           </span>
           <div className="flex gap-2">
             <Button

@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { EMPLOYEE_BULK_ACTION } from '@modules/employee/constants/employee.constants.js';
+import {
+  DEFAULT_EMPLOYEE_TEMP_PASSWORD,
+  EMPLOYEE_BULK_ACTION,
+} from '@modules/employee/constants/employee.constants.js';
 import {
   DOCUMENT_TYPE,
   EMPLOYEE_EMPLOYMENT_STATUS,
@@ -79,7 +82,7 @@ export const adminCreateEmployeeSchema = z.object({
   employmentStatus: z
     .enum(Object.values(EMPLOYEE_EMPLOYMENT_STATUS) as [string, ...string[]])
     .optional(),
-  temporaryPassword: z.string().min(6).optional(),
+  temporaryPassword: z.string().trim().min(6).max(128).default(DEFAULT_EMPLOYEE_TEMP_PASSWORD),
 });
 
 export const createEmployeeSchema = z.object({
@@ -212,3 +215,15 @@ export const returnAssetSchema = z.object({
 export const importCsvSchema = z.object({
   content: z.string().min(1),
 });
+
+export const sendActivationEmailSchema = z
+  .object({
+    temporaryPassword: z.string().trim().min(6).max(128),
+  })
+  .strict();
+
+export const setPortalPasswordSchema = z
+  .object({
+    password: z.string().trim().min(6).max(128),
+  })
+  .strict();

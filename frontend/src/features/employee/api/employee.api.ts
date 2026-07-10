@@ -231,18 +231,37 @@ export async function reactivateEmployee(id: string): Promise<unknown> {
   return data.data;
 }
 
-export async function sendEmployeeActivationEmail(employeeId: string): Promise<{
+export async function sendEmployeeActivationEmail(
+  employeeId: string,
+  temporaryPassword: string,
+): Promise<{
   message: string;
-  expiresAt: string;
+  temporaryPassword: string;
   lifecycle: EmployeeLifecycleProfile;
 }> {
   const { data } = await apiClient.post<
     ApiSuccessResponse<{
       message: string;
-      expiresAt: string;
+      temporaryPassword: string;
       lifecycle: EmployeeLifecycleProfile;
     }>
-  >(`${EMPLOYEE_PREFIX}/${employeeId}/activate-account`);
+  >(`${EMPLOYEE_PREFIX}/${employeeId}/activate-account`, { temporaryPassword });
+  return data.data;
+}
+
+export async function setEmployeePortalPassword(
+  employeeId: string,
+  password: string,
+): Promise<{
+  message: string;
+  lifecycle: EmployeeLifecycleProfile;
+}> {
+  const { data } = await apiClient.post<
+    ApiSuccessResponse<{
+      message: string;
+      lifecycle: EmployeeLifecycleProfile;
+    }>
+  >(`${EMPLOYEE_PREFIX}/${employeeId}/set-portal-password`, { password });
   return data.data;
 }
 

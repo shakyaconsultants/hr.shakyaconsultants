@@ -54,12 +54,20 @@ import { generateUuid } from '@shared/utils/random-id.util.js';
 import type { UserDocument } from '@domain/auth/user.schema.js';
 import { AuthPerfTimer } from '@modules/auth/utils/auth-perf.util.js';
 import { SystemAdminProfileService } from '@modules/auth/services/system-admin-profile.service.js';
+import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { logger } from '@logging/winston.logger.js';
 
 export interface AuthRequestMeta {
   ipAddress: string;
   userAgent: string;
   correlationId: string;
+}
+
+async function findActiveEmployeeByEmail(companyId: string, email: string) {
+  const matches = await EmployeeRepository.findMany({ email }, { companyId });
+  return matches.find(
+    (row) => row.status === ENTITY_STATUS.ACTIVE && !row.isDeleted && row.email.trim().length > 0,
+  );
 }
 
 export const AuthService = {
@@ -82,6 +90,16 @@ export const AuthService = {
     perf.mark('password_verify');
 
     if (!user || !passwordValid) {
+      if (!user) {
+        const employee = await findActiveEmployeeByEmail(company.id, input.email);
+        if (employee && !employee.userId) {
+          throw new AuthenticationError(
+            'Portal login is not set up for this employee yet. Ask your administrator to send login credentials from the employee profile.',
+            ERROR_CODES.AUTH_ACCOUNT_INACTIVE,
+          );
+        }
+      }
+
       if (user) {
         await AuthUserRepository.incrementFailedAttempts(user.id, company.id);
         await LoginHistoryService.recordLoginAttempt({

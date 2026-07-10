@@ -16,6 +16,7 @@ import {
   deactivateEmployee,
   reactivateEmployee,
   sendEmployeeActivationEmail,
+  setEmployeePortalPassword,
   sendEmployeeOnboardingEmail,
   sendEmployeePasswordResetEmail,
   type EmployeeDashboard,
@@ -175,7 +176,18 @@ function usePatchEmployeeDashboardLifecycle(employeeId: string) {
 export function useSendEmployeeActivationEmail(employeeId: string) {
   const patchLifecycle = usePatchEmployeeDashboardLifecycle(employeeId);
   return useAppMutation({
-    mutationFn: () => sendEmployeeActivationEmail(employeeId),
+    mutationFn: (temporaryPassword: string) =>
+      sendEmployeeActivationEmail(employeeId, temporaryPassword),
+    errorToast: false,
+    successMessage: false,
+    onSuccess: (result) => patchLifecycle(result.lifecycle),
+  });
+}
+
+export function useSetEmployeePortalPassword(employeeId: string) {
+  const patchLifecycle = usePatchEmployeeDashboardLifecycle(employeeId);
+  return useAppMutation({
+    mutationFn: (password: string) => setEmployeePortalPassword(employeeId, password),
     errorToast: false,
     successMessage: false,
     onSuccess: (result) => patchLifecycle(result.lifecycle),

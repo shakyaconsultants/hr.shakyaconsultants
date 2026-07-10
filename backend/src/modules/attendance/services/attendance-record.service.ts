@@ -3,9 +3,11 @@ import {
   AttendanceLogRepository,
   AttendanceRepository,
 } from '@domain/attendance/attendance.schemas.js';
+import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { startOfDay, endOfDay } from '@shared/utils/date.util.js';
+import { toPlainDocument } from '@infrastructure/database/document.util.js';
 import { AttendanceCalculatorService } from '@modules/attendance/services/attendance-calculator.service.js';
 import { AttendanceAuditService } from '@modules/attendance/services/attendance-audit.service.js';
 import type { AttendanceActorContext } from '@modules/approval/types/approval.types.js';
@@ -38,7 +40,7 @@ export const AttendanceRecordService = {
         (filter.date as Record<string, Date>).$lte = endOfDay(new Date(query.endDate));
     }
 
-    return AttendanceRepository.paginate(
+    const result = await AttendanceRepository.paginate(
       filter,
       {
         page: query.page,
@@ -48,6 +50,11 @@ export const AttendanceRecordService = {
       },
       { companyId },
     );
+
+    return {
+      ...result,
+      items: result.items.map((item) => toPlainDocument(item)),
+    };
   },
 
   async getById(companyId: string, id: string) {
@@ -59,23 +66,58 @@ export const AttendanceRecordService = {
   },
 
   async getToday(companyId: string, employeeId: string) {
-    const today = startOfDay(new Date());
-    let record = await AttendanceRepository.findOne({ employeeId, date: today }, { companyId });
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+
+    let record = await AttendanceRepository.findOne(
+      { employeeId, date: todayStart },
+      { companyId },
+    );
+
+    const todayLogs = await AttendanceLogRepository.findMany(
+      {
+        employeeId,
+        timestamp: { $gte: todayStart, $lte: todayEnd },
+      },
+      { companyId },
+    );
+
+    if (!record && todayLogs.length > 0) {
+      todayLogs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      record = await AttendanceRepository.findById(todayLogs[0].attendanceId, { companyId });
+    }
+
     if (!record) {
       record = await AttendanceCalculatorService.getOrCreateRecord(
         companyId,
         employeeId,
-        today,
+        todayStart,
         'system',
       );
     }
 
-    const logs = await AttendanceLogRepository.findMany({ attendanceId: record.id }, { companyId });
+    let logs = await AttendanceLogRepository.findMany({ attendanceId: record.id }, { companyId });
+
+    if (logs.length === 0 && todayLogs.length > 0) {
+      todayLogs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      const linked = await AttendanceRepository.findById(todayLogs[0].attendanceId, { companyId });
+      if (linked) {
+        record = linked;
+        logs = todayLogs;
+      }
+    }
+
     logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     const lastPunchType = logs[0]?.type;
 
+    if (logs.length > 0 && !record.checkIn) {
+      record = await AttendanceCalculatorService.recalculate(companyId, record.id, 'system');
+    }
+
+    const plain = toPlainDocument(record);
+
     return {
-      ...record,
+      ...plain,
       lastPunchType,
       onBreak: lastPunchType === ATTENDANCE_LOG_TYPE.BREAK_START,
       logs: logs.map((log) => ({
@@ -96,9 +138,23 @@ export const AttendanceRecordService = {
 
     const records = await AttendanceRepository.findMany(filter, { companyId });
     records.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    const employeeIds = [...new Set(records.map((record) => record.employeeId))];
+    const employees =
+      employeeIds.length > 0
+        ? await EmployeeRepository.findMany({ id: { $in: employeeIds } }, { companyId })
+        : [];
+    const employeeNameById = new Map(
+      employees.map((employee) => [
+        employee.id,
+        `${employee.firstName} ${employee.lastName}`.trim(),
+      ]),
+    );
+
     return records.map((r) => ({
       id: r.id,
       employeeId: r.employeeId,
+      employeeName: employeeNameById.get(r.employeeId) ?? r.employeeId,
       date: r.date,
       status: r.status,
       checkIn: r.checkIn,

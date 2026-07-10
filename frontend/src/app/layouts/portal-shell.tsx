@@ -25,21 +25,26 @@ export function PortalShell({ portal, children }: PortalShellProps) {
     <div className="flex h-screen overflow-hidden bg-background">
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r bg-card transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform lg:static lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-14 shrink-0 flex-col justify-center border-b px-4">
-          <Link to={homeRoute} className="font-semibold leading-tight">
+        <div className="flex h-14 shrink-0 flex-col justify-center border-b border-sidebar-border px-4">
+          <Link
+            to={homeRoute}
+            className="text-sm font-semibold leading-tight text-sidebar-foreground"
+          >
             {APP_CONFIG.name}
           </Link>
-          <span className="text-xs text-muted-foreground">{getPortalLabel(portal)} Portal</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-sidebar-muted-foreground">
+            {getPortalLabel(portal)} Portal
+          </span>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <PortalSidebar portal={portal} onNavigate={() => setMobileOpen(false)} />
         </div>
-        <div className="shrink-0 border-t p-4 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground">{company?.name ?? 'Organization'}</p>
+        <div className="shrink-0 border-t border-sidebar-border p-4 text-xs text-sidebar-muted-foreground">
+          <p className="font-medium text-sidebar-foreground">{company?.name ?? 'Organization'}</p>
           <p>{user?.email ?? ''}</p>
         </div>
       </aside>
@@ -54,9 +59,14 @@ export function PortalShell({ portal, children }: PortalShellProps) {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur">
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
           <div className="flex min-w-0 items-center gap-3">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -65,7 +75,9 @@ export function PortalShell({ portal, children }: PortalShellProps) {
             Sign out
           </Button>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children ?? <Outlet />}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
+          {children ?? <Outlet />}
+        </main>
       </div>
     </div>
   );

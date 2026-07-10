@@ -123,6 +123,12 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
       return;
     }
 
+    const portalPassword = form.temporaryPassword.trim();
+    if (portalPassword.length < 6) {
+      setError('Portal password must be at least 6 characters.');
+      return;
+    }
+
     submitLock.current = true;
     setIsSubmitting(true);
     setError(null);
@@ -150,7 +156,7 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
         departmentId: form.departmentId,
         designationId: form.designationId,
         joinedAt: new Date(form.joinedAt),
-        temporaryPassword: form.temporaryPassword.trim() || DEFAULT_TEMP_PASSWORD,
+        temporaryPassword: portalPassword,
       };
       if (form.phone.trim()) {
         payload.phone = form.phone.trim();
@@ -245,7 +251,8 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
         !form.lastName.trim() ||
         !form.email.trim() ||
         !form.departmentId ||
-        !form.designationId
+        !form.designationId ||
+        form.temporaryPassword.trim().length < 6
       }
       onSubmit={handleSubmit}
       size="lg"
@@ -359,9 +366,9 @@ export function EmployeeCreateDialog({ open, onOpenChange }: EmployeeCreateDialo
             />
           </SelectField>
           <SelectField
-            label="Default Portal Password"
+            label="Portal Password"
             htmlFor="employee-temp-password"
-            hint="Active account is created with this password. Credentials are emailed to the employee."
+            hint="Prefilled with the default password. Change it here if needed — that value is saved as the employee login password."
             required
           >
             <Input

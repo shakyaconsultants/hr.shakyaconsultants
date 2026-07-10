@@ -19,7 +19,22 @@ interface AttendanceCalendarProps {
   showEmployee?: boolean;
 }
 
-export function AttendanceCalendar({ employeeId, month, showEmployee = false }: AttendanceCalendarProps) {
+function dateKeyFromParts(year: number, monthIndex: number, day: number): string {
+  const month = String(monthIndex + 1).padStart(2, '0');
+  const dayPart = String(day).padStart(2, '0');
+  return `${year}-${month}-${dayPart}`;
+}
+
+function dateKeyFromRecord(dateValue: string): string {
+  const parsed = new Date(dateValue);
+  return dateKeyFromParts(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+export function AttendanceCalendar({
+  employeeId,
+  month,
+  showEmployee = false,
+}: AttendanceCalendarProps) {
   const reference = month ?? new Date();
 
   const { startDate, endDate, daysInMonth, startDayOfWeek } = useMemo(() => {
@@ -28,8 +43,8 @@ export function AttendanceCalendar({ employeeId, month, showEmployee = false }: 
     const first = new Date(year, monthIndex, 1);
     const last = new Date(year, monthIndex + 1, 0);
     return {
-      startDate: first.toISOString().split('T')[0] ?? '',
-      endDate: last.toISOString().split('T')[0] ?? '',
+      startDate: dateKeyFromParts(year, monthIndex, 1),
+      endDate: dateKeyFromParts(year, monthIndex, last.getDate()),
       daysInMonth: last.getDate(),
       startDayOfWeek: first.getDay(),
     };
@@ -38,10 +53,12 @@ export function AttendanceCalendar({ employeeId, month, showEmployee = false }: 
   const { data, isLoading } = useAttendanceCalendar(startDate, endDate, employeeId);
 
   const recordsByDate = useMemo(() => {
-    const map = new Map<string, CalendarDayRecord>();
+    const map = new Map<string, CalendarDayRecord[]>();
     (data ?? []).forEach((record) => {
-      const key = new Date(record.date).toISOString().split('T')[0] ?? record.date;
-      map.set(key, record);
+      const key = dateKeyFromRecord(record.date);
+      const existing = map.get(key) ?? [];
+      existing.push(record);
+      map.set(key, existing);
     });
     return map;
   }, [data]);
@@ -72,25 +89,47 @@ export function AttendanceCalendar({ employeeId, month, showEmployee = false }: 
 
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
-          const dateKey = new Date(reference.getFullYear(), reference.getMonth(), day).toISOString().split('T')[0] ?? '';
-          const record = recordsByDate.get(dateKey);
-          const statusClass = record ? (STATUS_COLORS[record.status] ?? 'bg-muted text-muted-foreground border-border') : 'border-border';
+          const dateKey = dateKeyFromParts(reference.getFullYear(), reference.getMonth(), day);
+          const dayRecords = recordsByDate.get(dateKey) ?? [];
+          const primaryRecord = dayRecords[0];
+          const statusClass = primaryRecord
+            ? (STATUS_COLORS[primaryRecord.status] ??
+              'bg-muted text-muted-foreground border-border')
+            : 'border-border';
 
           return (
             <div
               key={dateKey}
               className={cn(
-                'min-h-[72px] rounded-md border p-1.5 text-left text-xs',
-                record ? statusClass : 'bg-card',
+                'min-h-[88px] rounded-md border p-1.5 text-left text-xs',
+                primaryRecord ? statusClass : 'bg-card',
               )}
             >
               <span className="font-medium">{day}</span>
-              {record ? (
-                <div className="mt-1 space-y-0.5">
-                  <p className="capitalize">{record.status.replace(/_/g, ' ')}</p>
-                  {record.checkIn ? <p className="opacity-80">In: {formatTime(record.checkIn)}</p> : null}
-                  {record.checkOut ? <p className="opacity-80">Out: {formatTime(record.checkOut)}</p> : null}
-                  {showEmployee && record.employeeId ? <p className="truncate opacity-70">{record.employeeId}</p> : null}
+              {dayRecords.length > 0 ? (
+                <div className="mt-1 space-y-1">
+                  {dayRecords.slice(0, showEmployee ? 3 : 1).map((record) => (
+                    <div
+                      key={record.id ?? `${record.employeeId}-${record.date}`}
+                      className="space-y-0.5"
+                    >
+                      {showEmployee ? (
+                        <p className="truncate font-medium">
+                          {record.employeeName ?? record.employeeId}
+                        </p>
+                      ) : null}
+                      <p className="capitalize">{record.status.replace(/_/g, ' ')}</p>
+                      {record.checkIn ? (
+                        <p className="opacity-80">In: {formatTime(record.checkIn)}</p>
+                      ) : null}
+                      {record.checkOut ? (
+                        <p className="opacity-80">Out: {formatTime(record.checkOut)}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                  {showEmployee && dayRecords.length > 3 ? (
+                    <p className="opacity-70">+{dayRecords.length - 3} more</p>
+                  ) : null}
                 </div>
               ) : null}
             </div>

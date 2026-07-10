@@ -11,7 +11,7 @@ export interface FilterFieldProps {
 export function FilterField({ label, children }: FilterFieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</label>
+      <label className="mb-1 block text-label-caps text-muted-foreground">{label}</label>
       {children}
     </div>
   );
@@ -45,7 +45,7 @@ export function FilterBar({
   actions,
 }: FilterBarProps) {
   return (
-    <div className="rounded-lg border bg-card/50 p-4">
+    <div className="erp-toolbar">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_repeat(4,minmax(0,1fr))]">
           <div className="sm:col-span-2 lg:col-span-1">

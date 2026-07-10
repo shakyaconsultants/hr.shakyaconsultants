@@ -48,7 +48,7 @@ export function Dialog({
     <dialog
       ref={dialogRef}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/50',
+        'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-md border border-border bg-card p-0 text-card-foreground shadow-ambient backdrop:bg-black/50',
         sizeClasses[size],
         className,
       )}
@@ -63,9 +63,17 @@ export function Dialog({
         <div className="flex items-start justify-between gap-4 border-b px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-            {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+            {description ? (
+              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            ) : null}
           </div>
-          <Button type="button" variant="ghost" size="icon" onClick={() => onOpenChange(false)} aria-label="Close dialog">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close dialog"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>

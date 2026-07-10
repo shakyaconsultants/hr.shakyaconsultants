@@ -154,9 +154,10 @@ export const EmployeeService = {
     const employeeNumber = await EmployeeNumberService.generate(context.companyId, context.userId);
     const id = generateUuid();
     const sanitized = omitEmailField(pickAdminCreatePayload(payload));
-    const temporaryPassword = EmployeeAccountService.resolveTemporaryPassword(
-      typeof payload.temporaryPassword === 'string' ? payload.temporaryPassword : undefined,
-    );
+    const temporaryPassword =
+      typeof payload.temporaryPassword === 'string' && payload.temporaryPassword.trim().length >= 6
+        ? payload.temporaryPassword.trim()
+        : EmployeeAccountService.resolveTemporaryPassword();
 
     let employee = await EmployeeRepository.create(
       {
@@ -243,22 +244,22 @@ export const EmployeeService = {
 
       const welcomeEmailSent = false;
       const welcomeEmailError: string | undefined = undefined;
-      void EmployeeAccountService.sendWelcomeCredentialsEmail(context, id, temporaryPassword).catch(
-        async (emailError: unknown) => {
-          await EmployeeLifecycleService.recordEmailFailure(
-            context.companyId,
-            id,
-            EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
-            context.userId,
-            emailError,
-          );
-          logger.error('Failed to send welcome credentials email', {
-            employeeId: id,
-            email,
-            message: emailError instanceof Error ? emailError.message : String(emailError),
-          });
-        },
-      );
+      void EmployeeAccountService.sendWelcomeCredentialsEmail(context, id, temporaryPassword, {
+        skipProvisioning: true,
+      }).catch(async (emailError: unknown) => {
+        await EmployeeLifecycleService.recordEmailFailure(
+          context.companyId,
+          id,
+          EMPLOYEE_LIFECYCLE_EMAIL.ACCOUNT_ACTIVATION,
+          context.userId,
+          emailError,
+        );
+        logger.error('Failed to send welcome credentials email', {
+          employeeId: id,
+          email,
+          message: emailError instanceof Error ? emailError.message : String(emailError),
+        });
+      });
 
       return { employee, welcomeEmailSent, welcomeEmailError };
     } catch (postCreateError) {

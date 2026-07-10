@@ -187,13 +187,18 @@ export const EmployeeLifecycleService = {
   async sendActivationEmail(
     actor: EmployeeActorContext,
     employeeId: string,
+    temporaryPassword: string,
   ): Promise<{
     message: string;
     lifecycle: EmployeeLifecycleProfileView;
     temporaryPassword: string;
   }> {
     try {
-      const result = await EmployeeAccountService.sendWelcomeCredentialsEmail(actor, employeeId);
+      const result = await EmployeeAccountService.sendWelcomeCredentialsEmail(
+        actor,
+        employeeId,
+        temporaryPassword,
+      );
       const lifecycle = await this.getProfileStatus(actor.companyId, employeeId);
       return {
         temporaryPassword: result.temporaryPassword,
@@ -210,6 +215,24 @@ export const EmployeeLifecycleService = {
       );
       throw error;
     }
+  },
+
+  async setPortalPassword(
+    actor: EmployeeActorContext,
+    employeeId: string,
+    password: string,
+  ): Promise<{ message: string; lifecycle: EmployeeLifecycleProfileView }> {
+    await EmployeeAccountService.setPortalPasswordForEmployee({
+      companyId: actor.companyId,
+      actorUserId: actor.userId,
+      employeeId,
+      password,
+    });
+    const lifecycle = await this.getProfileStatus(actor.companyId, employeeId);
+    return {
+      message: 'Portal password updated. Employee can sign in with the new password immediately.',
+      lifecycle,
+    };
   },
 
   async sendOnboardingEmail(

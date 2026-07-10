@@ -1,7 +1,13 @@
-import { OnboardingRepository, ONBOARDING_STATUS } from '@domain/recruitment/recruitment.schemas.js';
+import {
+  OnboardingRepository,
+  ONBOARDING_STATUS,
+} from '@domain/recruitment/recruitment.schemas.js';
 import { ONBOARDING_SECTION } from '@domain/recruitment/recruitment-extended.schemas.js';
 import { SecureAccessTokenService } from '@modules/approval/services/secure-access-token.service.js';
-import { SECURE_TOKEN_ENTITY_TYPE, SECURE_TOKEN_PURPOSE } from '@shared/constants/secure-token.constants.js';
+import {
+  SECURE_TOKEN_ENTITY_TYPE,
+  SECURE_TOKEN_PURPOSE,
+} from '@shared/constants/secure-token.constants.js';
 import { NotFoundError, ConflictError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { AuditLogService } from '@infrastructure/audit/audit-log.service.js';
@@ -9,7 +15,21 @@ import { AuditAction } from '@shared/enums/index.js';
 import { getEnv } from '@config/env.js';
 import { EmployeeOnboardingApplyService } from '@modules/employee/services/employee-onboarding-apply.service.js';
 
+/** Sections shown in the employee self-service onboarding portal (not the full HR checklist). */
+export const PORTAL_ONBOARDING_SECTIONS = [
+  'personal',
+  'address',
+  'bank',
+  'emergency',
+  'documents',
+] as const;
+
 const ALL_SECTIONS = Object.values(ONBOARDING_SECTION);
+
+function computePortalProgress(completedSections: string[]): number {
+  const done = PORTAL_ONBOARDING_SECTIONS.filter((section) => completedSections.includes(section));
+  return Math.round((done.length / PORTAL_ONBOARDING_SECTIONS.length) * 100);
+}
 
 function computeProgress(completedSections: string[]): number {
   if (ALL_SECTIONS.length === 0) {
@@ -20,8 +40,13 @@ function computeProgress(completedSections: string[]): number {
 
 export const PortalOnboardingService = {
   async getPortalState(rawToken: string) {
-    const resolved = await SecureAccessTokenService.assertValid(SECURE_TOKEN_PURPOSE.CANDIDATE_ONBOARDING, rawToken);
-    const onboarding = await OnboardingRepository.findById(resolved.entityId, { companyId: resolved.companyId });
+    const resolved = await SecureAccessTokenService.assertValid(
+      SECURE_TOKEN_PURPOSE.CANDIDATE_ONBOARDING,
+      rawToken,
+    );
+    const onboarding = await OnboardingRepository.findById(resolved.entityId, {
+      companyId: resolved.companyId,
+    });
     if (!onboarding) {
       throw new NotFoundError('Onboarding record not found', ERROR_CODES.NOT_FOUND);
     }
@@ -38,8 +63,13 @@ export const PortalOnboardingService = {
   },
 
   async saveDraft(rawToken: string, section: string, data: Record<string, unknown>) {
-    const resolved = await SecureAccessTokenService.assertValid(SECURE_TOKEN_PURPOSE.CANDIDATE_ONBOARDING, rawToken);
-    const onboarding = await OnboardingRepository.findById(resolved.entityId, { companyId: resolved.companyId });
+    const resolved = await SecureAccessTokenService.assertValid(
+      SECURE_TOKEN_PURPOSE.CANDIDATE_ONBOARDING,
+      rawToken,
+    );
+    const onboarding = await OnboardingRepository.findById(resolved.entityId, {
+      companyId: resolved.companyId,
+    });
     if (!onboarding) {
       throw new NotFoundError('Onboarding record not found', ERROR_CODES.NOT_FOUND);
     }
@@ -49,9 +79,23 @@ export const PortalOnboardingService = {
     }
 
     const formData = { ...onboarding.formData, [section]: data };
+    const completedSections = Array.from(
+      new Set(
+        [...onboarding.completedSections, section].filter((s) =>
+          PORTAL_ONBOARDING_SECTIONS.includes(s as (typeof PORTAL_ONBOARDING_SECTIONS)[number]),
+        ),
+      ),
+    );
+    const progressPercent = computePortalProgress(completedSections);
     const updated = await OnboardingRepository.update(
       onboarding.id,
-      { formData, currentSection: section, updatedBy: 'portal' },
+      {
+        formData,
+        currentSection: section,
+        completedSections,
+        progressPercent,
+        updatedBy: 'portal',
+      },
       { companyId: resolved.companyId },
     );
 
@@ -69,8 +113,13 @@ export const PortalOnboardingService = {
   },
 
   async submit(rawToken: string) {
-    const resolved = await SecureAccessTokenService.assertValid(SECURE_TOKEN_PURPOSE.CANDIDATE_ONBOARDING, rawToken);
-    const onboarding = await OnboardingRepository.findById(resolved.entityId, { companyId: resolved.companyId });
+    const resolved = await SecureAccessTokenService.assertValid(
+      SECURE_TOKEN_PURPOSE.CANDIDATE_ONBOARDING,
+      rawToken,
+    );
+    const onboarding = await OnboardingRepository.findById(resolved.entityId, {
+      companyId: resolved.companyId,
+    });
     if (!onboarding) {
       throw new NotFoundError('Onboarding record not found', ERROR_CODES.NOT_FOUND);
     }
@@ -93,7 +142,7 @@ export const PortalOnboardingService = {
       {
         status: ONBOARDING_STATUS.COMPLETED,
         progressPercent: 100,
-        completedSections: ALL_SECTIONS,
+        completedSections: [...PORTAL_ONBOARDING_SECTIONS],
         updatedBy: 'portal',
       },
       { companyId: resolved.companyId },

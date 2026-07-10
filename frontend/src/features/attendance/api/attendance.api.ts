@@ -112,11 +112,13 @@ export interface AttendanceReport {
 }
 
 export interface CalendarDayRecord {
+  id?: string;
   date: string;
   status: string;
   checkIn?: string;
   checkOut?: string;
   employeeId?: string;
+  employeeName?: string;
 }
 
 export interface ListRecordsParams {

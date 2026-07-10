@@ -35,6 +35,7 @@ export interface WorkspaceLayout {
 export interface WorkspaceProfile {
   employee: Record<string, unknown>;
   emergencyContacts: Record<string, unknown>[];
+  bankDetails: Record<string, unknown>[];
   documents: Record<string, unknown>[];
   education: Record<string, unknown>[];
   experience: Record<string, unknown>[];

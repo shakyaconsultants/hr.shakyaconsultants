@@ -1,4 +1,9 @@
-import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
+import {
+  EmployeeRepository,
+  EmergencyContactRepository,
+  BankDetailsRepository,
+  EducationRepository,
+} from '@domain/employee/employee.schemas.js';
 import { EmployeeValidationService } from '@modules/employee/services/employee-validation.service.js';
 import { EmployeeSubresourceService } from '@modules/employee/services/employee-profile.service.js';
 
@@ -19,7 +24,20 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function pickNonEmpty(source: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
+function asString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return String(value);
+  }
+  return '';
+}
+
+function pickNonEmpty(
+  source: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> {
   const picked: Record<string, unknown> = {};
   for (const key of keys) {
     const value = source[key];
@@ -45,18 +63,25 @@ export const EmployeeOnboardingApplyService = {
     const address = asRecord(formData.address);
     const emergency = asRecord(formData.emergency) ?? asRecord(formData.emergency_contact);
     const bank = asRecord(formData.bank) ?? asRecord(formData.bank_details);
+    const documents = asRecord(formData.documents);
+
+    const actor = { companyId, userId: updatedBy };
 
     if (personal) {
       const updates = pickNonEmpty(personal, PERSONAL_FIELDS);
-      if (updates.aadhaarNumber) {
-        await EmployeeValidationService.assertUniqueAadhaar(
-          companyId,
-          String(updates.aadhaarNumber),
-          employeeId,
-        );
+      const aadhaarNumber = asString(updates.aadhaarNumber);
+      const panNumber = asString(updates.panNumber);
+      if (aadhaarNumber) {
+        await EmployeeValidationService.assertUniqueAadhaar(companyId, aadhaarNumber, employeeId);
+        updates.aadhaarNumber = aadhaarNumber;
       }
-      if (updates.panNumber) {
-        await EmployeeValidationService.assertUniquePan(companyId, String(updates.panNumber), employeeId);
+      if (panNumber) {
+        await EmployeeValidationService.assertUniquePan(companyId, panNumber, employeeId);
+        updates.panNumber = panNumber;
+      }
+      const dateOfBirth = asString(updates.dateOfBirth);
+      if (dateOfBirth) {
+        updates.dateOfBirth = new Date(dateOfBirth);
       }
       if (Object.keys(updates).length > 0) {
         await EmployeeRepository.update(employeeId, { ...updates, updatedBy }, { companyId });
@@ -77,46 +102,87 @@ export const EmployeeOnboardingApplyService = {
     }
 
     if (emergency) {
-      const contacts = Array.isArray(emergency.contacts) ? emergency.contacts : [emergency];
-      for (const entry of contacts) {
-        const contact = asRecord(entry);
-        if (!contact?.name || !contact.phone) {
-          continue;
+      const emergencyName = asString(emergency.name);
+      const emergencyPhone = asString(emergency.phone);
+      if (emergencyName && emergencyPhone) {
+        const payload = {
+          name: emergencyName,
+          relationship: asString(emergency.relationship) || 'Other',
+          phone: emergencyPhone,
+          email: typeof emergency.email === 'string' ? emergency.email : undefined,
+          isPrimary: true,
+        };
+        const existing = await EmergencyContactRepository.findMany({ employeeId }, { companyId });
+        if (existing.length > 0) {
+          const primary = existing.find((item) => item.isPrimary) ?? existing[0];
+          await EmergencyContactRepository.update(
+            primary.id,
+            { ...payload, updatedBy },
+            { companyId },
+          );
+        } else {
+          await EmployeeSubresourceService.createEmergencyContact(actor, employeeId, payload);
         }
-        await EmployeeSubresourceService.createEmergencyContact(
-          { companyId, userId: updatedBy },
-          employeeId,
-          {
-            name: String(contact.name),
-            relationship: String(contact.relationship ?? 'Other'),
-            phone: String(contact.phone),
-            email: typeof contact.email === 'string' ? contact.email : undefined,
-            isPrimary: contact.isPrimary === true,
-          },
-        );
       }
     }
 
     if (bank) {
-      const accounts = Array.isArray(bank.accounts) ? bank.accounts : [bank];
-      for (const entry of accounts) {
-        const details = asRecord(entry);
-        if (!details?.accountNumber || !details.bankName || !details.ifscCode || !details.accountHolderName) {
-          continue;
+      const accountHolderName = asString(bank.accountHolderName);
+      const bankName = asString(bank.bankName);
+      const accountNumber = asString(bank.accountNumber);
+      const ifscCode = asString(bank.ifscCode);
+      if (accountHolderName && bankName && accountNumber && ifscCode) {
+        const payload = {
+          accountHolderName,
+          bankName,
+          accountNumber,
+          ifscCode,
+          upiId: typeof bank.upiId === 'string' ? bank.upiId : undefined,
+          branchName: typeof bank.branchName === 'string' ? bank.branchName : undefined,
+          isPrimary: true,
+        };
+        const existing = await BankDetailsRepository.findMany({ employeeId }, { companyId });
+        if (existing.length > 0) {
+          const primary = existing.find((item) => item.isPrimary) ?? existing[0];
+          await BankDetailsRepository.update(primary.id, { ...payload, updatedBy }, { companyId });
+        } else {
+          await EmployeeSubresourceService.createBankDetails(actor, employeeId, payload);
         }
-        await EmployeeSubresourceService.createBankDetails(
-          { companyId, userId: updatedBy },
-          employeeId,
-          {
-            accountHolderName: String(details.accountHolderName),
-            bankName: String(details.bankName),
-            accountNumber: String(details.accountNumber),
-            ifscCode: String(details.ifscCode),
-            upiId: typeof details.upiId === 'string' ? details.upiId : undefined,
-            branchName: typeof details.branchName === 'string' ? details.branchName : undefined,
-            isPrimary: details.isPrimary === true,
-          },
-        );
+      }
+    }
+
+    if (documents) {
+      const institution = asString(documents.institution) || 'Not specified';
+      const degree = asString(documents.degree) || 'Not specified';
+      if (institution !== 'Not specified' || degree !== 'Not specified') {
+        const yearRaw = documents.year;
+        const year =
+          typeof yearRaw === 'number'
+            ? yearRaw
+            : typeof yearRaw === 'string' && yearRaw.trim()
+              ? Number(yearRaw)
+              : undefined;
+        const startDate = year && !Number.isNaN(year) ? new Date(year, 0, 1) : new Date();
+        const endDate = year && !Number.isNaN(year) ? new Date(year, 11, 31) : undefined;
+        const educationPayload = {
+          institution,
+          degree,
+          fieldOfStudy:
+            typeof documents.fieldOfStudy === 'string' ? documents.fieldOfStudy : undefined,
+          startDate,
+          year: year && !Number.isNaN(year) ? year : undefined,
+          endDate,
+        };
+        const existing = await EducationRepository.findMany({ employeeId }, { companyId });
+        if (existing.length > 0) {
+          await EducationRepository.update(
+            existing[0].id,
+            { ...educationPayload, updatedBy },
+            { companyId },
+          );
+        } else {
+          await EmployeeSubresourceService.createEducation(actor, employeeId, educationPayload);
+        }
       }
     }
   },

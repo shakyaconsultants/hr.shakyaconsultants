@@ -18,6 +18,36 @@ function formatMinutes(minutes?: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function firstLogTimestamp(
+  logs: { type: string; timestamp: string }[] | undefined,
+  type: string,
+): string | undefined {
+  const match = logs?.find((log) => log.type === type);
+  return match?.timestamp;
+}
+
+function deriveAttendanceSummary(today: {
+  status?: string;
+  checkIn?: string;
+  checkOut?: string;
+  workedMinutes?: number;
+  logs?: { type: string; timestamp: string }[];
+}) {
+  const checkIn = today.checkIn ?? firstLogTimestamp(today.logs, 'check_in');
+  const checkOut = today.checkOut ?? firstLogTimestamp(today.logs, 'check_out');
+  const hasCheckedIn = Boolean(checkIn);
+  const hasCheckedOut = Boolean(checkOut);
+  const status =
+    today.status ??
+    (hasCheckedIn && !hasCheckedOut
+      ? 'half_day'
+      : hasCheckedIn && hasCheckedOut
+        ? 'present'
+        : undefined);
+
+  return { checkIn, checkOut, status, hasCheckedIn, hasCheckedOut };
+}
+
 export function PunchPanel() {
   const employeeId = useAuthStore((s) => s.user?.employeeId ?? s.employee?.id ?? '');
   const { data: today, isLoading } = useTodayAttendance(employeeId || undefined);
@@ -35,8 +65,9 @@ export function PunchPanel() {
     return <Loading message="Loading today's attendance..." />;
   }
 
-  const hasCheckedIn = Boolean(today?.checkIn);
-  const hasCheckedOut = Boolean(today?.checkOut);
+  const summary = deriveAttendanceSummary(today ?? {});
+  const hasCheckedIn = summary.hasCheckedIn;
+  const hasCheckedOut = summary.hasCheckedOut;
   const isSessionOpen = hasCheckedIn && !hasCheckedOut;
   const onBreak = Boolean(today?.onBreak);
 
@@ -56,11 +87,11 @@ export function PunchPanel() {
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Status"
-          value={today?.status?.replace(/_/g, ' ') ?? 'Not punched'}
+          value={summary.status?.replace(/_/g, ' ') ?? 'Not punched'}
           capitalize
         />
-        <Stat label="Check In" value={formatTime(today?.checkIn)} />
-        <Stat label="Check Out" value={formatTime(today?.checkOut)} />
+        <Stat label="Check In" value={formatTime(summary.checkIn)} />
+        <Stat label="Check Out" value={formatTime(summary.checkOut)} />
         <Stat label="Worked" value={formatMinutes(today?.workedMinutes)} />
       </div>
 

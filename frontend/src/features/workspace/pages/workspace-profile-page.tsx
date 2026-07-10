@@ -12,6 +12,7 @@ import { PageDataBoundary } from '@/shared/components/page-data-boundary';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { EmptyState } from '@/features/workspace/components/widget-primitives';
+import { EmployeeProfileDetails } from '@/features/employee/components/employee-profile-details';
 
 type Tab =
   | 'overview'
@@ -118,83 +119,93 @@ export function WorkspaceProfilePage() {
       </div>
 
       {tab === 'overview' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-lg border bg-card p-6">
-            <div className="mb-4 flex items-start gap-4">
-              {employee.photoUrl ? (
-                <img
-                  src={String(employee.photoUrl)}
-                  alt=""
-                  className="h-20 w-20 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted text-2xl font-bold">
-                  {String(employee.firstName)?.[0]}
-                  {String(employee.lastName)?.[0]}
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="rounded-lg border bg-card p-6">
+              <div className="mb-4 flex items-start gap-4">
+                {employee.photoUrl ? (
+                  <img
+                    src={String(employee.photoUrl)}
+                    alt=""
+                    className="h-20 w-20 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted text-2xl font-bold">
+                    {String(employee.firstName)?.[0]}
+                    {String(employee.lastName)?.[0]}
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    {String(employee.firstName)} {String(employee.lastName)}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{String(employee.email)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {String(employee.jobTitle ?? employee.designationId ?? '')}
+                  </p>
                 </div>
-              )}
-              <div>
-                <h2 className="text-xl font-semibold">
-                  {String(employee.firstName)} {String(employee.lastName)}
-                </h2>
-                <p className="text-sm text-muted-foreground">{String(employee.email)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {String(employee.jobTitle ?? employee.designationId ?? '')}
-                </p>
               </div>
-            </div>
-            <dl className="grid gap-2 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-muted-foreground">Employee #</dt>
-                <dd>{String(employee.employeeNumber)}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Department</dt>
-                <dd>{String(employee.departmentId)}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Joined</dt>
-                <dd>
-                  {employee.joinedAt
-                    ? new Date(String(employee.joinedAt)).toLocaleDateString()
-                    : '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Status</dt>
-                <dd>{String(employee.status)}</dd>
-              </div>
-            </dl>
-          </section>
+              <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-muted-foreground">Employee #</dt>
+                  <dd>{String(employee.employeeNumber)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Department</dt>
+                  <dd>{String(employee.departmentId)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Joined</dt>
+                  <dd>
+                    {employee.joinedAt
+                      ? new Date(String(employee.joinedAt)).toLocaleDateString()
+                      : '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Status</dt>
+                  <dd>{String(employee.status)}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="rounded-lg border bg-card p-6">
+              <h3 className="mb-4 font-semibold">Update Contact Info</h3>
+              <form
+                className="space-y-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateProfile.mutate({
+                    phone: phone || String(employee.phone ?? ''),
+                    bio: bio || String(employee.bio ?? ''),
+                  });
+                }}
+              >
+                <Input
+                  placeholder="Phone"
+                  defaultValue={String(employee.phone ?? '')}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+                <textarea
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  rows={4}
+                  placeholder="Bio"
+                  defaultValue={String(employee.bio ?? '')}
+                  onChange={(e) => setBio(e.target.value)}
+                />
+                <Button type="submit" disabled={updateProfile.isPending}>
+                  Save Changes
+                </Button>
+              </form>
+            </section>
+          </div>
 
           <section className="rounded-lg border bg-card p-6">
-            <h3 className="mb-4 font-semibold">Update Contact Info</h3>
-            <form
-              className="space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateProfile.mutate({
-                  phone: phone || String(employee.phone ?? ''),
-                  bio: bio || String(employee.bio ?? ''),
-                });
-              }}
-            >
-              <Input
-                placeholder="Phone"
-                defaultValue={String(employee.phone ?? '')}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <textarea
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                rows={4}
-                placeholder="Bio"
-                defaultValue={String(employee.bio ?? '')}
-                onChange={(e) => setBio(e.target.value)}
-              />
-              <Button type="submit" disabled={updateProfile.isPending}>
-                Save Changes
-              </Button>
-            </form>
+            <EmployeeProfileDetails
+              employee={employee}
+              emergencyContacts={profile.emergencyContacts ?? []}
+              bankDetails={profile.bankDetails ?? []}
+            />
           </section>
         </div>
       )}

@@ -1,10 +1,12 @@
 import { cn } from '@/shared/utils/cn';
 
 const ENTITY_STATUS_STYLES: Record<string, string> = {
-  active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-  inactive: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  archived: 'bg-muted text-muted-foreground',
-  draft: 'bg-muted text-muted-foreground',
+  active: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15',
+  inactive: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-300/50',
+  archived: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+  draft: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
+  away: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/15',
+  on_leave: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/15',
 };
 
 interface EntityStatusBadgeProps {
@@ -14,12 +16,14 @@ interface EntityStatusBadgeProps {
 
 export function EntityStatusBadge({ status, className }: EntityStatusBadgeProps) {
   const normalized = (status ?? 'unknown').toLowerCase();
-  const style = ENTITY_STATUS_STYLES[normalized] ?? 'bg-muted text-muted-foreground';
+  const style =
+    ENTITY_STATUS_STYLES[normalized] ??
+    'bg-muted text-muted-foreground ring-1 ring-inset ring-border';
 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
         style,
         className,
       )}

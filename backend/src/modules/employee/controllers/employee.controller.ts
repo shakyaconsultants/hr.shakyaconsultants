@@ -36,6 +36,8 @@ import {
   listQuerySchema,
   returnAssetSchema,
   searchQuerySchema,
+  sendActivationEmailSchema,
+  setPortalPasswordSchema,
   signedUploadParamsSchema,
   skillSchema,
   subResourceIdParamSchema,
@@ -676,9 +678,28 @@ export const activateEmployeeAccount: RequestHandler = async (req, res, next) =>
   try {
     const authReq = req as AuthenticatedRequest;
     const { employeeId } = validateInput(employeeIdParamSchema, req.params);
+    const { temporaryPassword } = validateInput(sendActivationEmailSchema, req.body);
     const result = await EmployeeLifecycleService.sendActivationEmail(
       buildActor(authReq),
       employeeId,
+      temporaryPassword,
+    );
+    return ResponseService.success(res, authReq, result);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const setEmployeePortalPassword: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { employeeId } = validateInput(employeeIdParamSchema, req.params);
+    const { password } = validateInput(setPortalPasswordSchema, req.body);
+    const result = await EmployeeLifecycleService.setPortalPassword(
+      buildActor(authReq),
+      employeeId,
+      password,
     );
     return ResponseService.success(res, authReq, result);
   } catch (error) {

@@ -14,6 +14,7 @@ import {
   EMPLOYEE_LIFECYCLE_EMAIL,
 } from '@modules/employee/services/employee-lifecycle.service.js';
 import { DEFAULT_EMPLOYEE_TEMP_PASSWORD } from '@modules/employee/constants/employee.constants.js';
+import { EmployeeProvisioningService } from '@modules/employee/services/employee-provisioning.service.js';
 import { getEnv } from '@config/env.js';
 
 export interface ProvisionPortalUserInput {
@@ -34,6 +35,14 @@ export const EmployeeAccountService = {
   resolveTemporaryPassword(input?: string): string {
     const value = typeof input === 'string' ? input.trim() : '';
     return value.length >= 6 ? value : DEFAULT_EMPLOYEE_TEMP_PASSWORD;
+  },
+
+  assertPortalPassword(password: string): string {
+    const value = password.trim();
+    if (value.length < 6) {
+      throw new ValidationError('Portal password must be at least 6 characters');
+    }
+    return value;
   },
 
   async provisionPortalUser(input: ProvisionPortalUserInput): Promise<ProvisionPortalUserResult> {
@@ -135,10 +144,70 @@ export const EmployeeAccountService = {
     return { userId, temporaryPassword, accountStatus: USER_STATUS.ACTIVE };
   },
 
+  async ensurePortalAccountForEmployee(input: {
+    companyId: string;
+    actorUserId: string;
+    employeeId: string;
+    password?: string;
+  }): Promise<ProvisionPortalUserResult> {
+    const employee = await EmployeeRepository.findById(input.employeeId, {
+      companyId: input.companyId,
+    });
+    if (!employee) {
+      throw new NotFoundError('Employee not found', ERROR_CODES.NOT_FOUND);
+    }
+
+    const email = employee.email.trim().toLowerCase();
+    if (!email) {
+      throw new ValidationError('Employee email is required to create a portal account');
+    }
+
+    const result = await this.provisionPortalUser({
+      companyId: input.companyId,
+      userId: input.actorUserId,
+      email,
+      employeeId: employee.id,
+      temporaryPassword: input.password,
+    });
+
+    if (employee.userId !== result.userId) {
+      await EmployeeRepository.update(
+        employee.id,
+        { userId: result.userId, updatedBy: input.actorUserId },
+        { companyId: input.companyId },
+      );
+    }
+
+    await EmployeeProvisioningService.ensureDefaultEmployeeRole(input.companyId, employee.id, {
+      companyId: input.companyId,
+      userId: result.userId,
+      employeeId: employee.id,
+    });
+
+    return result;
+  },
+
+  async setPortalPasswordForEmployee(input: {
+    companyId: string;
+    actorUserId: string;
+    employeeId: string;
+    password: string;
+  }): Promise<{ temporaryPassword: string }> {
+    const password = this.assertPortalPassword(input.password);
+    const result = await this.ensurePortalAccountForEmployee({
+      companyId: input.companyId,
+      actorUserId: input.actorUserId,
+      employeeId: input.employeeId,
+      password,
+    });
+    return { temporaryPassword: result.temporaryPassword };
+  },
+
   async sendWelcomeCredentialsEmail(
     actor: { companyId: string; userId: string; ip?: string; userAgent?: string },
     employeeId: string,
     temporaryPassword?: string,
+    options?: { skipProvisioning?: boolean },
   ): Promise<{ temporaryPassword: string }> {
     const employee = await EmployeeRepository.findById(employeeId, { companyId: actor.companyId });
     if (!employee) {
@@ -146,17 +215,16 @@ export const EmployeeAccountService = {
     }
 
     const password = this.resolveTemporaryPassword(temporaryPassword);
-    if (employee.userId) {
-      const passwordHash = await PasswordService.hashPassword(password);
-      await UserRepository.update(
-        employee.userId,
-        {
-          passwordHash,
-          status: USER_STATUS.ACTIVE,
-          mustChangePassword: false,
-          updatedBy: actor.userId,
-        },
-        { companyId: actor.companyId },
+    if (!options?.skipProvisioning) {
+      await this.ensurePortalAccountForEmployee({
+        companyId: actor.companyId,
+        actorUserId: actor.userId,
+        employeeId,
+        password,
+      });
+    } else if (!employee.userId) {
+      throw new ValidationError(
+        'Employee portal account is not ready yet. Try again in a moment or resend login credentials.',
       );
     }
 

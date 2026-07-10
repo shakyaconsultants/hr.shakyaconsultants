@@ -1,60 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;450;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Executive Precision — light workspace */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 212 100% 37%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 75% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 212 100% 37%;
+    --radius: 0.375rem;
+
+    /* Dark navigation rail — always dark (hybrid shell) */
+    --sidebar: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 216 78% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 25% 18%;
+    --sidebar-muted: 217 33% 15%;
+    --sidebar-muted-foreground: 215 20% 65%;
   }
 
   .dark {
     color-scheme: dark;
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 217.2 32.6% 12%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217.2 32.6% 12%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 78%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 22%;
-    --input: 217.2 32.6% 22%;
-    --ring: 224.3 76.3% 48%;
+    --background: 213 35% 20%;
+    --foreground: 220 100% 96%;
+    --card: 222 42% 13%;
+    --card-foreground: 220 100% 96%;
+    --popover: 222 42% 13%;
+    --popover-foreground: 220 100% 96%;
+    --primary: 216 78% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 213 35% 25%;
+    --secondary-foreground: 220 100% 96%;
+    --muted: 222 42% 16%;
+    --muted-foreground: 226 13% 55%;
+    --accent: 213 35% 25%;
+    --accent-foreground: 220 100% 96%;
+    --destructive: 0 75% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 20% 28%;
+    --input: 217 20% 28%;
+    --ring: 216 78% 51%;
   }
 
   * {
     @apply border-border;
   }
 
+  html {
+    @apply font-sans;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased text-body-sm;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-semibold tracking-tight text-foreground;
   }
 
   label {
@@ -67,15 +91,26 @@
   }
 
   dialog::backdrop {
-    background-color: rgb(0 0 0 / 0.55);
+    background-color: rgb(15 23 42 / 0.45);
   }
 
-  /* Consistent themed form controls — fixes white/black native fields in dark mode */
+  table {
+    @apply text-body-sm;
+  }
+
+  table thead th {
+    @apply text-[11px] font-bold uppercase tracking-wider text-muted-foreground;
+  }
+
+  table tbody tr {
+    @apply transition-colors;
+  }
+
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']),
   textarea,
   select {
     border-color: hsl(var(--input));
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--card));
     color: hsl(var(--foreground));
   }
 
@@ -90,12 +125,14 @@
   select:focus-visible {
     outline: 2px solid transparent;
     outline-offset: 2px;
-    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+    box-shadow:
+      0 0 0 2px hsl(var(--card)),
+      0 0 0 4px hsl(var(--ring) / 0.28);
   }
 
   input[type='checkbox'],
   input[type='radio'] {
-    accent-color: hsl(var(--primary));
+    accent-color: hsl(var(--secondary));
   }
 
   select option {
@@ -106,7 +143,7 @@
   .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']),
   .dark textarea,
   .dark select {
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--card));
     color: hsl(var(--foreground));
   }
 
@@ -115,23 +152,39 @@
   .dark input:-webkit-autofill:focus,
   .dark textarea:-webkit-autofill,
   .dark select:-webkit-autofill {
-    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--card)) inset;
     -webkit-text-fill-color: hsl(var(--foreground));
     caret-color: hsl(var(--foreground));
   }
 }
 
 @layer components {
+  .erp-card {
+    @apply rounded-md border border-border bg-card text-card-foreground;
+  }
+
+  .erp-card-header {
+    @apply flex items-center justify-between gap-2 border-b border-border px-4 py-3;
+  }
+
+  .erp-toolbar {
+    @apply erp-card px-3 py-2.5;
+  }
+
   .form-control {
-    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-9 w-full rounded border border-input bg-card px-3 py-2 text-body-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .form-textarea {
-    @apply flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex min-h-[80px] w-full rounded border border-input bg-card px-3 py-2 text-body-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50;
   }
 }
 
 @layer utilities {
+  .shadow-sm {
+    box-shadow: none;
+  }
+
   .dropdown-scroll {
     scrollbar-color: hsl(var(--muted)) hsl(var(--popover));
     scrollbar-width: thin;

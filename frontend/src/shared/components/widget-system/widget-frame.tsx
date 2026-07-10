@@ -38,12 +38,9 @@ export function WidgetFrame({
 
   return (
     <div id={`widget-${id}`} data-widget-id={id} className={`col-span-1 ${colSpanClass[colSpan]}`}>
-      <section
-        className="flex h-full flex-col rounded-lg border bg-card shadow-sm"
-        aria-label={title}
-      >
-        <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">{title}</h2>
+      <section className="erp-card flex h-full flex-col" aria-label={title}>
+        <div className="erp-card-header">
+          <h2 className="text-body-sm font-semibold">{title}</h2>
           {action}
         </div>
         <div className="flex-1 p-4">{children}</div>

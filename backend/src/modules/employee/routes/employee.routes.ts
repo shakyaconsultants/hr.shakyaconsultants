@@ -6,6 +6,7 @@ import { uploadMiddleware } from '@config/upload.config.js';
 import { EMPLOYEE_PERMISSIONS } from '@modules/employee/constants/employee-permissions.constants.js';
 import {
   activateEmployeeAccount,
+  setEmployeePortalPassword,
   sendEmployeeOnboardingEmail,
   sendEmployeePasswordResetEmail,
   archiveEmployee,
@@ -85,6 +86,11 @@ employeeRoutes.post(
   '/:employeeId/activate-account',
   authorize(EMPLOYEE_PERMISSIONS.UPDATE),
   activateEmployeeAccount,
+);
+employeeRoutes.post(
+  '/:employeeId/set-portal-password',
+  authorize(EMPLOYEE_PERMISSIONS.UPDATE),
+  setEmployeePortalPassword,
 );
 employeeRoutes.post(
   '/:employeeId/send-onboarding-email',

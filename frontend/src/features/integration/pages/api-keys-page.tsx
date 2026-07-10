@@ -53,7 +53,7 @@ export function ApiKeysPage() {
       <PageHeader
         icon={<Key className="h-6 w-6 text-primary" />}
         title="API Keys"
-        description="Create, rotate, and revoke programmatic access keys with scoped permissions and rate limits."
+        description="Create keys for face recognition attendance or other integrations. For attendance kiosk, only the name is required."
         actions={
           <Button onClick={() => setShowForm((v) => !v)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -65,7 +65,9 @@ export function ApiKeysPage() {
       {newSecret ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-900/20">
           <p className="text-sm font-medium">Copy your API key now — it will not be shown again.</p>
-          <code className="mt-2 block break-all rounded bg-background p-2 text-sm">{newSecret}</code>
+          <code className="mt-2 block break-all rounded bg-background p-2 text-sm">
+            {newSecret}
+          </code>
           <Button variant="outline" size="sm" className="mt-2" onClick={() => setNewSecret(null)}>
             Dismiss
           </Button>
@@ -146,7 +148,12 @@ export function ApiKeysPage() {
 
       {data && data.pagination.totalPages > 1 ? (
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
             Previous
           </Button>
           <Button

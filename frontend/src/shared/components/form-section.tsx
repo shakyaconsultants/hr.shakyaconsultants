@@ -10,9 +10,9 @@ export interface FormSectionProps {
 
 export function FormSection({ title, description, children, className }: FormSectionProps) {
   return (
-    <section className={cn('space-y-3 rounded-lg border bg-muted/20 p-4', className)}>
+    <section className={cn('erp-card space-y-3 p-4', className)}>
       <div>
-        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+        <h3 className="text-body-sm font-semibold tracking-tight">{title}</h3>
         {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
       </div>
       <div className="space-y-3">{children}</div>

@@ -8,6 +8,7 @@ import {
   useReactivateEmployee,
   useDeleteEmployee,
   useSendEmployeeActivationEmail,
+  useSetEmployeePortalPassword,
   useSendEmployeeOnboardingEmail,
   useSendEmployeePasswordResetEmail,
 } from '@/features/employee/hooks/use-employees';
@@ -21,6 +22,7 @@ import { EmployeeEditDialog } from '@/features/employee/components/employee-edit
 import { EmployeeRolesPanel } from '@/features/employee/components/employee-roles-panel';
 import { EmployeeReportingPanel } from '@/features/employee/components/employee-reporting-panel';
 import { EmployeePayrollPanel } from '@/features/payroll/components/employee-payroll-panel';
+import { EmployeeProfileDetails } from '@/features/employee/components/employee-profile-details';
 
 const TABS = [
   'Overview',
@@ -48,6 +50,7 @@ export function EmployeeDetailPage() {
   const reactivateMutation = useReactivateEmployee();
   const deleteMutation = useDeleteEmployee();
   const sendActivationMutation = useSendEmployeeActivationEmail(id);
+  const setPortalPasswordMutation = useSetEmployeePortalPassword(id);
   const sendOnboardingMutation = useSendEmployeeOnboardingEmail(id);
   const sendPasswordResetMutation = useSendEmployeePasswordResetEmail(id);
 
@@ -205,10 +208,17 @@ export function EmployeeDetailPage() {
                 isSendingWelcome={sendActivationMutation.isPending}
                 isSendingOnboarding={sendOnboardingMutation.isPending}
                 isSendingPasswordReset={sendPasswordResetMutation.isPending}
-                onSendWelcome={() =>
+                isSettingPortalPassword={setPortalPasswordMutation.isPending}
+                onSendWelcome={(temporaryPassword) =>
                   void runActionMutation({
                     successMessage: 'Login credentials email sent.',
-                    mutation: () => sendActivationMutation.mutateAsync(),
+                    mutation: () => sendActivationMutation.mutateAsync(temporaryPassword),
+                  })
+                }
+                onSetPortalPassword={(password) =>
+                  void runActionMutation({
+                    successMessage: 'Portal password updated.',
+                    mutation: () => setPortalPasswordMutation.mutateAsync(password),
                   })
                 }
                 onSendOnboarding={() =>
@@ -247,6 +257,11 @@ export function EmployeeDetailPage() {
                 <dd>{employee.employmentType}</dd>
               </div>
             </dl>
+            <EmployeeProfileDetails
+              employee={employee as unknown as Record<string, unknown>}
+              emergencyContacts={data.emergencyContacts}
+              bankDetails={data.bankDetails}
+            />
           </div>
         )}
 

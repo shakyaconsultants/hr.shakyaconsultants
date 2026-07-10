@@ -16,7 +16,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
   if (items.length === 0) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className={cn('text-sm text-muted-foreground', className)}>
+    <nav aria-label="Breadcrumb" className={cn('text-label-caps text-muted-foreground', className)}>
       <ol className="flex flex-wrap items-center gap-1">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
@@ -28,7 +28,9 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
                   {item.label}
                 </Link>
               ) : (
-                <span className={isLast ? 'font-medium text-foreground' : undefined}>{item.label}</span>
+                <span className={isLast ? 'font-medium text-foreground' : undefined}>
+                  {item.label}
+                </span>
               )}
             </li>
           );

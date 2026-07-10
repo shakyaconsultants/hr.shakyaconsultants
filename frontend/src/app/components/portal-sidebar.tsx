@@ -32,8 +32,10 @@ function NavLinkItem({
           type="button"
           onClick={() => setExpanded((value) => !value)}
           className={cn(
-            'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-            isActive ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            'flex w-full items-center gap-3 rounded px-3 py-2 text-body-sm font-medium transition-colors',
+            isActive
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-foreground',
           )}
           style={{ paddingLeft: `${12 + depth * 12}px` }}
         >
@@ -42,7 +44,7 @@ function NavLinkItem({
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         {expanded ? (
-          <ul className="mt-1 space-y-1">
+          <ul className="mt-1 space-y-0.5">
             {item.children?.map((child) => (
               <NavLinkItem key={child.id} item={child} depth={depth + 1} onNavigate={onNavigate} />
             ))}
@@ -53,16 +55,19 @@ function NavLinkItem({
   }
 
   const Icon = item.icon;
+  const isCurrent =
+    location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+
   return (
     <li>
       <Link
         to={item.path}
         onClick={onNavigate}
         className={cn(
-          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-          location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
-            ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          'flex items-center gap-3 rounded px-3 py-2 text-body-sm font-medium transition-colors',
+          isCurrent
+            ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+            : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-foreground',
         )}
         style={{ paddingLeft: `${12 + depth * 12}px` }}
       >
@@ -73,15 +78,21 @@ function NavLinkItem({
   );
 }
 
-export function PortalSidebar({ portal, onNavigate }: { portal: PortalType; onNavigate?: () => void }) {
+export function PortalSidebar({
+  portal,
+  onNavigate,
+}: {
+  portal: PortalType;
+  onNavigate?: () => void;
+}) {
   const groups = useMergedNavigation(portal);
 
   return (
-    <nav className="space-y-6 p-3">
+    <nav className="space-y-5 p-3">
       {groups.map((group) => (
         <div key={group.id}>
-          <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
-          <ul className="space-y-1">
+          <p className="mb-1.5 px-2 text-label-caps text-sidebar-muted-foreground">{group.label}</p>
+          <ul className="space-y-0.5">
             {group.items.map((item) => (
               <NavLinkItem key={item.id} item={item} onNavigate={onNavigate} />
             ))}
