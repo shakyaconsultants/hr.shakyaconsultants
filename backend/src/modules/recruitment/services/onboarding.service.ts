@@ -18,6 +18,7 @@ import { PortalOnboardingService } from '@modules/portal/services/portal-onboard
 import { EmailDispatcher } from '@infrastructure/email/email-outbound.service.js';
 import { EMAIL_TEMPLATE_TYPES } from '@shared/constants/email.constants.js';
 import { AUTH_EMAIL_JOBS } from '@modules/auth/constants/auth.constants.js';
+import { logger } from '@logging/winston.logger.js';
 import type { RecruitmentActorContext } from '@modules/recruitment/types/recruitment.types.js';
 
 const ALL_SECTIONS = Object.values(ONBOARDING_SECTION);
@@ -215,13 +216,19 @@ export const OnboardingService = {
       createdByUserId: context.userId,
     });
 
-    await EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
+    void EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
       tenantId: context.companyId,
       userId: context.userId,
       to: candidate.email,
       templateType: EMAIL_TEMPLATE_TYPES.ONBOARDING_PORTAL,
       portalUrl,
       expiresAt: expiresAt.toISOString(),
+    }).catch((error: unknown) => {
+      logger.warn('Onboarding portal email failed — link still issued', {
+        companyId: context.companyId,
+        onboardingId: onboarding.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 
     await RecruitmentAuditService.log({
@@ -295,13 +302,19 @@ export const OnboardingService = {
       createdByUserId: context.userId,
     });
 
-    await EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
+    void EmailDispatcher.sendEmail(AUTH_EMAIL_JOBS.ONBOARDING_PORTAL, {
       tenantId: context.companyId,
       userId: context.userId,
       to: employee.email,
       templateType: EMAIL_TEMPLATE_TYPES.ONBOARDING_PORTAL,
       portalUrl,
       expiresAt: expiresAt.toISOString(),
+    }).catch((error: unknown) => {
+      logger.warn('Employee onboarding portal email failed — link still issued', {
+        companyId: context.companyId,
+        employeeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 
     return { portalUrl, expiresAt };

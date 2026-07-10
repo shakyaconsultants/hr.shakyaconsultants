@@ -8,7 +8,6 @@ import { EnterpriseLayout } from '@/app/layouts/enterprise-layout';
 import { ManagerLayout } from '@/app/layouts/manager-layout';
 import { WorkspaceLayout } from '@/app/layouts/workspace-layout';
 import { useAuthStore } from '@/shared/stores/app.store';
-import { PageSkeleton } from '@/shared/components/page-skeleton';
 
 const PORTAL_HOME_PATHS = [ROUTES.ENTERPRISE, ROUTES.MANAGER, ROUTES.WORKSPACE] as const;
 
@@ -25,11 +24,7 @@ export function PortalGuard() {
   const homeRoute = usePortalHomeRoute();
 
   if (authStatus === AUTH_STATUS.RESTORING) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <PageSkeleton />
-      </div>
-    );
+    return null;
   }
 
   if (authStatus === AUTH_STATUS.UNAUTHENTICATED) {

@@ -70,6 +70,12 @@ async function clearInvalidSession(): Promise<void> {
   await clearServerAuthCookies();
 }
 
+/** Clears client + server session after a confirmed failed restore or logout. */
+export async function failSessionRestore(): Promise<void> {
+  await clearInvalidSession();
+  useAuthStore.getState().clearAuth();
+}
+
 export type RefreshAccessTokenResult = 'success' | 'invalid' | 'unavailable';
 
 export function refreshAccessTokenOnce(): Promise<RefreshAccessTokenResult> {

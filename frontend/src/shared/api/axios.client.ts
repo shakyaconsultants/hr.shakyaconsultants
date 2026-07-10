@@ -6,14 +6,9 @@ import { stopProactiveTokenRefresh } from '@/shared/auth/auth-token-refresh-sche
 import {
   isSessionRestoreActive,
   refreshAccessTokenOnce,
-  clearServerAuthCookies,
+  failSessionRestore,
 } from '@/shared/auth/auth-session';
-import {
-  clearStoredTokens,
-  resolveBearerToken,
-  usesHttpOnlyCookies,
-} from '@/shared/auth/token-storage';
-import { useAuthStore } from '@/shared/stores/app.store';
+import { resolveBearerToken, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   _authRetried?: boolean;
@@ -77,10 +72,8 @@ apiClient.interceptors.response.use(
       // Only logout when the server confirms the session is dead — not when the API is briefly down (tsx watch restart).
       if (refreshed === 'invalid' && !isSessionRestoreActive()) {
         stopProactiveTokenRefresh();
-        clearStoredTokens();
         authDiag.log('session_cleared', { reason: '401_after_refresh_failed', url: original.url });
-        useAuthStore.getState().clearAuth();
-        void clearServerAuthCookies();
+        await failSessionRestore();
 
         if (window.location.pathname !== ROUTES.LOGIN) {
           authDiag.log('redirect_to_login', {

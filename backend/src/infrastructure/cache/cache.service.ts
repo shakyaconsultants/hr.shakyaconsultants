@@ -1,51 +1,41 @@
-import { CacheEntryRepository } from '@infrastructure/cache/cache-entry.schema.js';
-import { MongoServerError } from 'mongodb';
+import { CacheEntryModel } from '@infrastructure/cache/cache-entry.schema.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 
 const SYSTEM_ACTOR = 'system';
 
 async function getMongoCacheValue(key: string): Promise<string | null> {
-  const entry = await CacheEntryRepository.findOne({
+  const entry = await CacheEntryModel.findOne({
     cacheKey: key,
+    isDeleted: { $ne: true },
     $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
-  });
+  }).exec();
   return entry?.value ?? null;
 }
 
 async function setMongoCacheValue(key: string, value: string, ttlSeconds?: number): Promise<void> {
   const expiresAt =
     ttlSeconds !== undefined && ttlSeconds > 0 ? new Date(Date.now() + ttlSeconds * 1000) : null;
-  const existing = await CacheEntryRepository.findOne({ cacheKey: key });
 
-  if (existing) {
-    await CacheEntryRepository.update(existing.id, {
-      $set: { value, expiresAt, updatedBy: SYSTEM_ACTOR },
-    });
-    return;
-  }
-
-  try {
-    await CacheEntryRepository.create({
-      id: generateUuid(),
-      companyId: SYSTEM_ACTOR,
-      cacheKey: key,
-      value,
-      expiresAt,
-      createdBy: SYSTEM_ACTOR,
-      updatedBy: SYSTEM_ACTOR,
-    });
-  } catch (error) {
-    if (error instanceof MongoServerError && error.code === 11000) {
-      const raced = await CacheEntryRepository.findOne({ cacheKey: key });
-      if (raced) {
-        await CacheEntryRepository.update(raced.id, {
-          $set: { value, expiresAt, updatedBy: SYSTEM_ACTOR },
-        });
-        return;
-      }
-    }
-    throw error;
-  }
+  await CacheEntryModel.findOneAndUpdate(
+    { cacheKey: key },
+    {
+      $set: {
+        value,
+        expiresAt,
+        updatedBy: SYSTEM_ACTOR,
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+      },
+      $setOnInsert: {
+        id: generateUuid(),
+        companyId: SYSTEM_ACTOR,
+        cacheKey: key,
+        createdBy: SYSTEM_ACTOR,
+      },
+    },
+    { upsert: true, new: true },
+  ).exec();
 }
 
 export const CacheService = {
@@ -72,9 +62,19 @@ export const CacheService = {
   },
 
   async del(key: string): Promise<boolean> {
-    const entry = await CacheEntryRepository.findOne({ cacheKey: key });
+    const entry = await CacheEntryModel.findOne({ cacheKey: key, isDeleted: { $ne: true } }).exec();
     if (entry) {
-      await CacheEntryRepository.softDelete(entry.id, SYSTEM_ACTOR);
+      await CacheEntryModel.updateOne(
+        { id: entry.id },
+        {
+          $set: {
+            isDeleted: true,
+            deletedAt: new Date(),
+            deletedBy: SYSTEM_ACTOR,
+            updatedBy: SYSTEM_ACTOR,
+          },
+        },
+      ).exec();
     }
     return true;
   },

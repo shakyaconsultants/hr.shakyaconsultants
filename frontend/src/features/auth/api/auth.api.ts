@@ -72,7 +72,7 @@ export async function refreshTokens(
     ApiSuccessResponse<{
       tokens: { accessToken: string; refreshToken: string; expiresIn: string | number };
     }>
-  >(`${AUTH_PREFIX}/refresh`, refreshToken ? { refreshToken } : {}, { timeout: 5_000 });
+  >(`${AUTH_PREFIX}/refresh`, refreshToken ? { refreshToken } : {}, { timeout: 15_000 });
   return unwrap(response);
 }
 

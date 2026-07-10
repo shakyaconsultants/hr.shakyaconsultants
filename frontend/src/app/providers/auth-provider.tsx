@@ -4,6 +4,7 @@ import { loginRequest, logoutRequest, fetchMe } from '@/features/auth/api/auth.a
 import {
   applySessionFromMe,
   clearStaleAuthBeforeLogin,
+  failSessionRestore,
   restoreSession,
 } from '@/shared/auth/auth-session';
 import {
@@ -13,7 +14,12 @@ import {
 } from '@/shared/auth/auth-token-refresh-scheduler';
 import { authDiag } from '@/shared/auth/auth-diagnostics';
 import { AUTH_STATUS } from '@/shared/auth/auth-status.constants';
-import { getRefreshToken, setStoredTokens, usesHttpOnlyCookies } from '@/shared/auth/token-storage';
+import {
+  getRefreshToken,
+  setStoredTokens,
+  usesHttpOnlyCookies,
+  clearStoredTokens,
+} from '@/shared/auth/token-storage';
 import { useAuthStore } from '@/shared/stores/app.store';
 
 interface AuthContextValue {
@@ -55,6 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (outcome.reason === 'transient') {
         authDiag.log('bootstrap_transient_error', { reason: outcome.message });
+        clearStoredTokens();
+        setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
+        return;
+      }
+
+      if (outcome.reason === 'no_session_hint') {
         setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
         return;
       }
@@ -63,14 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reason: outcome.reason ?? 'unknown',
         status: outcome.status,
       });
-      clearAuth();
+      await failSessionRestore();
       setAuthStatus(AUTH_STATUS.UNAUTHENTICATED);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [clearAuth, setAuthStatus]);
+  }, [setAuthStatus]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

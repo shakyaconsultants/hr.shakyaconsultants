@@ -47,7 +47,8 @@ export function clearAuthCookies(res: Response): void {
 
   res.clearCookie(AUTH_COOKIE_NAMES.ACCESS, { ...baseOptions, path: '/' });
   res.clearCookie(AUTH_COOKIE_NAMES.REFRESH, { ...baseOptions, path: '/' });
-  // Legacy path from earlier deploys
+  // Legacy paths from earlier deploys
+  res.clearCookie(AUTH_COOKIE_NAMES.ACCESS, { ...baseOptions, path: '/api/v1/auth' });
   res.clearCookie(AUTH_COOKIE_NAMES.REFRESH, { ...baseOptions, path: '/api/v1/auth' });
 }
 

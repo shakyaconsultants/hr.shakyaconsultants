@@ -23,9 +23,13 @@ export const cacheEntryModel = defineDomainModel<CacheEntryDocument>(
     withCompanyScope: false,
     indexes: [
       { fields: { cacheKey: 1 }, options: { unique: true, name: 'uq_cache_entries_key' } },
-      { fields: { expiresAt: 1 }, options: { expireAfterSeconds: 0, name: 'ttl_cache_entries_expires' } },
+      {
+        fields: { expiresAt: 1 },
+        options: { expireAfterSeconds: 0, name: 'ttl_cache_entries_expires' },
+      },
     ],
   },
 );
 
 export const CacheEntryRepository = cacheEntryModel.repository;
+export const CacheEntryModel = cacheEntryModel.model;
