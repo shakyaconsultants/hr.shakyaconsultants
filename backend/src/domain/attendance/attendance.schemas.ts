@@ -2,13 +2,22 @@ import { Schema, type SchemaDefinition } from 'mongoose';
 import { defineDomainModel } from '@infrastructure/database/model.factory.js';
 import { COLLECTIONS } from '@infrastructure/database/constants/collections.js';
 import type { BaseDocument } from '@infrastructure/database/types/base-document.types.js';
-import { ATTENDANCE_STATUS, ENTITY_STATUS, LEAVE_STATUS } from '@shared/constants/status.constants.js';
+import {
+  ATTENDANCE_STATUS,
+  ENTITY_STATUS,
+  LEAVE_STATUS,
+} from '@shared/constants/status.constants.js';
 
 export const ATTENDANCE_LOG_TYPE = {
   CHECK_IN: 'check_in',
   CHECK_OUT: 'check_out',
   BREAK_START: 'break_start',
   BREAK_END: 'break_end',
+} as const;
+
+export const ATTENDANCE_LOG_SOURCE = {
+  MANUAL: 'manual',
+  EXTERNAL: 'external',
 } as const;
 
 export const ATTENDANCE_CORRECTION_STATUS = {
@@ -60,6 +69,9 @@ export interface AttendanceLogDocument extends BaseDocument {
   location?: string;
   ipAddress?: string;
   deviceInfo?: string;
+  source?: string;
+  externalId?: string;
+  deviceCode?: string;
 }
 
 export interface ShiftDocument extends BaseDocument {
@@ -106,7 +118,11 @@ export interface AttendanceApprovalDocument extends BaseDocument {
 const attendanceFields: SchemaDefinition = {
   employeeId: { type: String, required: true, index: true },
   date: { type: Date, required: true, index: true },
-  status: { type: String, enum: Object.values(ATTENDANCE_STATUS), default: ATTENDANCE_STATUS.ABSENT },
+  status: {
+    type: String,
+    enum: Object.values(ATTENDANCE_STATUS),
+    default: ATTENDANCE_STATUS.ABSENT,
+  },
   shiftId: { type: String, index: true },
   departmentId: { type: String, index: true },
   branchId: { type: String, index: true },
@@ -131,6 +147,13 @@ const attendanceLogFields: SchemaDefinition = {
   location: { type: String, trim: true },
   ipAddress: { type: String, trim: true },
   deviceInfo: { type: String, trim: true },
+  source: {
+    type: String,
+    enum: Object.values(ATTENDANCE_LOG_SOURCE),
+    default: ATTENDANCE_LOG_SOURCE.MANUAL,
+  },
+  externalId: { type: String, trim: true, sparse: true },
+  deviceCode: { type: String, trim: true },
 };
 
 const shiftFields: SchemaDefinition = {
@@ -160,7 +183,11 @@ const attendanceAdjustmentFields: SchemaDefinition = {
   adjustedBy: { type: String, required: true },
   approvedAt: { type: Date },
   approvalRequestId: { type: String, index: true },
-  status: { type: String, enum: Object.values(ATTENDANCE_CORRECTION_STATUS), default: ATTENDANCE_CORRECTION_STATUS.DRAFT },
+  status: {
+    type: String,
+    enum: Object.values(ATTENDANCE_CORRECTION_STATUS),
+    default: ATTENDANCE_CORRECTION_STATUS.DRAFT,
+  },
   requestedCheckIn: { type: Date },
   requestedCheckOut: { type: Date },
 };
@@ -180,10 +207,22 @@ export const attendanceModel = defineDomainModel<AttendanceDocument>(
   attendanceFields,
   {
     indexes: [
-      { fields: { companyId: 1, employeeId: 1, date: 1 }, options: { unique: true, name: 'uq_attendances_company_employee_date' } },
-      { fields: { companyId: 1, date: 1, status: 1 }, options: { name: 'idx_attendances_company_date_status' } },
-      { fields: { companyId: 1, departmentId: 1, date: 1 }, options: { name: 'idx_attendances_company_dept_date' } },
-      { fields: { companyId: 1, branchId: 1, date: 1 }, options: { name: 'idx_attendances_company_branch_date' } },
+      {
+        fields: { companyId: 1, employeeId: 1, date: 1 },
+        options: { unique: true, name: 'uq_attendances_company_employee_date' },
+      },
+      {
+        fields: { companyId: 1, date: 1, status: 1 },
+        options: { name: 'idx_attendances_company_date_status' },
+      },
+      {
+        fields: { companyId: 1, departmentId: 1, date: 1 },
+        options: { name: 'idx_attendances_company_dept_date' },
+      },
+      {
+        fields: { companyId: 1, branchId: 1, date: 1 },
+        options: { name: 'idx_attendances_company_branch_date' },
+      },
     ],
   },
 );
@@ -194,8 +233,18 @@ export const attendanceLogModel = defineDomainModel<AttendanceLogDocument>(
   attendanceLogFields,
   {
     indexes: [
-      { fields: { companyId: 1, attendanceId: 1, timestamp: -1 }, options: { name: 'idx_attendance_logs_company_attendance_time' } },
-      { fields: { companyId: 1, employeeId: 1, timestamp: -1 }, options: { name: 'idx_attendance_logs_company_employee_time' } },
+      {
+        fields: { companyId: 1, attendanceId: 1, timestamp: -1 },
+        options: { name: 'idx_attendance_logs_company_attendance_time' },
+      },
+      {
+        fields: { companyId: 1, employeeId: 1, timestamp: -1 },
+        options: { name: 'idx_attendance_logs_company_employee_time' },
+      },
+      {
+        fields: { companyId: 1, externalId: 1 },
+        options: { unique: true, sparse: true, name: 'uq_attendance_logs_company_external_id' },
+      },
     ],
   },
 );
@@ -206,7 +255,10 @@ export const shiftModel = defineDomainModel<ShiftDocument>(
   shiftFields,
   {
     indexes: [
-      { fields: { companyId: 1, code: 1 }, options: { unique: true, name: 'uq_shifts_company_code' } },
+      {
+        fields: { companyId: 1, code: 1 },
+        options: { unique: true, name: 'uq_shifts_company_code' },
+      },
       { fields: { companyId: 1, status: 1 }, options: { name: 'idx_shifts_company_status' } },
     ],
   },
@@ -218,8 +270,14 @@ export const shiftAssignmentModel = defineDomainModel<ShiftAssignmentDocument>(
   shiftAssignmentFields,
   {
     indexes: [
-      { fields: { companyId: 1, employeeId: 1, effectiveFrom: -1 }, options: { name: 'idx_shift_assignments_company_employee_from' } },
-      { fields: { companyId: 1, workShiftId: 1, status: 1 }, options: { name: 'idx_shift_assignments_company_shift_status' } },
+      {
+        fields: { companyId: 1, employeeId: 1, effectiveFrom: -1 },
+        options: { name: 'idx_shift_assignments_company_employee_from' },
+      },
+      {
+        fields: { companyId: 1, workShiftId: 1, status: 1 },
+        options: { name: 'idx_shift_assignments_company_shift_status' },
+      },
     ],
   },
 );
@@ -230,8 +288,14 @@ export const attendanceAdjustmentModel = defineDomainModel<AttendanceAdjustmentD
   attendanceAdjustmentFields,
   {
     indexes: [
-      { fields: { companyId: 1, attendanceId: 1 }, options: { name: 'idx_attendance_adjustments_company_attendance' } },
-      { fields: { companyId: 1, employeeId: 1, createdAt: -1 }, options: { name: 'idx_attendance_adjustments_company_employee_date' } },
+      {
+        fields: { companyId: 1, attendanceId: 1 },
+        options: { name: 'idx_attendance_adjustments_company_attendance' },
+      },
+      {
+        fields: { companyId: 1, employeeId: 1, createdAt: -1 },
+        options: { name: 'idx_attendance_adjustments_company_employee_date' },
+      },
     ],
   },
 );
@@ -242,8 +306,14 @@ export const attendanceApprovalModel = defineDomainModel<AttendanceApprovalDocum
   attendanceApprovalFields,
   {
     indexes: [
-      { fields: { companyId: 1, approverId: 1, status: 1 }, options: { name: 'idx_attendance_approvals_company_approver_status' } },
-      { fields: { companyId: 1, employeeId: 1, status: 1 }, options: { name: 'idx_attendance_approvals_company_employee_status' } },
+      {
+        fields: { companyId: 1, approverId: 1, status: 1 },
+        options: { name: 'idx_attendance_approvals_company_approver_status' },
+      },
+      {
+        fields: { companyId: 1, employeeId: 1, status: 1 },
+        options: { name: 'idx_attendance_approvals_company_employee_status' },
+      },
     ],
   },
 );

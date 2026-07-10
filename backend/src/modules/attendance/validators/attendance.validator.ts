@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import { ATTENDANCE_LOG_TYPE } from '@domain/attendance/attendance.schemas.js';
 import { ATTENDANCE_STATUS } from '@shared/constants/status.constants.js';
-import { ATTENDANCE_REPORT_PERIOD, ATTENDANCE_REPORT_SCOPE } from '@modules/attendance/constants/attendance.constants.js';
+import {
+  ATTENDANCE_REPORT_PERIOD,
+  ATTENDANCE_REPORT_SCOPE,
+} from '@modules/attendance/constants/attendance.constants.js';
 
 export const idParamSchema = z.object({ id: z.uuid() });
 
@@ -28,6 +31,15 @@ export const punchSchema = z.object({
   timestamp: z.coerce.date().optional(),
   location: z.string().optional(),
   deviceInfo: z.string().optional(),
+});
+
+export const externalPunchSchema = z.object({
+  externalId: z.string().min(1).max(128),
+  employeeNumber: z.string().min(1).max(64),
+  type: z.enum([ATTENDANCE_LOG_TYPE.CHECK_IN, ATTENDANCE_LOG_TYPE.CHECK_OUT]),
+  timestamp: z.coerce.date(),
+  deviceCode: z.string().max(64).optional(),
+  location: z.string().max(256).optional(),
 });
 
 export const updatePoliciesSchema = z.object({

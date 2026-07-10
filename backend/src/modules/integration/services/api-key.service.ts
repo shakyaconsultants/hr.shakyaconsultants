@@ -178,8 +178,16 @@ export const ApiKeyService = {
   },
 
   async validate(companyId: string, plainKey: string, ip?: string): Promise<ApiKeyDocument | null> {
+    const doc = await this.resolveByPlainKey(plainKey, ip);
+    if (!doc || doc.companyId !== companyId) {
+      return null;
+    }
+    return doc;
+  },
+
+  async resolveByPlainKey(plainKey: string, ip?: string): Promise<ApiKeyDocument | null> {
     const keyHash = hashKey(plainKey);
-    const doc = await ApiKeyRepository.findOne({ keyHash, isRevoked: false }, { companyId });
+    const doc = await ApiKeyRepository.findOne({ keyHash, isRevoked: false });
     if (!doc) return null;
 
     if (doc.expiresAt && doc.expiresAt < new Date()) {
@@ -193,10 +201,14 @@ export const ApiKeyService = {
       );
     }
 
-    await ApiKeyRepository.update(doc.id, { $set: { lastUsedAt: new Date() } }, { companyId });
+    await ApiKeyRepository.update(
+      doc.id,
+      { $set: { lastUsedAt: new Date() } },
+      { companyId: doc.companyId },
+    );
 
     await IntegrationLogService.log({
-      companyId,
+      companyId: doc.companyId,
       userId: doc.createdBy,
       category: INTEGRATION_LOG_CATEGORY.API,
       message: `API key used: ${doc.name}`,
@@ -205,7 +217,7 @@ export const ApiKeyService = {
 
     await ApiLogRepository.create({
       id: generateUuid(),
-      companyId,
+      companyId: doc.companyId,
       method: 'API_KEY',
       path: '/integration/api',
       statusCode: 200,

@@ -54,7 +54,11 @@ export function PunchPanel() {
       </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Status" value={today?.status?.replace(/_/g, ' ') ?? 'Not punched'} capitalize />
+        <Stat
+          label="Status"
+          value={today?.status?.replace(/_/g, ' ') ?? 'Not punched'}
+          capitalize
+        />
         <Stat label="Check In" value={formatTime(today?.checkIn)} />
         <Stat label="Check Out" value={formatTime(today?.checkOut)} />
         <Stat label="Worked" value={formatMinutes(today?.workedMinutes)} />
@@ -88,11 +92,59 @@ export function PunchPanel() {
       </div>
 
       {punchError ? <p className="mt-3 text-sm text-destructive">{punchError}</p> : null}
+
+      {today?.logs && today.logs.length > 0 ? (
+        <div className="mt-6">
+          <h3 className="mb-2 text-sm font-medium text-muted-foreground">Today's punches</h3>
+          <ul className="space-y-2">
+            {[...today.logs].reverse().map((log) => (
+              <li
+                key={log.id}
+                className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-sm"
+              >
+                <span className="capitalize">{log.type.replace(/_/g, ' ')}</span>
+                <div className="flex items-center gap-2">
+                  <SourceBadge source={log.source} deviceCode={log.deviceCode} />
+                  <span className="text-muted-foreground">
+                    {new Date(log.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Stat({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
+function SourceBadge({ source, deviceCode }: { source?: string; deviceCode?: string }) {
+  const isExternal = source === 'external';
+  const label = isExternal ? (deviceCode ? `Kiosk · ${deviceCode}` : 'Kiosk') : 'Manual';
+  return (
+    <span
+      className={cn(
+        'rounded px-1.5 py-0.5 text-xs font-medium',
+        isExternal ? 'bg-blue-100 text-blue-800' : 'bg-muted text-muted-foreground',
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  capitalize,
+}: {
+  label: string;
+  value: string;
+  capitalize?: boolean;
+}) {
   return (
     <div className="rounded-md border bg-muted/30 px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>

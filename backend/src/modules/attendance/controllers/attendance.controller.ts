@@ -11,11 +11,16 @@ import { ShiftAssignmentService } from '@modules/attendance/services/shift-assig
 import { AttendanceReportService } from '@modules/attendance/services/report.service.js';
 import { AttendanceMonthlyProcessingService } from '@modules/attendance/services/monthly-processing.service.js';
 import { AttendanceDashboardService } from '@modules/attendance/services/attendance-dashboard.service.js';
+import { ExternalPunchService } from '@modules/attendance/services/external-punch.service.js';
+import type { ApiKeyAuthenticatedRequest } from '@modules/integration/middleware/api-key-auth.middleware.js';
+import { AuthenticationError } from '@shared/errors/app.error.js';
+import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import {
   calendarQuerySchema,
   createCorrectionSchema,
   createShiftAssignmentSchema,
   exceptionsQuerySchema,
+  externalPunchSchema,
   idParamSchema,
   listCorrectionsQuerySchema,
   listRecordsQuerySchema,
@@ -36,7 +41,10 @@ export const getEnterpriseDashboard: RequestHandler = async (req, res, next) => 
   try {
     const authReq = req as AuthenticatedRequest;
     const date = typeof req.query.date === 'string' ? req.query.date : undefined;
-    const data = await AttendanceDashboardService.getEnterpriseDashboard(authReq.user.companyId, date);
+    const data = await AttendanceDashboardService.getEnterpriseDashboard(
+      authReq.user.companyId,
+      date,
+    );
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -64,7 +72,11 @@ export const getManagerDashboard: RequestHandler = async (req, res, next) => {
     if (!managerId) {
       return ResponseService.success(res, authReq, { teamSize: 0, members: [] });
     }
-    const data = await AttendanceDashboardService.getManagerDashboard(authReq.user.companyId, managerId, date);
+    const data = await AttendanceDashboardService.getManagerDashboard(
+      authReq.user.companyId,
+      managerId,
+      date,
+    );
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -99,8 +111,12 @@ export const listShiftAssignments: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const employeeId = typeof req.query.employeeId === 'string' ? req.query.employeeId : undefined;
-    const workShiftId = typeof req.query.workShiftId === 'string' ? req.query.workShiftId : undefined;
-    const data = await ShiftAssignmentService.list(authReq.user.companyId, { employeeId, workShiftId });
+    const workShiftId =
+      typeof req.query.workShiftId === 'string' ? req.query.workShiftId : undefined;
+    const data = await ShiftAssignmentService.list(authReq.user.companyId, {
+      employeeId,
+      workShiftId,
+    });
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
@@ -157,6 +173,36 @@ export const punch: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const externalPunch: RequestHandler = async (req, res, next) => {
+  try {
+    const apiReq = req as ApiKeyAuthenticatedRequest;
+    const auth = apiReq.apiKeyAuth;
+    if (!auth) {
+      throw new AuthenticationError('API key required', ERROR_CODES.AUTH_UNAUTHORIZED);
+    }
+
+    const payload = validateInput(externalPunchSchema, req.body);
+    const context = {
+      companyId: auth.companyId,
+      userId: auth.userId,
+      ip: req.ip,
+      userAgent: req.get('user-agent') ?? undefined,
+    };
+
+    const data = await ExternalPunchService.ingest(context, payload);
+    return ResponseService.created(res, req, {
+      attendanceLogId: data.log.id,
+      attendanceId: data.log.attendanceId,
+      employeeId: data.log.employeeId,
+      duplicate: data.duplicate,
+      status: data.record?.status,
+    });
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
 export const listRecords: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
@@ -172,7 +218,8 @@ export const listRecords: RequestHandler = async (req, res, next) => {
 export const getTodayRecord: RequestHandler = async (req, res, next) => {
   try {
     const authReq = req as AuthenticatedRequest;
-    const employeeId = typeof req.query.employeeId === 'string' ? req.query.employeeId : authReq.user.employeeId;
+    const employeeId =
+      typeof req.query.employeeId === 'string' ? req.query.employeeId : authReq.user.employeeId;
     if (!employeeId) {
       return ResponseService.success(res, authReq, null);
     }
@@ -295,7 +342,11 @@ export const getTeam: RequestHandler = async (req, res, next) => {
     if (!managerId) {
       return ResponseService.success(res, authReq, []);
     }
-    const data = await AttendanceRecordService.getTeamRecords(authReq.user.companyId, managerId, query);
+    const data = await AttendanceRecordService.getTeamRecords(
+      authReq.user.companyId,
+      managerId,
+      query,
+    );
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);

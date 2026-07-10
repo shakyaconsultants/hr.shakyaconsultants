@@ -12,16 +12,19 @@ import type { AttendanceActorContext } from '@modules/approval/types/approval.ty
 import { ATTENDANCE_STATUS } from '@shared/constants/status.constants.js';
 
 export const AttendanceRecordService = {
-  async list(companyId: string, query: {
-    page?: number;
-    pageSize?: number;
-    employeeId?: string;
-    departmentId?: string;
-    branchId?: string;
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-  }) {
+  async list(
+    companyId: string,
+    query: {
+      page?: number;
+      pageSize?: number;
+      employeeId?: string;
+      departmentId?: string;
+      branchId?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    },
+  ) {
     const filter: Record<string, unknown> = {};
     if (query.employeeId) filter.employeeId = query.employeeId;
     if (query.departmentId) filter.departmentId = query.departmentId;
@@ -29,16 +32,22 @@ export const AttendanceRecordService = {
     if (query.status) filter.status = query.status;
     if (query.startDate || query.endDate) {
       filter.date = {};
-      if (query.startDate) (filter.date as Record<string, Date>).$gte = startOfDay(new Date(query.startDate));
-      if (query.endDate) (filter.date as Record<string, Date>).$lte = endOfDay(new Date(query.endDate));
+      if (query.startDate)
+        (filter.date as Record<string, Date>).$gte = startOfDay(new Date(query.startDate));
+      if (query.endDate)
+        (filter.date as Record<string, Date>).$lte = endOfDay(new Date(query.endDate));
     }
 
-    return AttendanceRepository.paginate(filter, {
-      page: query.page,
-      pageSize: query.pageSize,
-      sortBy: 'date',
-      sortOrder: 'desc',
-    }, { companyId });
+    return AttendanceRepository.paginate(
+      filter,
+      {
+        page: query.page,
+        pageSize: query.pageSize,
+        sortBy: 'date',
+        sortOrder: 'desc',
+      },
+      { companyId },
+    );
   },
 
   async getById(companyId: string, id: string) {
@@ -53,13 +62,15 @@ export const AttendanceRecordService = {
     const today = startOfDay(new Date());
     let record = await AttendanceRepository.findOne({ employeeId, date: today }, { companyId });
     if (!record) {
-      record = await AttendanceCalculatorService.getOrCreateRecord(companyId, employeeId, today, 'system');
+      record = await AttendanceCalculatorService.getOrCreateRecord(
+        companyId,
+        employeeId,
+        today,
+        'system',
+      );
     }
 
-    const logs = await AttendanceLogRepository.findMany(
-      { attendanceId: record.id },
-      { companyId },
-    );
+    const logs = await AttendanceLogRepository.findMany({ attendanceId: record.id }, { companyId });
     logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     const lastPunchType = logs[0]?.type;
 
@@ -67,6 +78,13 @@ export const AttendanceRecordService = {
       ...record,
       lastPunchType,
       onBreak: lastPunchType === ATTENDANCE_LOG_TYPE.BREAK_START,
+      logs: logs.map((log) => ({
+        id: log.id,
+        type: log.type,
+        timestamp: log.timestamp,
+        source: log.source ?? 'manual',
+        deviceCode: log.deviceCode,
+      })),
     };
   },
 
@@ -92,14 +110,17 @@ export const AttendanceRecordService = {
     }));
   },
 
-  async override(context: AttendanceActorContext, payload: {
-    attendanceId: string;
-    status?: string;
-    checkIn?: Date;
-    checkOut?: Date;
-    notes?: string;
-    reason: string;
-  }) {
+  async override(
+    context: AttendanceActorContext,
+    payload: {
+      attendanceId: string;
+      status?: string;
+      checkIn?: Date;
+      checkOut?: Date;
+      notes?: string;
+      reason: string;
+    },
+  ) {
     const before = await this.getById(context.companyId, payload.attendanceId);
 
     await AttendanceRepository.update(
@@ -114,7 +135,11 @@ export const AttendanceRecordService = {
       { companyId: context.companyId },
     );
 
-    const recalculated = await AttendanceCalculatorService.recalculate(context.companyId, payload.attendanceId, context.userId);
+    const recalculated = await AttendanceCalculatorService.recalculate(
+      context.companyId,
+      payload.attendanceId,
+      context.userId,
+    );
 
     await AttendanceAuditService.log({
       companyId: context.companyId,
@@ -131,7 +156,11 @@ export const AttendanceRecordService = {
     return recalculated;
   },
 
-  async getTeamRecords(companyId: string, managerEmployeeId: string, query: { date?: string; startDate?: string; endDate?: string }) {
+  async getTeamRecords(
+    companyId: string,
+    managerEmployeeId: string,
+    query: { date?: string; startDate?: string; endDate?: string },
+  ) {
     const { EmployeeRepository } = await import('@domain/employee/employee.schemas.js');
     const directReports = await EmployeeRepository.findMany(
       { reportingManagerId: managerEmployeeId },
@@ -147,8 +176,10 @@ export const AttendanceRecordService = {
       filter.date = startOfDay(new Date(query.date));
     } else if (query.startDate || query.endDate) {
       filter.date = {};
-      if (query.startDate) (filter.date as Record<string, Date>).$gte = startOfDay(new Date(query.startDate));
-      if (query.endDate) (filter.date as Record<string, Date>).$lte = endOfDay(new Date(query.endDate));
+      if (query.startDate)
+        (filter.date as Record<string, Date>).$gte = startOfDay(new Date(query.startDate));
+      if (query.endDate)
+        (filter.date as Record<string, Date>).$lte = endOfDay(new Date(query.endDate));
     } else {
       filter.date = startOfDay(new Date());
     }
@@ -158,13 +189,25 @@ export const AttendanceRecordService = {
     return results;
   },
 
-  async getExceptions(companyId: string, query: { date?: string; startDate?: string; endDate?: string; departmentId?: string; branchId?: string }) {
+  async getExceptions(
+    companyId: string,
+    query: {
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+      departmentId?: string;
+      branchId?: string;
+    },
+  ) {
     const filter: Record<string, unknown> = {
       $or: [
         { status: ATTENDANCE_STATUS.LATE },
         { status: ATTENDANCE_STATUS.ABSENT },
         { checkIn: { $exists: true }, checkOut: { $exists: false } },
-        { checkIn: { $exists: false }, status: { $nin: [ATTENDANCE_STATUS.HOLIDAY, ATTENDANCE_STATUS.WEEKEND] } },
+        {
+          checkIn: { $exists: false },
+          status: { $nin: [ATTENDANCE_STATUS.HOLIDAY, ATTENDANCE_STATUS.WEEKEND] },
+        },
       ],
     };
 
@@ -190,7 +233,13 @@ export const AttendanceRecordService = {
       checkIn: r.checkIn,
       checkOut: r.checkOut,
       lateMinutes: r.lateMinutes,
-      exceptionType: !r.checkIn ? 'missing_check_in' : !r.checkOut ? 'missing_check_out' : r.status === ATTENDANCE_STATUS.LATE ? 'late' : 'absent',
+      exceptionType: !r.checkIn
+        ? 'missing_check_in'
+        : !r.checkOut
+          ? 'missing_check_out'
+          : r.status === ATTENDANCE_STATUS.LATE
+            ? 'late'
+            : 'absent',
     }));
   },
 };

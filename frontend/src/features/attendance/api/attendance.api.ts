@@ -24,15 +24,18 @@ export interface AttendanceRecord {
   payrollSnapshot?: Record<string, unknown>;
   lastPunchType?: 'check_in' | 'check_out' | 'break_start' | 'break_end';
   onBreak?: boolean;
+  logs?: AttendanceLog[];
 }
 
 export interface AttendanceLog {
   id: string;
-  attendanceId: string;
-  employeeId: string;
+  attendanceId?: string;
+  employeeId?: string;
   type: string;
   timestamp: string;
   location?: string;
+  source?: 'manual' | 'external';
+  deviceCode?: string;
 }
 
 export interface AttendancePolicy {
@@ -184,50 +187,76 @@ async function unwrapPaginated<T>(response: {
     return data as PaginatedResult<T>;
   }
   const items = Array.isArray(data) ? data : (data?.items ?? []);
-  const pagination = (response.data as any)?.pagination ?? data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
+  const pagination = (response.data as any)?.pagination ??
+    data?.pagination ?? { page: 1, pageSize: 20, total: items.length, totalPages: 1 };
   return { items, pagination };
 }
 
 export async function fetchEnterpriseDashboard(): Promise<AttendanceDashboardStats> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceDashboardStats>>(`${ATTENDANCE_PREFIX}/dashboard/enterprise`);
+  const response = await apiClient.get<ApiSuccessResponse<AttendanceDashboardStats>>(
+    `${ATTENDANCE_PREFIX}/dashboard/enterprise`,
+  );
   return unwrap(response);
 }
 
 export async function fetchHrDashboard(): Promise<AttendanceDashboardStats> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceDashboardStats>>(`${ATTENDANCE_PREFIX}/dashboard/hr`);
+  const response = await apiClient.get<ApiSuccessResponse<AttendanceDashboardStats>>(
+    `${ATTENDANCE_PREFIX}/dashboard/hr`,
+  );
   return unwrap(response);
 }
 
 export async function fetchManagerDashboard(): Promise<AttendanceDashboardStats> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceDashboardStats>>(`${ATTENDANCE_PREFIX}/dashboard/manager`);
+  const response = await apiClient.get<ApiSuccessResponse<AttendanceDashboardStats>>(
+    `${ATTENDANCE_PREFIX}/dashboard/manager`,
+  );
   return unwrap(response);
 }
 
 export async function fetchAttendancePolicy(): Promise<AttendancePolicy> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendancePolicy>>(`${ATTENDANCE_PREFIX}/policies`);
-  return unwrap(response);
-}
-
-export async function updateAttendancePolicy(payload: Partial<AttendancePolicy>): Promise<AttendancePolicy> {
-  const response = await apiClient.patch<ApiSuccessResponse<AttendancePolicy>>(`${ATTENDANCE_PREFIX}/policies`, payload);
-  return unwrap(response);
-}
-
-export async function fetchShiftAssignments(params: { employeeId?: string; page?: number; pageSize?: number } = {}): Promise<PaginatedResult<ShiftAssignment>> {
-  const response = await apiClient.get<ApiSuccessResponse<ShiftAssignment[]> & { pagination?: PaginationMeta }>(
-    `${ATTENDANCE_PREFIX}/shift-assignments`,
-    { params },
+  const response = await apiClient.get<ApiSuccessResponse<AttendancePolicy>>(
+    `${ATTENDANCE_PREFIX}/policies`,
   );
+  return unwrap(response);
+}
+
+export async function updateAttendancePolicy(
+  payload: Partial<AttendancePolicy>,
+): Promise<AttendancePolicy> {
+  const response = await apiClient.patch<ApiSuccessResponse<AttendancePolicy>>(
+    `${ATTENDANCE_PREFIX}/policies`,
+    payload,
+  );
+  return unwrap(response);
+}
+
+export async function fetchShiftAssignments(
+  params: { employeeId?: string; page?: number; pageSize?: number } = {},
+): Promise<PaginatedResult<ShiftAssignment>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<ShiftAssignment[]> & { pagination?: PaginationMeta }
+  >(`${ATTENDANCE_PREFIX}/shift-assignments`, { params });
   return unwrapPaginated(response);
 }
 
-export async function createShiftAssignment(payload: CreateShiftAssignmentPayload): Promise<ShiftAssignment> {
-  const response = await apiClient.post<ApiSuccessResponse<ShiftAssignment>>(`${ATTENDANCE_PREFIX}/shift-assignments`, payload);
+export async function createShiftAssignment(
+  payload: CreateShiftAssignmentPayload,
+): Promise<ShiftAssignment> {
+  const response = await apiClient.post<ApiSuccessResponse<ShiftAssignment>>(
+    `${ATTENDANCE_PREFIX}/shift-assignments`,
+    payload,
+  );
   return unwrap(response);
 }
 
-export async function updateShiftAssignment(id: string, payload: Partial<CreateShiftAssignmentPayload>): Promise<ShiftAssignment> {
-  const response = await apiClient.patch<ApiSuccessResponse<ShiftAssignment>>(`${ATTENDANCE_PREFIX}/shift-assignments/${id}`, payload);
+export async function updateShiftAssignment(
+  id: string,
+  payload: Partial<CreateShiftAssignmentPayload>,
+): Promise<ShiftAssignment> {
+  const response = await apiClient.patch<ApiSuccessResponse<ShiftAssignment>>(
+    `${ATTENDANCE_PREFIX}/shift-assignments/${id}`,
+    payload,
+  );
   return unwrap(response);
 }
 
@@ -235,77 +264,104 @@ export async function deleteShiftAssignment(id: string): Promise<void> {
   await apiClient.delete(`${ATTENDANCE_PREFIX}/shift-assignments/${id}`);
 }
 
-export async function punch(payload: PunchPayload): Promise<{ record: AttendanceRecord; log: AttendanceLog }> {
-  const response = await apiClient.post<ApiSuccessResponse<{ record: AttendanceRecord; log: AttendanceLog }>>(
-    `${ATTENDANCE_PREFIX}/punch`,
+export async function punch(
+  payload: PunchPayload,
+): Promise<{ record: AttendanceRecord; log: AttendanceLog }> {
+  const response = await apiClient.post<
+    ApiSuccessResponse<{ record: AttendanceRecord; log: AttendanceLog }>
+  >(`${ATTENDANCE_PREFIX}/punch`, payload);
+  return unwrap(response);
+}
+
+export async function fetchAttendanceRecords(
+  params: ListRecordsParams = {},
+): Promise<PaginatedResult<AttendanceRecord>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<AttendanceRecord[]> & { pagination?: PaginationMeta }
+  >(`${ATTENDANCE_PREFIX}/records`, { params });
+  return unwrapPaginated(response);
+}
+
+export async function fetchTodayAttendance(employeeId?: string): Promise<AttendanceRecord | null> {
+  const response = await apiClient.get<ApiSuccessResponse<AttendanceRecord | null>>(
+    `${ATTENDANCE_PREFIX}/records/today`,
+    {
+      params: employeeId ? { employeeId } : undefined,
+    },
+  );
+  return unwrap(response);
+}
+
+export async function fetchAttendanceCalendar(
+  startDate: string,
+  endDate: string,
+  employeeId?: string,
+): Promise<CalendarDayRecord[]> {
+  const response = await apiClient.get<ApiSuccessResponse<CalendarDayRecord[]>>(
+    `${ATTENDANCE_PREFIX}/records/calendar`,
+    {
+      params: { startDate, endDate, employeeId },
+    },
+  );
+  return unwrap(response);
+}
+
+export async function fetchAttendanceRecord(id: string): Promise<AttendanceRecord> {
+  const response = await apiClient.get<ApiSuccessResponse<AttendanceRecord>>(
+    `${ATTENDANCE_PREFIX}/records/${id}`,
+  );
+  return unwrap(response);
+}
+
+export async function fetchCorrections(
+  params: { page?: number; pageSize?: number; status?: string; employeeId?: string } = {},
+): Promise<PaginatedResult<AttendanceCorrection>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<AttendanceCorrection[]> & { pagination?: PaginationMeta }
+  >(`${ATTENDANCE_PREFIX}/corrections`, { params });
+  return unwrapPaginated(response);
+}
+
+export async function createCorrection(
+  payload: CreateCorrectionPayload,
+): Promise<AttendanceCorrection> {
+  const response = await apiClient.post<ApiSuccessResponse<AttendanceCorrection>>(
+    `${ATTENDANCE_PREFIX}/corrections`,
     payload,
   );
   return unwrap(response);
 }
 
-export async function fetchAttendanceRecords(params: ListRecordsParams = {}): Promise<PaginatedResult<AttendanceRecord>> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceRecord[]> & { pagination?: PaginationMeta }>(
-    `${ATTENDANCE_PREFIX}/records`,
-    { params },
-  );
-  return unwrapPaginated(response);
-}
-
-export async function fetchTodayAttendance(employeeId?: string): Promise<AttendanceRecord | null> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceRecord | null>>(`${ATTENDANCE_PREFIX}/records/today`, {
-    params: employeeId ? { employeeId } : undefined,
-  });
-  return unwrap(response);
-}
-
-export async function fetchAttendanceCalendar(startDate: string, endDate: string, employeeId?: string): Promise<CalendarDayRecord[]> {
-  const response = await apiClient.get<ApiSuccessResponse<CalendarDayRecord[]>>(`${ATTENDANCE_PREFIX}/records/calendar`, {
-    params: { startDate, endDate, employeeId },
-  });
-  return unwrap(response);
-}
-
-export async function fetchAttendanceRecord(id: string): Promise<AttendanceRecord> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceRecord>>(`${ATTENDANCE_PREFIX}/records/${id}`);
-  return unwrap(response);
-}
-
-export async function fetchCorrections(params: { page?: number; pageSize?: number; status?: string; employeeId?: string } = {}): Promise<PaginatedResult<AttendanceCorrection>> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceCorrection[]> & { pagination?: PaginationMeta }>(
-    `${ATTENDANCE_PREFIX}/corrections`,
-    { params },
-  );
-  return unwrapPaginated(response);
-}
-
-export async function createCorrection(payload: CreateCorrectionPayload): Promise<AttendanceCorrection> {
-  const response = await apiClient.post<ApiSuccessResponse<AttendanceCorrection>>(`${ATTENDANCE_PREFIX}/corrections`, payload);
-  return unwrap(response);
-}
-
 export async function submitCorrection(id: string): Promise<AttendanceCorrection> {
-  const response = await apiClient.post<ApiSuccessResponse<AttendanceCorrection>>(`${ATTENDANCE_PREFIX}/corrections/${id}/submit`);
+  const response = await apiClient.post<ApiSuccessResponse<AttendanceCorrection>>(
+    `${ATTENDANCE_PREFIX}/corrections/${id}/submit`,
+  );
   return unwrap(response);
 }
 
-export async function fetchTeamAttendance(params: ListRecordsParams = {}): Promise<PaginatedResult<AttendanceRecord>> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceRecord[]> & { pagination?: PaginationMeta }>(
-    `${ATTENDANCE_PREFIX}/team`,
-    { params },
-  );
+export async function fetchTeamAttendance(
+  params: ListRecordsParams = {},
+): Promise<PaginatedResult<AttendanceRecord>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<AttendanceRecord[]> & { pagination?: PaginationMeta }
+  >(`${ATTENDANCE_PREFIX}/team`, { params });
   return unwrapPaginated(response);
 }
 
-export async function fetchAttendanceExceptions(params: { page?: number; pageSize?: number; type?: string } = {}): Promise<PaginatedResult<AttendanceException>> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceException[]> & { pagination?: PaginationMeta }>(
-    `${ATTENDANCE_PREFIX}/exceptions`,
-    { params },
-  );
+export async function fetchAttendanceExceptions(
+  params: { page?: number; pageSize?: number; type?: string } = {},
+): Promise<PaginatedResult<AttendanceException>> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<AttendanceException[]> & { pagination?: PaginationMeta }
+  >(`${ATTENDANCE_PREFIX}/exceptions`, { params });
   return unwrapPaginated(response);
 }
 
 export async function fetchAttendanceReport(params: ReportParams): Promise<AttendanceReport> {
-  const response = await apiClient.get<ApiSuccessResponse<AttendanceReport>>(`${ATTENDANCE_PREFIX}/reports`, { params });
+  const response = await apiClient.get<ApiSuccessResponse<AttendanceReport>>(
+    `${ATTENDANCE_PREFIX}/reports`,
+    { params },
+  );
   return unwrap(response);
 }
 
@@ -317,7 +373,9 @@ export async function exportAttendanceReport(params: ReportParams): Promise<Blob
   return response.data as Blob;
 }
 
-export async function processMonthlyAttendance(payload: MonthlyProcessingPayload): Promise<{ processed: number; month: string }> {
+export async function processMonthlyAttendance(
+  payload: MonthlyProcessingPayload,
+): Promise<{ processed: number; month: string }> {
   const response = await apiClient.post<ApiSuccessResponse<{ processed: number; month: string }>>(
     `${ATTENDANCE_PREFIX}/processing/monthly`,
     payload,
@@ -325,7 +383,12 @@ export async function processMonthlyAttendance(payload: MonthlyProcessingPayload
   return unwrap(response);
 }
 
-export async function overrideAttendanceRecord(payload: OverrideRecordPayload): Promise<AttendanceRecord> {
-  const response = await apiClient.post<ApiSuccessResponse<AttendanceRecord>>(`${ATTENDANCE_PREFIX}/overrides`, payload);
+export async function overrideAttendanceRecord(
+  payload: OverrideRecordPayload,
+): Promise<AttendanceRecord> {
+  const response = await apiClient.post<ApiSuccessResponse<AttendanceRecord>>(
+    `${ATTENDANCE_PREFIX}/overrides`,
+    payload,
+  );
   return unwrap(response);
 }

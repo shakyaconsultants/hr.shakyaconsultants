@@ -1,4 +1,5 @@
 import {
+  ATTENDANCE_LOG_SOURCE,
   ATTENDANCE_LOG_TYPE,
   AttendanceLogRepository,
 } from '@domain/attendance/attendance.schemas.js';
@@ -8,7 +9,10 @@ import { generateUuid } from '@shared/utils/random-id.util.js';
 import { logger } from '@logging/winston.logger.js';
 import { AttendanceCalculatorService } from '@modules/attendance/services/attendance-calculator.service.js';
 import { AttendanceAuditService } from '@modules/attendance/services/attendance-audit.service.js';
-import { AttendanceEventService, ATTENDANCE_NOTIFICATION_JOB } from '@modules/attendance/services/attendance-event.service.js';
+import {
+  AttendanceEventService,
+  ATTENDANCE_NOTIFICATION_JOB,
+} from '@modules/attendance/services/attendance-event.service.js';
 import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
 import type { AttendanceActorContext } from '@modules/approval/types/approval.types.js';
 
@@ -69,13 +73,19 @@ function assertValidPunchSequence(type: string, logs: AttendanceLogDocument[]) {
 }
 
 export const PunchService = {
-  async punch(context: AttendanceActorContext, payload: {
-    type: string;
-    employeeId?: string;
-    timestamp?: Date;
-    location?: string;
-    deviceInfo?: string;
-  }) {
+  async punch(
+    context: AttendanceActorContext,
+    payload: {
+      type: string;
+      employeeId?: string;
+      timestamp?: Date;
+      location?: string;
+      deviceInfo?: string;
+      source?: string;
+      externalId?: string;
+      deviceCode?: string;
+    },
+  ) {
     const employeeId = payload.employeeId ?? context.employeeId;
     if (!employeeId) {
       throw new BadRequestError('Employee ID is required');
@@ -108,13 +118,20 @@ export const PunchService = {
         location: payload.location,
         ipAddress: context.ip,
         deviceInfo: payload.deviceInfo,
+        source: payload.source ?? ATTENDANCE_LOG_SOURCE.MANUAL,
+        externalId: payload.externalId,
+        deviceCode: payload.deviceCode,
         createdBy: context.userId,
         updatedBy: context.userId,
       },
       { companyId: context.companyId },
     );
 
-    const recordAfterPunch = await AttendanceCalculatorService.recalculate(context.companyId, record.id, context.userId);
+    const recordAfterPunch = await AttendanceCalculatorService.recalculate(
+      context.companyId,
+      record.id,
+      context.userId,
+    );
 
     await AttendanceAuditService.log({
       companyId: context.companyId,
@@ -144,7 +161,9 @@ export const PunchService = {
     }
 
     try {
-      const employee = await EmployeeRepository.findById(employeeId, { companyId: context.companyId });
+      const employee = await EmployeeRepository.findById(employeeId, {
+        companyId: context.companyId,
+      });
       if (employee?.userId && employee.userId !== context.userId) {
         await AttendanceEventService.notify(context, {
           recipientUserId: employee.userId,
