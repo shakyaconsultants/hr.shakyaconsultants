@@ -115,6 +115,17 @@ export interface AttendanceApprovalDocument extends BaseDocument {
   decidedAt?: Date;
 }
 
+export interface AttendanceDailySummaryDocument extends BaseDocument {
+  date: Date;
+  dayType: 'working' | 'weekly_off' | 'holiday';
+  presentCount: number;
+  absentCount: number;
+  halfDayCount: number;
+  onLeaveCount: number;
+  totalEmployees: number;
+  lastComputedAt: Date;
+}
+
 const attendanceFields: SchemaDefinition = {
   employeeId: { type: String, required: true, index: true },
   date: { type: Date, required: true, index: true },
@@ -200,6 +211,33 @@ const attendanceApprovalFields: SchemaDefinition = {
   comments: { type: String, trim: true },
   decidedAt: { type: Date },
 };
+
+export const attendanceDailySummaryModel = defineDomainModel<AttendanceDailySummaryDocument>(
+  'AttendanceDailySummary',
+  COLLECTIONS.ATTENDANCE_DAILY_SUMMARIES,
+  {
+    date: { type: Date, required: true, index: true },
+    dayType: {
+      type: String,
+      enum: ['working', 'weekly_off', 'holiday'],
+      required: true,
+    },
+    presentCount: { type: Number, default: 0, min: 0 },
+    absentCount: { type: Number, default: 0, min: 0 },
+    halfDayCount: { type: Number, default: 0, min: 0 },
+    onLeaveCount: { type: Number, default: 0, min: 0 },
+    totalEmployees: { type: Number, default: 0, min: 0 },
+    lastComputedAt: { type: Date, required: true },
+  },
+  {
+    indexes: [
+      {
+        fields: { companyId: 1, date: 1 },
+        options: { unique: true, name: 'uq_attendance_daily_summaries_company_date' },
+      },
+    ],
+  },
+);
 
 export const attendanceModel = defineDomainModel<AttendanceDocument>(
   'Attendance',
@@ -318,6 +356,7 @@ export const attendanceApprovalModel = defineDomainModel<AttendanceApprovalDocum
   },
 );
 
+export const AttendanceDailySummaryModel = attendanceDailySummaryModel.model;
 export const AttendanceModel = attendanceModel.model;
 export const AttendanceLogModel = attendanceLogModel.model;
 export const ShiftModel = shiftModel.model;
@@ -325,6 +364,7 @@ export const ShiftAssignmentModel = shiftAssignmentModel.model;
 export const AttendanceAdjustmentModel = attendanceAdjustmentModel.model;
 export const AttendanceApprovalModel = attendanceApprovalModel.model;
 
+export const AttendanceDailySummaryRepository = attendanceDailySummaryModel.repository;
 export const AttendanceRepository = attendanceModel.repository;
 export const AttendanceLogRepository = attendanceLogModel.repository;
 export const ShiftRepository = shiftModel.repository;

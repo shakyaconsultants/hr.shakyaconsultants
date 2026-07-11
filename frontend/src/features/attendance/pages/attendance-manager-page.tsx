@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CalendarDays, Clock, Users } from 'lucide-react';
-import { AttendanceCalendar } from '@/features/attendance/components/attendance-calendar';
+import { AttendanceSummaryCalendar } from '@/features/attendance/components/attendance-summary-calendar';
 import {
   useAttendanceExceptions,
   useManagerAttendanceDashboard,
@@ -16,8 +16,15 @@ import { cn } from '@/shared/utils/cn';
 export function AttendanceManagerPage() {
   const today = new Date().toISOString().split('T')[0] ?? '';
   const { data: dashboard, isLoading: dashboardLoading } = useManagerAttendanceDashboard();
-  const { data: team, isLoading: teamLoading } = useTeamAttendance({ startDate: today, endDate: today, pageSize: 50 });
-  const { data: exceptions, isLoading: exceptionsLoading } = useAttendanceExceptions({ type: 'missing_punch', pageSize: 20 });
+  const { data: team, isLoading: teamLoading } = useTeamAttendance({
+    startDate: today,
+    endDate: today,
+    pageSize: 50,
+  });
+  const { data: exceptions, isLoading: exceptionsLoading } = useAttendanceExceptions({
+    type: 'missing_punch',
+    pageSize: 20,
+  });
 
   if (dashboardLoading) {
     return <Loading message="Loading team attendance..." />;
@@ -34,7 +41,9 @@ export function AttendanceManagerPage() {
             <Users className="h-5 w-5" />
             <h1 className="text-2xl font-bold">Team Attendance</h1>
           </div>
-          <p className="text-sm text-muted-foreground">Monitor your team's attendance, late arrivals, and missing punches.</p>
+          <p className="text-sm text-muted-foreground">
+            Monitor your team's attendance, late arrivals, and missing punches.
+          </p>
         </div>
         <Button variant="outline" asChild>
           <Link to={ROUTES.APPROVAL_INBOX}>Pending Approvals</Link>
@@ -63,12 +72,24 @@ export function AttendanceManagerPage() {
             {
               key: 'checkIn',
               header: 'Check In',
-              render: (row) => (row.checkIn ? new Date(row.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'),
+              render: (row) =>
+                row.checkIn
+                  ? new Date(row.checkIn).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : '—',
             },
             {
               key: 'checkOut',
               header: 'Check Out',
-              render: (row) => (row.checkOut ? new Date(row.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'),
+              render: (row) =>
+                row.checkOut
+                  ? new Date(row.checkOut).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : '—',
             },
             {
               key: 'lateMinutes',
@@ -114,12 +135,16 @@ export function AttendanceManagerPage() {
               {missingRecords.map((item) => (
                 <li key={item.id} className="flex justify-between border-b pb-2 last:border-0">
                   <span>{item.employeeId}</span>
-                  <span className="capitalize text-muted-foreground">{item.type.replace(/_/g, ' ')}</span>
+                  <span className="capitalize text-muted-foreground">
+                    {item.type.replace(/_/g, ' ')}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
-          {exceptionsLoading ? <p className="text-sm text-muted-foreground">Loading exceptions...</p> : null}
+          {exceptionsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading exceptions...</p>
+          ) : null}
         </section>
       </div>
 
@@ -128,7 +153,7 @@ export function AttendanceManagerPage() {
           <CalendarDays className="h-4 w-4" />
           <h2 className="font-semibold">Team Calendar</h2>
         </div>
-        <AttendanceCalendar showEmployee />
+        <AttendanceSummaryCalendar />
       </section>
     </div>
   );
@@ -144,5 +169,9 @@ function StatusBadge({ status }: { status: string }) {
           ? 'bg-amber-100 text-amber-800'
           : 'bg-muted text-muted-foreground';
 
-  return <span className={cn('rounded px-2 py-0.5 text-xs font-medium capitalize', tone)}>{status.replace(/_/g, ' ')}</span>;
+  return (
+    <span className={cn('rounded px-2 py-0.5 text-xs font-medium capitalize', tone)}>
+      {status.replace(/_/g, ' ')}
+    </span>
+  );
 }

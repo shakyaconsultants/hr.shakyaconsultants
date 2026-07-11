@@ -6,6 +6,8 @@ const ATTENDANCE_PREFIX = '/api/v1/attendance';
 export interface AttendanceRecord {
   id: string;
   employeeId: string;
+  employeeName?: string | null;
+  employeeNumber?: string | null;
   date: string;
   status: string;
   shiftId?: string;
@@ -111,6 +113,14 @@ export interface AttendanceReport {
   summary: Record<string, number>;
 }
 
+export interface CalendarDaySummary {
+  date: string;
+  dayType: 'working' | 'weekly_off' | 'holiday';
+  presentCount: number;
+  absentCount: number;
+  totalEmployees: number;
+}
+
 export interface CalendarDayRecord {
   id?: string;
   date: string;
@@ -119,6 +129,8 @@ export interface CalendarDayRecord {
   checkOut?: string;
   employeeId?: string;
   employeeName?: string;
+  employeeNumber?: string;
+  lateMinutes?: number;
 }
 
 export interface ListRecordsParams {
@@ -130,6 +142,30 @@ export interface ListRecordsParams {
   status?: string;
   departmentId?: string;
   branchId?: string;
+}
+
+export interface DailyRegisterEntry {
+  id: string;
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  departmentId?: string;
+  date: string;
+  status: string;
+  checkIn?: string | null;
+  checkOut?: string | null;
+  workedMinutes?: number | null;
+  lateMinutes?: number | null;
+  attendanceId?: string | null;
+}
+
+export interface DailyRegisterParams {
+  date: string;
+  search?: string;
+  departmentId?: string;
+  branchId?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface ReportParams {
@@ -284,12 +320,37 @@ export async function fetchAttendanceRecords(
   return unwrapPaginated(response);
 }
 
+export async function fetchDailyAttendanceRegister(
+  params: DailyRegisterParams,
+): Promise<PaginatedResult<DailyRegisterEntry> & { date: string }> {
+  const response = await apiClient.get<
+    ApiSuccessResponse<{ items: DailyRegisterEntry[]; pagination: PaginationMeta; date: string }>
+  >(`${ATTENDANCE_PREFIX}/records/daily-register`, { params });
+  const data = await unwrap(response);
+  return {
+    items: data.items,
+    pagination: data.pagination,
+    date: data.date,
+  };
+}
+
 export async function fetchTodayAttendance(employeeId?: string): Promise<AttendanceRecord | null> {
   const response = await apiClient.get<ApiSuccessResponse<AttendanceRecord | null>>(
     `${ATTENDANCE_PREFIX}/records/today`,
     {
       params: employeeId ? { employeeId } : undefined,
     },
+  );
+  return unwrap(response);
+}
+
+export async function fetchAttendanceCalendarSummary(
+  startDate: string,
+  endDate: string,
+): Promise<CalendarDaySummary[]> {
+  const response = await apiClient.get<ApiSuccessResponse<CalendarDaySummary[]>>(
+    `${ATTENDANCE_PREFIX}/records/calendar-summary`,
+    { params: { startDate, endDate } },
   );
   return unwrap(response);
 }

@@ -25,6 +25,15 @@ export const calendarQuerySchema = z.object({
   employeeId: z.uuid().optional(),
 });
 
+export const dailyRegisterQuerySchema = z.object({
+  date: z.string().min(1),
+  search: z.string().optional(),
+  departmentId: z.uuid().optional(),
+  branchId: z.uuid().optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(200).optional(),
+});
+
 export const punchSchema = z.object({
   type: z.enum(Object.values(ATTENDANCE_LOG_TYPE) as [string, ...string[]]),
   employeeId: z.uuid().optional(),

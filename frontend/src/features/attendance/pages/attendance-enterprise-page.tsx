@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, Clock, ExternalLink, FileText, Settings, Users } from 'lucide-react';
-import { AttendanceCalendar } from '@/features/attendance/components/attendance-calendar';
+import { AttendanceSummaryCalendar } from '@/features/attendance/components/attendance-summary-calendar';
+import { AttendanceDailyRegisterPanel } from '@/features/attendance/components/attendance-daily-register-panel';
+import { AttendanceEmployeeHistoryPanel } from '@/features/attendance/components/attendance-employee-history-panel';
 import { PolicySettingsForm } from '@/features/attendance/components/policy-settings-form';
 import {
   useCreateShiftAssignment,
@@ -18,12 +20,23 @@ import { DataTable } from '@/shared/components/data-table';
 import { Button } from '@/shared/components/ui/button';
 import { ROUTES } from '@/config/app.config';
 
-const TABS = ['Overview', 'Policies', 'Shifts', 'Assignments', 'Calendar', 'Processing'] as const;
+const TABS = [
+  'Overview',
+  'Daily Register',
+  'Employee History',
+  'Policies',
+  'Shifts',
+  'Assignments',
+  'Calendar',
+  'Processing',
+] as const;
 
 export function AttendanceEnterprisePage() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Overview');
   const { data: dashboard, isLoading } = useEnterpriseAttendanceDashboard();
-  const { data: assignments, isLoading: assignmentsLoading } = useShiftAssignments({ pageSize: 50 });
+  const { data: assignments, isLoading: assignmentsLoading } = useShiftAssignments({
+    pageSize: 50,
+  });
   const createAssignment = useCreateShiftAssignment();
   const deleteAssignment = useDeleteShiftAssignment();
   const processMonthly = useProcessMonthlyAttendance();
@@ -57,7 +70,9 @@ export function AttendanceEnterprisePage() {
             <Clock className="h-5 w-5" />
             <h1 className="text-2xl font-bold">Attendance Administration</h1>
           </div>
-          <p className="text-sm text-muted-foreground">Configure policies, shift assignments, and process monthly attendance.</p>
+          <p className="text-sm text-muted-foreground">
+            View daily punch records, employee history, policies, and shift assignments.
+          </p>
         </div>
       </div>
 
@@ -84,13 +99,37 @@ export function AttendanceEnterprisePage() {
             <StatCard icon={CalendarDays} label="On Leave Today" value={dashboard.onLeaveToday} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard icon={FileText} label="Pending Corrections" value={dashboard.pendingCorrections} />
+            <StatCard
+              icon={FileText}
+              label="Pending Corrections"
+              value={dashboard.pendingCorrections}
+            />
             <StatCard icon={Clock} label="Missing Punches" value={dashboard.missingPunches} />
             {dashboard.totalEmployees != null ? (
               <StatCard icon={Users} label="Total Employees" value={dashboard.totalEmployees} />
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {activeTab === 'Daily Register' ? (
+        <section className="erp-card p-6">
+          <h2 className="mb-1 font-semibold">Daily Attendance Register</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            All employees with punch-in and punch-out times for the selected day.
+          </p>
+          <AttendanceDailyRegisterPanel />
+        </section>
+      ) : null}
+
+      {activeTab === 'Employee History' ? (
+        <section className="erp-card p-6">
+          <h2 className="mb-1 font-semibold">Employee Attendance History</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Select an employee, then browse their monthly attendance calendar with punch times.
+          </p>
+          <AttendanceEmployeeHistoryPanel />
+        </section>
       ) : null}
 
       {activeTab === 'Policies' ? (
@@ -107,7 +146,8 @@ export function AttendanceEnterprisePage() {
         <section className="rounded-lg border bg-card p-6">
           <h2 className="mb-2 font-semibold">Work Shifts</h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            Work shifts are managed in Organization master data. Create and edit shift definitions there.
+            Work shifts are managed in Organization master data. Create and edit shift definitions
+            there.
           </p>
           <Button asChild>
             <Link to={ROUTES.organizationEntity(MASTER_ENTITIES.WORK_SHIFT)}>
@@ -137,7 +177,11 @@ export function AttendanceEnterprisePage() {
               />
               <DatePicker value={effectiveFrom} onChange={setEffectiveFrom} required />
             </div>
-            <Button className="mt-3" onClick={() => void handleCreateAssignment()} disabled={createAssignment.isPending}>
+            <Button
+              className="mt-3"
+              onClick={() => void handleCreateAssignment()}
+              disabled={createAssignment.isPending}
+            >
               {createAssignment.isPending ? 'Assigning...' : 'Assign Shift'}
             </Button>
           </div>
@@ -175,7 +219,12 @@ export function AttendanceEnterprisePage() {
 
       {activeTab === 'Calendar' ? (
         <section className="rounded-lg border bg-card p-6">
-          <AttendanceCalendar showEmployee />
+          <h2 className="mb-1 font-semibold">Attendance Overview Calendar</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Monthly view with present and absent counts per day. Use Employee History for individual
+            details.
+          </p>
+          <AttendanceSummaryCalendar />
         </section>
       ) : null}
 

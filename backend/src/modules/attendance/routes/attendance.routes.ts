@@ -16,6 +16,8 @@ import {
   getManagerDashboard,
   getPolicies,
   getRecordsCalendar,
+  getCalendarSummary,
+  getDailyRegister,
   getReports,
   getTeam,
   getTodayRecord,
@@ -80,9 +82,19 @@ attendanceRoutes.post('/punch', authorize(ATTENDANCE_PERMISSIONS.CREATE), punch)
 attendanceRoutes.get('/records', authorize(ATTENDANCE_PERMISSIONS.READ), listRecords);
 attendanceRoutes.get('/records/today', authorize(ATTENDANCE_PERMISSIONS.READ), getTodayRecord);
 attendanceRoutes.get(
+  '/records/calendar-summary',
+  authorize(ATTENDANCE_PERMISSIONS.READ),
+  getCalendarSummary,
+);
+attendanceRoutes.get(
   '/records/calendar',
   authorize(ATTENDANCE_PERMISSIONS.READ),
   getRecordsCalendar,
+);
+attendanceRoutes.get(
+  '/records/daily-register',
+  authorize(ATTENDANCE_PERMISSIONS.READ),
+  getDailyRegister,
 );
 
 attendanceRoutes.post('/corrections', authorize(ATTENDANCE_PERMISSIONS.CREATE), createCorrection);

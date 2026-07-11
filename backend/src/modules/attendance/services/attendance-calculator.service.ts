@@ -16,6 +16,8 @@ import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { generateUuid } from '@shared/utils/random-id.util.js';
 import { startOfDay } from '@shared/utils/date.util.js';
 import { AttendancePolicyService } from '@modules/attendance/services/attendance-policy.service.js';
+import { AttendanceDayStatusService } from '@modules/attendance/services/attendance-day-status.service.js';
+import { AttendanceDailySummaryService } from '@modules/attendance/services/attendance-daily-summary.service.js';
 
 function parseTimeToMinutes(time: string): number {
   const [hoursStr = '0', minutesStr = '0'] = time.split(':');
@@ -71,20 +73,28 @@ export const AttendanceCalculatorService = {
   ): Promise<AttendanceDocument> {
     const day = startOfDay(date);
     const existing = await AttendanceRepository.findOne({ employeeId, date: day }, { companyId });
+    const employee = await EmployeeRepository.findById(employeeId, { companyId });
+    const dayFlags = await AttendanceDayStatusService.getDayFlags(companyId, day, {
+      branchId: employee?.branchId,
+      departmentId: employee?.departmentId,
+    });
+
     if (existing) {
+      if (AttendanceDayStatusService.shouldHealStoredStatus(existing, dayFlags)) {
+        return this.recalculate(companyId, existing.id, userId);
+      }
       return existing;
     }
 
-    const employee = await EmployeeRepository.findById(employeeId, { companyId });
     const shiftId = await resolveWorkShiftId(companyId, employeeId, day);
 
-    return AttendanceRepository.create(
+    const created = await AttendanceRepository.create(
       {
         id: generateUuid(),
         companyId,
         employeeId,
         date: day,
-        status: ATTENDANCE_STATUS.ABSENT,
+        status: AttendanceDayStatusService.resolveInitialStatus(dayFlags),
         shiftId,
         departmentId: employee?.departmentId,
         branchId: employee?.branchId,
@@ -92,14 +102,16 @@ export const AttendanceCalculatorService = {
         lateMinutes: 0,
         earlyExitMinutes: 0,
         overtimeMinutes: 0,
-        isWeekend: false,
-        isHoliday: false,
+        isWeekend: dayFlags.isWeekend,
+        isHoliday: dayFlags.isHoliday,
         payrollSnapshot: {},
         createdBy: userId,
         updatedBy: userId,
       },
       { companyId },
     );
+    await AttendanceDailySummaryService.refreshForDate(companyId, day, userId);
+    return created;
   },
 
   async recalculate(
@@ -233,6 +245,8 @@ export const AttendanceCalculatorService = {
     if (!updated) {
       throw new NotFoundError('Attendance record not found', ERROR_CODES.NOT_FOUND);
     }
+
+    await AttendanceDailySummaryService.refreshForDate(companyId, day, userId);
 
     return updated;
   },

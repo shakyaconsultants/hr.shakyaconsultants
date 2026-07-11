@@ -85,6 +85,7 @@ export const COLLECTIONS = {
   FULL_FINAL_PREPARATIONS: 'full_final_preparations',
   SECURE_ACCESS_TOKENS: 'secure_access_tokens',
   ATTENDANCES: 'attendances',
+  ATTENDANCE_DAILY_SUMMARIES: 'attendance_daily_summaries',
   ATTENDANCE_LOGS: 'attendance_logs',
   SHIFTS: 'shifts',
   ATTENDANCE_ADJUSTMENTS: 'attendance_adjustments',

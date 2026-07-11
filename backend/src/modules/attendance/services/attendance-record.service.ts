@@ -3,15 +3,30 @@ import {
   AttendanceLogRepository,
   AttendanceRepository,
 } from '@domain/attendance/attendance.schemas.js';
-import { EmployeeRepository } from '@domain/employee/employee.schemas.js';
+import {
+  EMPLOYEE_EMPLOYMENT_STATUS,
+  EmployeeRepository,
+} from '@domain/employee/employee.schemas.js';
+import { ENTITY_STATUS } from '@shared/constants/status.constants.js';
 import { NotFoundError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import { startOfDay, endOfDay } from '@shared/utils/date.util.js';
 import { toPlainDocument } from '@infrastructure/database/document.util.js';
 import { AttendanceCalculatorService } from '@modules/attendance/services/attendance-calculator.service.js';
+import { AttendanceDayStatusService } from '@modules/attendance/services/attendance-day-status.service.js';
+import { AttendanceDailySummaryService } from '@modules/attendance/services/attendance-daily-summary.service.js';
+import { AttendancePolicyService } from '@modules/attendance/services/attendance-policy.service.js';
+import { HolidayResolverService } from '@modules/organization/services/holiday-resolver.service.js';
 import { AttendanceAuditService } from '@modules/attendance/services/attendance-audit.service.js';
 import type { AttendanceActorContext } from '@modules/approval/types/approval.types.js';
 import { ATTENDANCE_STATUS } from '@shared/constants/status.constants.js';
+
+function toLocalDateKey(date: Date): string {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export const AttendanceRecordService = {
   async list(
@@ -51,9 +66,125 @@ export const AttendanceRecordService = {
       { companyId },
     );
 
+    const employeeIds = [...new Set(result.items.map((item) => item.employeeId))];
+    const employees =
+      employeeIds.length > 0
+        ? await EmployeeRepository.findMany({ id: { $in: employeeIds } }, { companyId })
+        : [];
+    const employeeById = new Map(
+      employees.map((employee) => [
+        employee.id,
+        {
+          employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
+          employeeNumber: employee.employeeNumber,
+        },
+      ]),
+    );
+
     return {
       ...result,
-      items: result.items.map((item) => toPlainDocument(item)),
+      items: result.items.map((item) => {
+        const employee = employeeById.get(item.employeeId);
+        return {
+          ...toPlainDocument(item),
+          employeeName: employee?.employeeName ?? null,
+          employeeNumber: employee?.employeeNumber ?? null,
+        };
+      }),
+    };
+  },
+
+  async getDailyRegister(
+    companyId: string,
+    query: {
+      date: string;
+      search?: string;
+      departmentId?: string;
+      branchId?: string;
+      page?: number;
+      pageSize?: number;
+    },
+  ) {
+    const targetDate = startOfDay(new Date(query.date));
+    const employeeFilter: Record<string, unknown> = {
+      status: ENTITY_STATUS.ACTIVE,
+      isDeleted: false,
+      employmentStatus: {
+        $nin: [EMPLOYEE_EMPLOYMENT_STATUS.TERMINATED, EMPLOYEE_EMPLOYMENT_STATUS.RESIGNED],
+      },
+    };
+    if (query.departmentId) {
+      employeeFilter.departmentId = query.departmentId;
+    }
+    if (query.branchId) {
+      employeeFilter.branchId = query.branchId;
+    }
+
+    const [employees, records] = await Promise.all([
+      EmployeeRepository.findMany(employeeFilter, { companyId }),
+      AttendanceRepository.findMany({ date: targetDate }, { companyId }),
+    ]);
+
+    const recordByEmployeeId = new Map(records.map((record) => [record.employeeId, record]));
+    const searchTerm = query.search?.trim().toLowerCase();
+
+    let filtered = employees;
+    if (searchTerm) {
+      filtered = employees.filter((employee) => {
+        const name = `${employee.firstName} ${employee.lastName}`.trim().toLowerCase();
+        return (
+          name.includes(searchTerm) ||
+          employee.employeeNumber.toLowerCase().includes(searchTerm) ||
+          employee.email.toLowerCase().includes(searchTerm)
+        );
+      });
+    }
+
+    filtered.sort((a, b) =>
+      `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
+    );
+
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 50;
+    const total = filtered.length;
+    const start = (page - 1) * pageSize;
+    const pageItems = filtered.slice(start, start + pageSize);
+
+    const items = await Promise.all(
+      pageItems.map(async (employee) => {
+        const record = recordByEmployeeId.get(employee.id);
+        const dayFlags = await AttendanceDayStatusService.getDayFlags(companyId, targetDate, {
+          branchId: employee.branchId,
+          departmentId: employee.departmentId,
+        });
+        const status = AttendanceDayStatusService.resolveDisplayStatus(record, dayFlags);
+
+        return {
+          id: employee.id,
+          employeeId: employee.id,
+          employeeNumber: employee.employeeNumber,
+          employeeName: `${employee.firstName} ${employee.lastName}`.trim(),
+          departmentId: employee.departmentId,
+          date: targetDate,
+          status,
+          checkIn: record?.checkIn ?? null,
+          checkOut: record?.checkOut ?? null,
+          workedMinutes: record?.workedMinutes ?? null,
+          lateMinutes: record?.lateMinutes ?? null,
+          attendanceId: record?.id ?? null,
+        };
+      }),
+    );
+
+    return {
+      date: targetDate,
+      items,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
     };
   },
 
@@ -131,39 +262,111 @@ export const AttendanceRecordService = {
   },
 
   async getCalendar(companyId: string, startDate: string, endDate: string, employeeId?: string) {
-    const filter: Record<string, unknown> = {
-      date: { $gte: startOfDay(new Date(startDate)), $lte: endOfDay(new Date(endDate)) },
+    const rangeStart = startOfDay(new Date(startDate));
+    const rangeEnd = startOfDay(new Date(endDate));
+    const rangeEndInclusive = endOfDay(new Date(endDate));
+
+    const activeEmployeeFilter: Record<string, unknown> = {
+      status: ENTITY_STATUS.ACTIVE,
+      isDeleted: false,
+      employmentStatus: {
+        $nin: [EMPLOYEE_EMPLOYMENT_STATUS.TERMINATED, EMPLOYEE_EMPLOYMENT_STATUS.RESIGNED],
+      },
     };
-    if (employeeId) filter.employeeId = employeeId;
 
-    const records = await AttendanceRepository.findMany(filter, { companyId });
-    records.sort((a, b) => a.date.getTime() - b.date.getTime());
+    const [records, policies, employees] = await Promise.all([
+      AttendanceRepository.findMany(
+        {
+          date: { $gte: rangeStart, $lte: rangeEndInclusive },
+          ...(employeeId ? { employeeId } : {}),
+        },
+        { companyId },
+      ),
+      AttendancePolicyService.getPolicies(companyId),
+      employeeId
+        ? EmployeeRepository.findMany({ id: employeeId, ...activeEmployeeFilter }, { companyId })
+        : EmployeeRepository.findMany(activeEmployeeFilter, { companyId }),
+    ]);
 
-    const employeeIds = [...new Set(records.map((record) => record.employeeId))];
-    const employees =
-      employeeIds.length > 0
-        ? await EmployeeRepository.findMany({ id: { $in: employeeIds } }, { companyId })
-        : [];
-    const employeeNameById = new Map(
-      employees.map((employee) => [
-        employee.id,
-        `${employee.firstName} ${employee.lastName}`.trim(),
-      ]),
+    let targetEmployees = employees;
+    if (employeeId && targetEmployees.length === 0) {
+      const employee = await EmployeeRepository.findById(employeeId, { companyId });
+      if (employee) {
+        targetEmployees = [employee];
+      }
+    }
+
+    targetEmployees.sort((a, b) =>
+      `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`),
     );
 
-    return records.map((r) => ({
-      id: r.id,
-      employeeId: r.employeeId,
-      employeeName: employeeNameById.get(r.employeeId) ?? r.employeeId,
-      date: r.date,
-      status: r.status,
-      checkIn: r.checkIn,
-      checkOut: r.checkOut,
-      workedMinutes: r.workedMinutes,
-      lateMinutes: r.lateMinutes,
-      isHoliday: r.isHoliday,
-      isWeekend: r.isWeekend,
-    }));
+    const recordByEmployeeAndDate = new Map<string, (typeof records)[number]>();
+    for (const record of records) {
+      const key = `${record.employeeId}:${toLocalDateKey(record.date)}`;
+      recordByEmployeeAndDate.set(key, record);
+    }
+
+    const resolveFlags = async (
+      date: Date,
+      scope: { branchId?: string; departmentId?: string },
+    ) => {
+      const isWeekend = policies.weeklyOffDays.includes(date.getDay());
+      const holiday = await HolidayResolverService.findHoliday(companyId, date, scope);
+      return { isWeekend, isHoliday: Boolean(holiday) };
+    };
+
+    const buildEntry = async (
+      employee: (typeof targetEmployees)[number],
+      date: Date,
+      record?: (typeof records)[number],
+    ) => {
+      const dayFlags = await resolveFlags(date, {
+        branchId: employee.branchId,
+        departmentId: employee.departmentId,
+      });
+      const status = AttendanceDayStatusService.resolveDisplayStatus(record, dayFlags);
+      const employeeName =
+        `${employee.firstName} ${employee.lastName}`.trim() || employee.employeeNumber;
+
+      return {
+        id: record?.id,
+        employeeId: employee.id,
+        employeeName,
+        employeeNumber: employee.employeeNumber,
+        date: startOfDay(date),
+        status,
+        checkIn: record?.checkIn,
+        checkOut: record?.checkOut,
+        workedMinutes: record?.workedMinutes,
+        lateMinutes: record?.lateMinutes,
+        isHoliday: dayFlags.isHoliday,
+        isWeekend: dayFlags.isWeekend,
+      };
+    };
+
+    const items: Awaited<ReturnType<typeof buildEntry>>[] = [];
+    const cursor = new Date(rangeStart);
+
+    if (!employeeId) {
+      return items;
+    }
+
+    while (cursor <= rangeEnd) {
+      const day = startOfDay(cursor);
+
+      for (const employee of targetEmployees) {
+        const record = recordByEmployeeAndDate.get(`${employee.id}:${toLocalDateKey(day)}`);
+        items.push(await buildEntry(employee, day, record));
+      }
+
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return items;
+  },
+
+  async getCalendarSummary(companyId: string, startDate: string, endDate: string) {
+    return AttendanceDailySummaryService.getSummariesForRange(companyId, startDate, endDate);
   },
 
   async override(

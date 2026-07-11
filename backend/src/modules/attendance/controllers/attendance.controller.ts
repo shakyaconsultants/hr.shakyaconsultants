@@ -17,6 +17,7 @@ import { AuthenticationError } from '@shared/errors/app.error.js';
 import { ERROR_CODES } from '@shared/constants/error-codes.js';
 import {
   calendarQuerySchema,
+  dailyRegisterQuerySchema,
   createCorrectionSchema,
   createShiftAssignmentSchema,
   exceptionsQuerySchema,
@@ -241,6 +242,34 @@ export const getRecordsCalendar: RequestHandler = async (req, res, next) => {
       query.endDate,
       query.employeeId,
     );
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getCalendarSummary: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const query = validateInput(calendarQuerySchema, req.query);
+    const data = await AttendanceRecordService.getCalendarSummary(
+      authReq.user.companyId,
+      query.startDate,
+      query.endDate,
+    );
+    return ResponseService.success(res, authReq, data);
+  } catch (error) {
+    next(error);
+    return;
+  }
+};
+
+export const getDailyRegister: RequestHandler = async (req, res, next) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const query = validateInput(dailyRegisterQuerySchema, req.query);
+    const data = await AttendanceRecordService.getDailyRegister(authReq.user.companyId, query);
     return ResponseService.success(res, authReq, data);
   } catch (error) {
     next(error);
